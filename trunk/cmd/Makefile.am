@@ -1,0 +1,3 @@
+INCLUDES = 
+METASOURCES = AUTO
+bin_PROGRAMS = dwic

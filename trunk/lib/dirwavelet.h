@@ -43,19 +43,17 @@ public:
 
 	~DirWavelet();
 
-	void LazyTransform(QuincunxWavelet * pQWav);
-	void LazyTransformI(QuincunxWavelet * pQWav);
-	void Transform53(QuincunxWavelet * pQWav);
-	void Transform53I(QuincunxWavelet * pQWav);
+	void LazyTransform(float * pImage, int Stride);
+	void LazyTransformI(float * pImage, int Stride);
+	void Transform53(float * pImage, int Stride);
+	void Transform53I(float * pImage, int Stride);
 	unsigned int Thres(float Thres);
 	unsigned int TSUQ(float Quant, float Thres, float RecLevel);
 
 	DirWavelet * pLow;
 	DirWavelet * pHigh;
-	CBand HBand;
-	CBand VBand;
-	CBand NESOBand;
-	CBand NOSEBand;
+	CBand DBand;
+	CBand HVBand;
 	CBand LBand;
 
 private:
@@ -69,19 +67,45 @@ private:
 
 	void Init(int level, void * pAllocated, int Align);
 
-	void LazyBand(QuincunxWavelet * pQWav);
-	void LazyBandI(QuincunxWavelet * pQWav);
-	void LiftBand(float * pBlock, int Stride, int DimX, int DimY,
-				  float Predict, float Update);
-	void LiftBandI(float * pBlock, int Stride, int DimX, int DimY,
-				   float Predict, float Update);
-	void LiftBandDiag(float * pBlock, int Stride, int DimX, int DimY,
-					  float Predict, float Update);
-	void LiftBandDiagI(float * pBlock, int Stride, int DimX, int DimY,
-					   float Predict, float Update);
+	void LazyImage(float * pImage, unsigned int Stride);
+	void LazyImageI(float * pImage, unsigned int Stride);
 
-	void LiftBlockEven(float * pBlock, int Stride, float Coef);
-	void LiftBlockEven(float * pBlock, int Stride, float Coef);
+	static void LiftBandOdd(float * pBlock, int Stride, int DimX, int DimY,
+				  float Coef);
+	static void LiftBandEven(float * pBlock, int Stride, int DimX, int DimY,
+				   float Coef);
+	static void LiftBandDiagOdd(float * pBlock, int Stride, int DimX,
+					int DimY, float Coef);
+	static void LiftBandDiagEven(float * pBlock, int Stride, int DimX,
+					int DimY, float Coef);
+
+	static void LiftBlockOdd(float * pBlock, int Stride, float Coef);
+	static void LiftBlockEven(float * pBlock, int Stride, float Coef);
+	static void LiftBlockOddT(float * pBlock, int Stride, float Coef);
+	static void LiftBlockEvenT(float * pBlock, int Stride, float Coef);
+	static void LiftBlockOddB(float * pBlock, int Stride, float Coef);
+	static void LiftBlockEvenB(float * pBlock, int Stride, float Coef);
+	static void LiftBlockOddL(float * pBlock, int Stride, float Coef);
+	static void LiftBlockEvenL(float * pBlock, int Stride, float Coef);
+	static void LiftBlockOddR(float * pBlock, int Stride, float Coef);
+	static void LiftBlockEvenR(float * pBlock, int Stride, float Coef);
+	static void LiftBlockOddTL(float * pBlock, int Stride, float Coef);
+	static void LiftBlockEvenTL(float * pBlock, int Stride, float Coef);
+	static void LiftBlockOddTR(float * pBlock, int Stride, float Coef);
+	static void LiftBlockEvenTR(float * pBlock, int Stride, float Coef);
+	static void LiftBlockOddBL(float * pBlock, int Stride, float Coef);
+	static void LiftBlockEvenBL(float * pBlock, int Stride, float Coef);
+	static void LiftBlockOddBR(float * pBlock, int Stride, float Coef);
+	static void LiftBlockEvenBR(float * pBlock, int Stride, float Coef);
+
+	static void LiftBlockDiagOdd(float * pBlock, int Stride, float Coef);
+	static void LiftBlockDiagEven(float * pBlock, int Stride, float Coef);
+	static void LiftBlockDiagEvenT(float * pBlock, int Stride, float Coef);
+	static void LiftBlockDiagOddB(float * pBlock, int Stride, float Coef);
+	static void LiftBlockDiagEvenL(float * pBlock, int Stride, float Coef);
+	static void LiftBlockDiagOddR(float * pBlock, int Stride, float Coef);
+	static void LiftBlockDiagOddBR(float * pBlock, int Stride, float Coef);
+	static void LiftBlockDiagEvenTL(float * pBlock, int Stride, float Coef);
 };
 
 #endif

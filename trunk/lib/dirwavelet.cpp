@@ -61,14 +61,10 @@ pLow(0),
 pData(0)
 {
 	this->pHigh = pHigh;
-	pHigh->NOSEBand.pParent = &NOSEBand;
-	NOSEBand.pChild = &pHigh->NOSEBand;
-	pHigh->NESOBand.pParent = &NESOBand;
-	NESOBand.pChild = &pHigh->NESOBand;
-	pHigh->HBand.pParent = &HBand;
-	HBand.pChild = &pHigh->HBand;
-	pHigh->VBand.pParent = &VBand;
-	VBand.pChild = &pHigh->VBand;
+	pHigh->DBand.pParent = &DBand;
+	DBand.pChild = &pHigh->DBand;
+	pHigh->HVBand.pParent = &HVBand;
+	HVBand.pChild = &pHigh->HVBand;
 	Init(level, pAllocated, Align);
 }
 
@@ -80,10 +76,8 @@ DirWavelet::~DirWavelet()
 
 void DirWavelet::Init(int level,void * pAllocated, int Align)
 {
-	pAllocated = NOSEBand.Init(DimX >> 1, DimY >> 1, (char *)pAllocated, Align);
-	pAllocated = NESOBand.Init(DimX >> 1, DimY >> 1, (char *)pAllocated, Align);
-	pAllocated = HBand.Init(DimX >> 1, DimY >> 2, (char *)pAllocated, Align);
-	pAllocated = VBand.Init(DimX >> 1, DimY >> 2, (char *)pAllocated, Align);
+	pAllocated = DBand.Init(DimX, DimY >> 1, (char *)pAllocated, Align);
+	pAllocated = HVBand.Init(DimX >> 1, DimY >> 1, (char *)pAllocated, Align);
 	if (level > 1){
 		pLow = new DirWavelet(DimX >> 1, DimY >> 1, level - 1,
 								   this, pAllocated, Align);
@@ -98,6 +92,42 @@ void DirWavelet::Init(int level,void * pAllocated, int Align)
 		+ pBlock[(x) - 1 + (y) * Stride] \
 		+ pBlock[(x) + ((y) + 1) * Stride] \
 		+ pBlock[(x) + ((y) - 1) * Stride] ) * Coef;
+
+#define PXL_LIFT_T(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + (y) * Stride] \
+		+ pBlock[(x) - 1 + (y) * Stride] \
+		+ pBlock[(x) + ((y) + 1) * Stride] * 2 ) * Coef;
+
+#define PXL_LIFT_B(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + (y) * Stride] \
+		+ pBlock[(x) - 1 + (y) * Stride] \
+		+ pBlock[(x) + ((y) - 1) * Stride] * 2 ) * Coef;
+
+#define PXL_LIFT_L(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + (y) * Stride] * 2 \
+		+ pBlock[(x) + ((y) + 1) * Stride] \
+		+ pBlock[(x) + ((y) - 1) * Stride] ) * Coef;
+
+#define PXL_LIFT_R(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) - 1 + (y) * Stride] * 2 \
+		+ pBlock[(x) + ((y) + 1) * Stride] \
+		+ pBlock[(x) + ((y) - 1) * Stride] ) * Coef;
+
+#define PXL_LIFT_TL(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + (y) * Stride] * 2 \
+		+ pBlock[(x) + ((y) + 1) * Stride] * 2 ) * Coef;
+
+#define PXL_LIFT_TR(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) - 1 + (y) * Stride] * 2 \
+		+ pBlock[(x) + ((y) + 1) * Stride] * 2 ) * Coef;
+
+#define PXL_LIFT_BL(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + (y) * Stride] * 2 \
+		+ pBlock[(x) + ((y) - 1) * Stride] * 2 ) * Coef;
+
+#define PXL_LIFT_BR(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) - 1 + (y) * Stride] * 2 \
+		+ pBlock[(x) + ((y) - 1) * Stride] * 2 ) * Coef;
 
 void DirWavelet::LiftBlockOdd(float * pBlock, int Stride, float Coef)
 {
@@ -123,235 +153,492 @@ void DirWavelet::LiftBlockEven(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(3,3);
 }
 
-void DirWavelet::LiftBandDiag(float * pBlock, int Stride, int DimX, int DimY,
-							  float Predict, float Update)
+void DirWavelet::LiftBlockOddT(float * pBlock, int Stride, float Coef)
 {
-	pBlock = pBlock - Stride;
-	for( int i = 0; i < DimX - 2; i += 2){
- 		LiftBlockDiagT(pBlock + i, Stride, Predict);
- 	}
-	pBlock += Stride;
+	PXL_LIFT_T(1,0);
+	PXL_LIFT_T(3,0);
+	PXL_LIFT(0,1);
+	PXL_LIFT(2,1);
+	PXL_LIFT(1,2);
+	PXL_LIFT(3,2);
+	PXL_LIFT(0,3);
+	PXL_LIFT(2,3);
+}
+
+void DirWavelet::LiftBlockEvenT(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT_T(0,0);
+	PXL_LIFT_T(2,0);
+	PXL_LIFT(1,1);
+	PXL_LIFT(3,1);
+	PXL_LIFT(0,2);
+	PXL_LIFT(2,2);
+	PXL_LIFT(1,3);
+	PXL_LIFT(3,3);
+}
+
+void DirWavelet::LiftBlockOddB(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(1,0);
+	PXL_LIFT(3,0);
+	PXL_LIFT(0,1);
+	PXL_LIFT(2,1);
+	PXL_LIFT(1,2);
+	PXL_LIFT(3,2);
+	PXL_LIFT_B(0,3);
+	PXL_LIFT_B(2,3);
+}
+
+void DirWavelet::LiftBlockEvenB(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(0,0);
+	PXL_LIFT(2,0);
+	PXL_LIFT(1,1);
+	PXL_LIFT(3,1);
+	PXL_LIFT(0,2);
+	PXL_LIFT(2,2);
+	PXL_LIFT_B(1,3);
+	PXL_LIFT_B(3,3);
+}
+
+void DirWavelet::LiftBlockOddL(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(1,0);
+	PXL_LIFT(3,0);
+	PXL_LIFT_L(0,1);
+	PXL_LIFT(2,1);
+	PXL_LIFT(1,2);
+	PXL_LIFT(3,2);
+	PXL_LIFT_L(0,3);
+	PXL_LIFT(2,3);
+}
+
+void DirWavelet::LiftBlockEvenL(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT_L(0,0);
+	PXL_LIFT(2,0);
+	PXL_LIFT(1,1);
+	PXL_LIFT(3,1);
+	PXL_LIFT_L(0,2);
+	PXL_LIFT(2,2);
+	PXL_LIFT(1,3);
+	PXL_LIFT(3,3);
+}
+
+void DirWavelet::LiftBlockOddR(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(1,0);
+	PXL_LIFT_R(3,0);
+	PXL_LIFT(0,1);
+	PXL_LIFT(2,1);
+	PXL_LIFT(1,2);
+	PXL_LIFT_R(3,2);
+	PXL_LIFT(0,3);
+	PXL_LIFT(2,3);
+}
+
+void DirWavelet::LiftBlockEvenR(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(0,0);
+	PXL_LIFT(2,0);
+	PXL_LIFT(1,1);
+	PXL_LIFT_R(3,1);
+	PXL_LIFT(0,2);
+	PXL_LIFT(2,2);
+	PXL_LIFT(1,3);
+	PXL_LIFT_R(3,3);
+}
+
+void DirWavelet::LiftBlockOddTL(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT_T(1,0);
+	PXL_LIFT_T(3,0);
+	PXL_LIFT_L(0,1);
+	PXL_LIFT(2,1);
+	PXL_LIFT(1,2);
+	PXL_LIFT(3,2);
+	PXL_LIFT_L(0,3);
+	PXL_LIFT(2,3);
+}
+
+void DirWavelet::LiftBlockEvenTL(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT_TL(0,0);
+	PXL_LIFT_T(2,0);
+	PXL_LIFT(1,1);
+	PXL_LIFT(3,1);
+	PXL_LIFT_L(0,2);
+	PXL_LIFT(2,2);
+	PXL_LIFT(1,3);
+	PXL_LIFT(3,3);
+}
+
+void DirWavelet::LiftBlockOddTR(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT_T(1,0);
+	PXL_LIFT_TR(3,0);
+	PXL_LIFT(0,1);
+	PXL_LIFT(2,1);
+	PXL_LIFT(1,2);
+	PXL_LIFT_R(3,2);
+	PXL_LIFT(0,3);
+	PXL_LIFT(2,3);
+}
+
+void DirWavelet::LiftBlockEvenTR(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT_T(0,0);
+	PXL_LIFT_T(2,0);
+	PXL_LIFT(1,1);
+	PXL_LIFT_R(3,1);
+	PXL_LIFT(0,2);
+	PXL_LIFT(2,2);
+	PXL_LIFT(1,3);
+	PXL_LIFT_R(3,3);
+}
+
+void DirWavelet::LiftBlockOddBL(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(1,0);
+	PXL_LIFT(3,0);
+	PXL_LIFT_L(0,1);
+	PXL_LIFT(2,1);
+	PXL_LIFT(1,2);
+	PXL_LIFT(3,2);
+	PXL_LIFT_BL(0,3);
+	PXL_LIFT_B(2,3);
+}
+
+void DirWavelet::LiftBlockEvenBL(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT_L(0,0);
+	PXL_LIFT(2,0);
+	PXL_LIFT(1,1);
+	PXL_LIFT(3,1);
+	PXL_LIFT_L(0,2);
+	PXL_LIFT(2,2);
+	PXL_LIFT_B(1,3);
+	PXL_LIFT_B(3,3);
+}
+
+void DirWavelet::LiftBlockOddBR(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(1,0);
+	PXL_LIFT_R(3,0);
+	PXL_LIFT(0,1);
+	PXL_LIFT(2,1);
+	PXL_LIFT(1,2);
+	PXL_LIFT_R(3,2);
+	PXL_LIFT_B(0,3);
+	PXL_LIFT_B(2,3);
+}
+
+void DirWavelet::LiftBlockEvenBR(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(0,0);
+	PXL_LIFT(2,0);
+	PXL_LIFT(1,1);
+	PXL_LIFT_R(3,1);
+	PXL_LIFT(0,2);
+	PXL_LIFT(2,2);
+	PXL_LIFT_B(1,3);
+	PXL_LIFT_BR(3,3);
+}
+
+#define PXL_LIFT(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + ((y) + 1) * Stride] \
+		+ pBlock[(x) - 1 + ((y) + 1) * Stride] \
+		+ pBlock[(x) + 1 + ((y) - 1) * Stride] \
+		+ pBlock[(x) - 1 + ((y) - 1) * Stride] ) * Coef;
+
+#define PXL_LIFT_T(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + ((y) + 1) * Stride] \
+		+ pBlock[(x) - 1 + ((y) + 1) * Stride] ) * 2 * Coef;
+
+#define PXL_LIFT_B(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + ((y) - 1) * Stride] \
+		+ pBlock[(x) - 1 + ((y) - 1) * Stride] ) * 2 * Coef;
+
+#define PXL_LIFT_L(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + ((y) + 1) * Stride] \
+		+ pBlock[(x) + 1 + ((y) - 1) * Stride] ) * 2 * Coef;
+
+#define PXL_LIFT_R(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) - 1 + ((y) + 1) * Stride] \
+		+ pBlock[(x) - 1 + ((y) - 1) * Stride] ) * 2 * Coef;
+
+#define PXL_LIFT_TL(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + ((y) + 1) * Stride]) * 4 \
+		* Coef;
+
+#define PXL_LIFT_TR(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) - 1 + ((y) + 1) * Stride]) * 4 \
+		* Coef;
+
+#define PXL_LIFT_BL(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + ((y) - 1) * Stride]) * 4 \
+		* Coef;
+
+#define PXL_LIFT_BR(x,y) \
+	pBlock[(x) + (y) * Stride] += (pBlock[(x) - 1 + ((y) - 1) * Stride]) * 4 \
+		* Coef;
+
+void DirWavelet::LiftBlockDiagOdd(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(1,1);
+	PXL_LIFT(3,1);
+	PXL_LIFT(1,3);
+	PXL_LIFT(3,3);
+}
+
+void DirWavelet::LiftBlockDiagEven(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(0,0);
+	PXL_LIFT(2,0);
+	PXL_LIFT(0,2);
+	PXL_LIFT(2,2);
+}
+
+void DirWavelet::LiftBlockDiagEvenT(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT_T(0,0);
+	PXL_LIFT_T(2,0);
+	PXL_LIFT(0,2);
+	PXL_LIFT(2,2);
+}
+
+void DirWavelet::LiftBlockDiagOddB(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(1,1);
+	PXL_LIFT(3,1);
+	PXL_LIFT_B(1,3);
+	PXL_LIFT_B(3,3);
+}
+
+void DirWavelet::LiftBlockDiagEvenL(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT_L(0,0);
+	PXL_LIFT(2,0);
+	PXL_LIFT_L(0,2);
+	PXL_LIFT(2,2);
+}
+
+void DirWavelet::LiftBlockDiagOddR(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(1,1);
+	PXL_LIFT_R(3,1);
+	PXL_LIFT(1,3);
+	PXL_LIFT_R(3,3);
+}
+
+void DirWavelet::LiftBlockDiagOddBR(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT(1,1);
+	PXL_LIFT_R(3,1);
+	PXL_LIFT_B(1,3);
+	PXL_LIFT_BR(3,3);
+}
+
+void DirWavelet::LiftBlockDiagEvenTL(float * pBlock, int Stride, float Coef)
+{
+	PXL_LIFT_TL(0,0);
+	PXL_LIFT_T(2,0);
+	PXL_LIFT_L(0,2);
+	PXL_LIFT(2,2);
+}
+
+void DirWavelet::LiftBandDiagOdd(float * pBlock, int Stride, int DimX, int DimY,
+							  float Coef)
+{
 	int j = 0;
-	for( ; j < DimY - 1; j += 1){
-		LiftBlockDiagL(pBlock, Stride, Predict, Update);
-		int i = 2;
-		for( ; i < DimX - 2; i += 2){
-			LiftBlockDiag(pBlock + i, Stride, Predict, Update);
+	for( j; j < DimY - 4; j += 4){
+		int i = 0;
+		for( ; i < DimX - 4; i += 4){
+			LiftBlockDiagOdd(pBlock + i, Stride, Coef);
 		}
- 		LiftBlockDiagR(pBlock + i, Stride, Predict, Update);
-		pBlock += Stride;
+		LiftBlockDiagOddR(pBlock + i, Stride, Coef);
+		pBlock += Stride << 2;
 	}
-	for( int i = 2; i < DimX; i += 2){
-		LiftBlockDiagB(pBlock + i, Stride, Update);
+	int i = 0;
+	for( ; i < DimX - 4; i += 4){
+		LiftBlockDiagOddB(pBlock + i, Stride, Coef);
+	}
+	LiftBlockDiagOddBR(pBlock + i, Stride, Coef);
+}
+
+void DirWavelet::LiftBandDiagEven(float * pBlock, int Stride, int DimX,
+								int DimY, float Coef)
+{
+	LiftBlockDiagEvenTL(pBlock, Stride, Coef);
+	int i = 4;
+	for( ; i < DimX; i += 4){
+		LiftBlockDiagEvenT(pBlock + i, Stride, Coef);
+	}
+	pBlock += Stride << 2;
+	int j = 4;
+	for( j; j < DimY; j += 4){
+		LiftBlockDiagEvenL(pBlock, Stride, Coef);
+		int i = 4;
+		for( ; i < DimX; i += 4){
+			LiftBlockDiagEven(pBlock + i, Stride, Coef);
+		}
+		pBlock += Stride << 2;
 	}
 }
 
-void DirWavelet::LiftBandDiagI(float * pBlock, int Stride, int DimX, int DimY,
-							   float Predict, float Update)
+void DirWavelet::LiftBandOdd(float * pBlock, int Stride, int DimX, int DimY,
+						  float Coef)
 {
-	LiftBlockDiagTLI(pBlock - 1, Stride, Predict);
-	int i = 1;
-	for( ; i < DimX - 1; i += 2){
-		LiftBlockDiagTI(pBlock + i, Stride, Predict, Update);
+	LiftBlockOddTL(pBlock, Stride, Coef);
+	int i = 4;
+	for( ; i < DimX - 4; i += 4){
+		LiftBlockOddT(pBlock + i, Stride, Coef);
 	}
-	pBlock += Stride;
-	int j = 1;
-	for( ; j < DimY - 1; j += 1){
-		LiftBlockDiagLI(pBlock - 1, Stride, Predict);
-		int i = 1;
-		for( ; i < DimX - 1; i += 2){
-			LiftBlockDiagI(pBlock + i, Stride, Predict, Update);
+	LiftBlockOddTR(pBlock + i, Stride, Coef);
+	pBlock += Stride << 2;
+	int j = 4;
+	for( j; j < DimY - 4; j += 4){
+		LiftBlockOddL(pBlock, Stride, Coef);
+		int i = 4;
+		for( ; i < DimX - 4; i += 4){
+			LiftBlockOdd(pBlock + i, Stride, Coef);
 		}
-		LiftBlockDiagRI(pBlock + i, Stride, Update);
-		pBlock += Stride;
+		LiftBlockOddR(pBlock + i, Stride, Coef);
+		pBlock += Stride << 2;
 	}
-	i = 1;
-	for( ; i < DimX - 1; i += 2){
-		LiftBlockDiagBI(pBlock + i, Stride, Predict, Update);
+	LiftBlockOddBL(pBlock, Stride, Coef);
+	i = 4;
+	for( ; i < DimX - 4; i += 4){
+		LiftBlockOddB(pBlock + i, Stride, Coef);
 	}
-	LiftBlockDiagBRI(pBlock + i, Stride, Update);
+	LiftBlockOddBR(pBlock + i, Stride, Coef);
 }
 
-void DirWavelet::LiftBand(float * pBlock, int Stride, int DimX, int DimY,
-						  float Predict, float Update)
+void DirWavelet::LiftBandEven(float * pBlock, int Stride, int DimX, int DimY,
+						  float Coef)
 {
-	LiftBlockTL(pBlock, Stride, Predict, Update);
-	int i = 2;
-	for( ; i < DimX - 2; i += 2){
-		LiftBlockT(pBlock + i, Stride, Predict, Update);
+	LiftBlockEvenTL(pBlock, Stride, Coef);
+	int i = 4;
+	for( ; i < DimX - 4; i += 4){
+		LiftBlockEvenT(pBlock + i, Stride, Coef);
 	}
-	LiftBlockTR(pBlock + i, Stride, Predict, Update);
-	pBlock += Stride << 1;
-	int j = 2;
-	for( j; j < DimY - 2; j += 2){
-		LiftBlockL(pBlock, Stride, Predict, Update);
-		int i = 2;
-		for( ; i < DimX - 2; i += 2){
-			LiftBlock(pBlock + i, Stride, Predict, Update);
+	LiftBlockEvenTR(pBlock + i, Stride, Coef);
+	pBlock += Stride << 2;
+	int j = 4;
+	for( j; j < DimY - 4; j += 4){
+		LiftBlockEvenL(pBlock, Stride, Coef);
+		int i = 4;
+		for( ; i < DimX - 4; i += 4){
+			LiftBlockEven(pBlock + i, Stride, Coef);
 		}
-		LiftBlockR(pBlock + i, Stride, Predict, Update);
-		pBlock += Stride << 1;
+		LiftBlockEvenR(pBlock + i, Stride, Coef);
+		pBlock += Stride << 2;
 	}
-	LiftBlockBL(pBlock, Stride, Predict, Update);
-	i = 2;
-	for( ; i < DimX - 2; i += 2){
-		LiftBlockB(pBlock + i, Stride, Predict, Update);
+	LiftBlockEvenBL(pBlock, Stride, Coef);
+	i = 4;
+	for( ; i < DimX - 4; i += 4){
+		LiftBlockEvenB(pBlock + i, Stride, Coef);
 	}
-	LiftBlockBR(pBlock + i, Stride, Predict, Update);
+	LiftBlockEvenBR(pBlock + i, Stride, Coef);
 }
 
-void DirWavelet::LiftBandI(float * pBlock, int Stride, int DimX, int DimY,
-						   float Predict, float Update)
-{
-	pBlock = pBlock + Stride;
-	LiftBlockTLI(pBlock, Stride, Predict, Update);
-	int i = 2;
-	for( ; i < DimX - 2; i += 2){
-		LiftBlockTI(pBlock + i, Stride, Predict, Update);
+void DirWavelet::LazyImage(float * pImage, unsigned int Stride){
+	int Dpos, HVpos, Ipos1, Ipos2, LStride;
+	float * pLOut;
+	if (pLow == 0){
+		pLOut = LBand.pBand;
+		LStride = LBand.DimX;
+	}else{
+		pLOut = pImage;
+		LStride = Stride;
 	}
-	LiftBlockTRI(pBlock + i, Stride, Predict, Update);
-	pBlock += Stride << 1;
-	int j = 3;
-	for( j; j < DimY - 1; j += 2){
-		LiftBlockL(pBlock, Stride, Predict, Update);
-		int i = 2;
-		for( ; i < DimX - 2; i += 2){
-			LiftBlock(pBlock + i, Stride, Predict, Update);
+
+	for(int j = 0; j < DimY; j += 2){
+		Dpos = (j >> 1) * DBand.DimX;
+		HVpos = (j >> 1) * HVBand.DimX;
+		Ipos1 = j * Stride;
+		Ipos2 = (j >> 1) * LStride;
+		for(int pEnd = Ipos1 + DimX; Ipos1 < pEnd; Ipos1 += 2){
+			pLOut[Ipos2] = pImage[Ipos1];
+			DBand.pBand[Dpos + 1] = pImage[Ipos1 + 1];
+			DBand.pBand[Dpos] = pImage[Ipos1 + Stride];
+			HVBand.pBand[HVpos] = pImage[Ipos1 + Stride + 1];
+			Dpos += 2;
+			HVpos++;
+			Ipos2++;
 		}
-		LiftBlockR(pBlock + i, Stride, Predict, Update);
-		pBlock += Stride << 1;
 	}
-	LiftBlockBLI(pBlock, Stride, Predict, Update);
-	i = 2;
-	for( ; i < DimX - 2; i += 2){
-		LiftBlockBI(pBlock + i, Stride, Predict, Update);
-	}
-	LiftBlockBRI(pBlock + i, Stride, Predict, Update);
 }
 
-void DirWavelet::LazyBand(QuincunxWavelet * pQWav)
-{
-	// Diagonal
-	float * pInBand = pQWav->DBand.pBand;
-	float * pOutBand1 = NOSEBand.pBand;
-	float * pOutBand2 = NESOBand.pBand;
-
-	for( int j = 0; j < pQWav->DBand.DimY ; j++ ){
-		for( int i = 0, k = 0; i < pQWav->DBand.DimX ; i += 2, k++){
-			pOutBand1[k] = pInBand[i];
-			pOutBand2[k] = pInBand[i + 1];
-		}
-		pInBand += pQWav->DBand.DimXAlign;
-		pOutBand1 += NOSEBand.DimXAlign;
-		pOutBand2 += NESOBand.DimXAlign;
+void DirWavelet::LazyImageI(float * pImage, unsigned int Stride){
+	int Dpos, HVpos, Ipos1, Ipos2, LStride;
+	float * pLIn;
+	if (pLow == 0){
+		pLIn = LBand.pBand;
+		LStride = LBand.DimX;
+	}else{
+		pLIn = pImage;
+		LStride = Stride;
 	}
 
-	// Horizontal, Vertical
-
-	int InBandStride = pQWav->HVBand.DimXAlign;
-	pInBand = pQWav->HVBand.pBand;
-	pOutBand1 = HBand.pBand;
-	pOutBand2 = VBand.pBand;
-
-	for( int j = 0; j < pQWav->HVBand.DimY ; j += 2 ){
-		for( int i = 0; i < pQWav->HVBand.DimX ; i += 2){
-			pOutBand1[i] = pInBand[i];
-			pOutBand2[i] = pInBand[i + InBandStride];
-			pOutBand1[i + 1] = pInBand[i + InBandStride + 1];
-			pOutBand2[i + 1] = pInBand[i + 1];
+	for(int j = DimY - 2; j >= 0; j -= 2){
+		Dpos = ((j >> 1) + 1) * DBand.DimX - 2;
+		HVpos = ((j >> 1) + 1) * HVBand.DimX - 1;
+		Ipos1 = j * Stride + DimX - 2;
+		Ipos2 = (j >> 1) * LStride + (DimX >> 1) - 1;
+		for(int pEnd = Ipos1 - DimX; Ipos1 > pEnd; Ipos1 -= 2){
+			pImage[Ipos1] = pLIn[Ipos2];
+			pImage[Ipos1 + 1] = DBand.pBand[Dpos + 1];
+			pImage[Ipos1 + Stride] = DBand.pBand[Dpos];
+			pImage[Ipos1 + Stride + 1] = HVBand.pBand[HVpos];
+			Dpos -= 2;
+			HVpos--;
+			Ipos2--;
 		}
-		pInBand += InBandStride << 1;
-		pOutBand1 += NOSEBand.DimXAlign;
-		pOutBand2 += NESOBand.DimXAlign;
 	}
-
-	// LBand
-	if (pLow == 0)
-		memcpy (LBand.pBand, pQWav->LBand.pBand, LBand.BandSize *
-				sizeof(*LBand.pBand));
 }
 
-void DirWavelet::LazyBandI(QuincunxWavelet * pQWav)
+void DirWavelet::LazyTransform(float * pImage, int Stride)
 {
-	// Diagonal
-	float * pOutBand = pQWav->DBand.pBand;
-	float * pInBand1 = NOSEBand.pBand;
-	float * pInBand2 = NESOBand.pBand;
-
-	for( int j = 0; j < pQWav->DBand.DimY ; j++ ){
-		for( int i = 0, k = 0; i < pQWav->DBand.DimX ; i += 2, k++){
-			pOutBand[i] = pInBand1[k];
-			pOutBand[i + 1] = pInBand2[k];
-		}
-		pOutBand += pQWav->DBand.DimXAlign;
-		pInBand1 += NOSEBand.DimXAlign;
-		pInBand2 += NESOBand.DimXAlign;
-	}
-
-	// Horizontal, Vertical
-
-	int OutBandStride = pQWav->HVBand.DimXAlign;
-	pOutBand = pQWav->HVBand.pBand;
-	pInBand1 = HBand.pBand;
-	pInBand2 = VBand.pBand;
-
-	for( int j = 0; j < pQWav->HVBand.DimY ; j += 2 ){
-		for( int i = 0; i < pQWav->HVBand.DimX ; i += 2){
-			pOutBand[i] = pInBand1[i];
-			pOutBand[i + OutBandStride] = pInBand2[i];
-			pOutBand[i + OutBandStride + 1] = pInBand1[i + 1];
-			pOutBand[i + 1] = pInBand2[i + 1];
-		}
-		pOutBand += OutBandStride << 1;
-		pInBand1 += NOSEBand.DimXAlign;
-		pInBand2 += NESOBand.DimXAlign;
-	}
-
-	// LBand
-	if (pLow == 0)
- 		memcpy (pQWav->LBand.pBand, LBand.pBand, LBand.BandSize *
- 				sizeof(*LBand.pBand));
-}
-
-void DirWavelet::LazyTransform(QuincunxWavelet * pQWav)
-{
-	LazyBand(pQWav);
+	LazyImage(pImage, Stride);
 	if (pLow != 0)
-		pLow->LazyTransform(pQWav->pLow);
+		pLow->LazyTransform(pImage, Stride);
 }
 
-void DirWavelet::LazyTransformI(QuincunxWavelet * pQWav)
+void DirWavelet::LazyTransformI(float * pImage, int Stride)
 {
 	if (pLow != 0)
-		pLow->LazyTransformI(pQWav->pLow);
-	LazyBandI(pQWav);
+		pLow->LazyTransformI(pImage, Stride);
+	LazyImageI(pImage, Stride);
 }
 
-void DirWavelet::Transform53(QuincunxWavelet * pQWav)
-{
-	LiftBandDiag(pQWav->DBand.pBand, pQWav->DBand.DimXAlign,
-				 pQWav->DBand.DimX, pQWav->DBand.DimY, -1./4., 1./8.);
-	LiftBand(pQWav->HVBand.pBand, pQWav->HVBand.DimXAlign,
-			 pQWav->HVBand.DimX, pQWav->HVBand.DimY, -1./4., 1./8.);
-	LazyBand(pQWav);
-	NOSEBand.Weight = pQWav->DBand.Weight * 1.119000197;
-	NESOBand.Weight = pQWav->DBand.Weight / 1.119000197;
-	VBand.Weight = pQWav->HVBand.Weight / 1.119000197;
-	HBand.Weight = pQWav->HVBand.Weight * 1.119000197;
-	LBand.Weight = pQWav->LBand.Weight;
-	if (pLow != 0)
-		pLow->Transform53(pQWav->pLow);
+void DirWavelet::Transform53(float * pImage, int Stride){
+	LiftBandOdd(pImage, Stride, -1./4.);
+	LiftBandEven(pImage, Stride, 1./8.);
+	LiftBandDiagOdd(pImage, Stride, -1./4.);
+	LiftBandDiagEven(pImage, Stride, 1./8.);
+	LazyImage(pImage, Stride);
+	if (pHigh != 0){
+		DBand.Weight = pHigh->HVBand.Weight * 1.414213562;
+		HVBand.Weight = pHigh->LBand.Weight;
+		LBand.Weight = HVBand.Weight * 2;
+	}else{
+		DBand.Weight = 1./1.414213562;
+		HVBand.Weight = 1.;
+		LBand.Weight = 2;
+	}
+ 	if (pLow != 0)
+		pLow->Transform53(pImage, Stride);
 }
 
-void DirWavelet::Transform53I(QuincunxWavelet * pQWav)
-{
+void DirWavelet::Transform53I(float * pImage, int Stride){
 	if (pLow != 0)
-		pLow->Transform53I(pQWav->pLow);
-	LazyBandI(pQWav);
-	LiftBandI(pQWav->HVBand.pBand, pQWav->HVBand.DimXAlign,
-			  pQWav->HVBand.DimX, pQWav->HVBand.DimY, -1./8., 1./4.);
-	LiftBandDiagI(pQWav->DBand.pBand, pQWav->DBand.DimXAlign,
-				  pQWav->DBand.DimX, pQWav->DBand.DimY, -1./8., 1./4.);
+		pLow->Transform53I(pImage, Stride);
+	LazyImageI(pImage, Stride);
+	LiftBandDiagEven(pImage, Stride, -1./8.);
+	LiftBandDiagOdd(pImage, Stride, 1./4.);
+	LiftBandEven(pImage, Stride, -1./8.);
+	LiftBandOdd(pImage, Stride, 1./4.);
 }
 
 unsigned int DirWavelet::Thres(float Thres){
