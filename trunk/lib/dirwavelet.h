@@ -31,8 +31,11 @@
  * knowledge of the CeCILL license and that you accept its terms.          *
  ***************************************************************************/
 
-#ifndef DIRWAVELET_H
-#define DIRWAVELET_H
+#pragma once
+
+#include "band.h"
+
+#define MAX_WAV_LEVEL 5
 
 /**
 @author Nicolas Botti
@@ -108,4 +111,3 @@ private:
 	static void LiftBlockDiagEvenTL(float * pBlock, int Stride, float Coef);
 };
 
-#endif

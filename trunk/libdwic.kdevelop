@@ -14,17 +14,24 @@
     <ignoreparts/>
     <projectdirectory>.</projectdirectory>
     <absoluteprojectpath>false</absoluteprojectpath>
-    <description/>
+    <description></description>
   </general>
   <kdevautoproject>
     <general>
-      <activetarget>lib/libdwic.a</activetarget>
+      <activetarget>cmd/dwic</activetarget>
       <useconfiguration>debug</useconfiguration>
     </general>
     <run>
-      <mainprogram>src/libdwic</mainprogram>
-      <terminal>true</terminal>
+      <mainprogram>cmd/dwic</mainprogram>
+      <terminal>false</terminal>
       <directoryradio>executable</directoryradio>
+      <runarguments>
+        <dwic></dwic>
+      </runarguments>
+      <customdirectory>/</customdirectory>
+      <programargs>~/Documents/Images/Images\ test/goldhill512.png</programargs>
+      <autocompile>true</autocompile>
+      <envvars/>
     </run>
     <configurations>
       <optimized>
@@ -150,7 +157,7 @@
       <headerCompletionDelay>250</headerCompletionDelay>
     </codecompletion>
     <creategettersetter>
-      <prefixGet/>
+      <prefixGet></prefixGet>
       <prefixSet>set</prefixSet>
       <prefixVariable>m_,_</prefixVariable>
       <parameterName>theValue</parameterName>
@@ -166,12 +173,12 @@
   </cppsupportpart>
   <kdevdebugger>
     <general>
-      <programargs/>
-      <gdbpath/>
+      <programargs>~/Documents/Images/Images\ test/goldhill512.png</programargs>
+      <gdbpath></gdbpath>
       <dbgshell>libtool</dbgshell>
-      <configGdbScript/>
-      <runShellScript/>
-      <runGdbScript/>
+      <configGdbScript></configGdbScript>
+      <runShellScript></runShellScript>
+      <runGdbScript></runGdbScript>
       <breakonloadinglibs>true</breakonloadinglibs>
       <separatetty>false</separatetty>
       <floatingtoolbar>false</floatingtoolbar>

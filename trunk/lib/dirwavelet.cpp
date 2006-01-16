@@ -31,12 +31,9 @@
  * knowledge of the CeCILL license and that you accept its terms.          *
  ***************************************************************************/
 
-namespace libdwic {
-
 #include "libdwic.h"
-#include "dirwavelet.h"
 
-// #include <string.h>
+namespace libdwic {
 
 DirWavelet::DirWavelet(int x, int y, int level, int Align):
 DimX(x),
@@ -345,6 +342,16 @@ void DirWavelet::LiftBlockEvenBR(float * pBlock, int Stride, float Coef)
 	PXL_LIFT_BR(3,3);
 }
 
+#undef PXL_LIFT
+#undef PXL_LIFT_T
+#undef PXL_LIFT_B
+#undef PXL_LIFT_L
+#undef PXL_LIFT_R
+#undef PXL_LIFT_TL
+#undef PXL_LIFT_BL
+#undef PXL_LIFT_TR
+#undef PXL_LIFT_BR
+
 #define PXL_LIFT(x,y) \
 	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + ((y) + 1) * Stride] \
 		+ pBlock[(x) - 1 + ((y) + 1) * Stride] \
@@ -613,10 +620,10 @@ void DirWavelet::LazyTransformI(float * pImage, int Stride)
 }
 
 void DirWavelet::Transform53(float * pImage, int Stride){
-	LiftBandOdd(pImage, Stride, -1./4.);
-	LiftBandEven(pImage, Stride, 1./8.);
-	LiftBandDiagOdd(pImage, Stride, -1./4.);
-	LiftBandDiagEven(pImage, Stride, 1./8.);
+	LiftBandOdd(pImage, Stride, DimX, DimY, -1./4.);
+	LiftBandEven(pImage, Stride, DimX, DimY, 1./8.);
+	LiftBandDiagOdd(pImage, Stride, DimX, DimY, -1./4.);
+	LiftBandDiagEven(pImage, Stride, DimX, DimY, 1./8.);
 	LazyImage(pImage, Stride);
 	if (pHigh != 0){
 		DBand.Weight = pHigh->HVBand.Weight * 1.414213562;
@@ -635,18 +642,16 @@ void DirWavelet::Transform53I(float * pImage, int Stride){
 	if (pLow != 0)
 		pLow->Transform53I(pImage, Stride);
 	LazyImageI(pImage, Stride);
-	LiftBandDiagEven(pImage, Stride, -1./8.);
-	LiftBandDiagOdd(pImage, Stride, 1./4.);
-	LiftBandEven(pImage, Stride, -1./8.);
-	LiftBandOdd(pImage, Stride, 1./4.);
+	LiftBandDiagEven(pImage, Stride, DimX, DimY, -1./8.);
+	LiftBandDiagOdd(pImage, Stride, DimX, DimY, 1./4.);
+	LiftBandEven(pImage, Stride, DimX, DimY, -1./8.);
+	LiftBandOdd(pImage, Stride, DimX, DimY, 1./4.);
 }
 
 unsigned int DirWavelet::Thres(float Thres){
 	unsigned int Count = 0;
-	Count += HBand.Thres(Thres);
-	Count += VBand.Thres(Thres);
-	Count += NOSEBand.Thres(Thres);
-	Count += NESOBand.Thres(Thres);
+	Count += DBand.Thres(Thres);
+	Count += HVBand.Thres(Thres);
 	if (pLow != 0)
 		Count += pLow->Thres(Thres);
 	return Count;
@@ -654,10 +659,8 @@ unsigned int DirWavelet::Thres(float Thres){
 
 unsigned int DirWavelet::TSUQ(float Quant, float Thres, float RecLevel){
 	unsigned int Count = 0;
-	Count += HBand.TSUQ(Quant, Thres, RecLevel);
-	Count += VBand.TSUQ(Quant, Thres, RecLevel);
-	Count += NOSEBand.TSUQ(Quant, Thres, RecLevel);
-	Count += NESOBand.TSUQ(Quant, Thres, RecLevel);
+	Count += DBand.TSUQ(Quant, Thres, RecLevel);
+	Count += HVBand.TSUQ(Quant, Thres, RecLevel);
 	if (pLow != 0)
 		Count += pLow->TSUQ(Quant, Thres, RecLevel);
 	else

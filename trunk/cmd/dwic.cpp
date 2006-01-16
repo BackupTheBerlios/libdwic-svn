@@ -31,9 +31,60 @@
  * knowledge of the CeCILL license and that you accept its terms.          *
  ***************************************************************************/
 
-namespace libdwic{
+#include <iostream>
+#include <cstdlib>
 
-#include "global.h"
-#include "dirwavelet.h"
+#include <Magick++.h>
+#include <string.h>
+#include <libdwic.h>
 
+using namespace std;
+using namespace Magick;
+using namespace libdwic;
+
+void ProcessImage(string & ImageName, float Quant, float Thres, float RecLevel){
+	Image img( ImageName );
+	img.type( GrayscaleType );
+
+	float * ImgPixels = new float [img.columns() * img.rows()];
+//	float * CorrPix = new float [15 * 15];
+
+	img.write(0, 0, img.columns(), img.rows(),
+			  "R", FloatPixel, ImgPixels);
+
+	cout << "Largeur de l'image : " << img.columns() << endl;
+	cout << "Hauteur de l'image : " << img.rows() << endl;
+
+ 	DirWavelet Wavelet(img.columns(), img.rows(),5);
+
+ 	Wavelet.Transform53(ImgPixels, img.columns());
+ 	Wavelet.Transform53I(ImgPixels, img.columns());
+
+ 	img.read(img.columns(), img.rows(), "R", FloatPixel, ImgPixels);
+
+ 	img.write(ImageName + ".53.png");
+
+	delete[] ImgPixels;
+//	delete[] CorrPix;
+}
+
+int main( int argc, char *argv[] )
+{
+	cout << "Nombre d'arguments : " << argc << endl;
+	if (argc > 1) {/home/nico/Documents/Images/Images test
+		cout << "Nom du programme : " << argv[0] << endl;
+		cout << "Image à lire : " << argv[1] << endl;
+		cout << "Lecture de l'image" << endl;
+		try {
+			string ImgName = argv[1];
+// 			float Thres = atof(argv[3]);
+// 			float Quant = atof(argv[2]);
+// 			float RecLevel = atof(argv[4]);
+			ProcessImage(ImgName, 0, 0, 0);
+		} catch ( Exception & error_ ) {
+			cout << "Exception : " << error_.what() << endl;
+			return -1;
+		}
+	}
+	return EXIT_SUCCESS;
 }
