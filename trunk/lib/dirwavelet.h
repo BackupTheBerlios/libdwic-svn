@@ -82,32 +82,64 @@ private:
 	static void LiftBandDiagEven(float * pBlock, int Stride, int DimX,
 					int DimY, float Coef);
 
-	static void LiftBlockOdd(float * pBlock, int Stride, float Coef);
-	static void LiftBlockEven(float * pBlock, int Stride, float Coef);
-	static void LiftBlockOddT(float * pBlock, int Stride, float Coef);
-	static void LiftBlockEvenT(float * pBlock, int Stride, float Coef);
-	static void LiftBlockOddB(float * pBlock, int Stride, float Coef);
-	static void LiftBlockEvenB(float * pBlock, int Stride, float Coef);
-	static void LiftBlockOddL(float * pBlock, int Stride, float Coef);
-	static void LiftBlockEvenL(float * pBlock, int Stride, float Coef);
-	static void LiftBlockOddR(float * pBlock, int Stride, float Coef);
-	static void LiftBlockEvenR(float * pBlock, int Stride, float Coef);
-	static void LiftBlockOddTL(float * pBlock, int Stride, float Coef);
-	static void LiftBlockEvenTL(float * pBlock, int Stride, float Coef);
-	static void LiftBlockOddTR(float * pBlock, int Stride, float Coef);
-	static void LiftBlockEvenTR(float * pBlock, int Stride, float Coef);
-	static void LiftBlockOddBL(float * pBlock, int Stride, float Coef);
-	static void LiftBlockEvenBL(float * pBlock, int Stride, float Coef);
-	static void LiftBlockOddBR(float * pBlock, int Stride, float Coef);
-	static void LiftBlockEvenBR(float * pBlock, int Stride, float Coef);
+	static void LiftOdd(float * pBlock, int Stride, float Coef);
+	static void LiftEven(float * pBlock, int Stride, float Coef);
+	static void LiftOddT(float * pBlock, int Stride, float Coef);
+	static void LiftEvenT(float * pBlock, int Stride, float Coef);
+	static void LiftOddB(float * pBlock, int Stride, float Coef);
+	static void LiftEvenB(float * pBlock, int Stride, float Coef);
+	static void LiftOddL(float * pBlock, int Stride, float Coef);
+	static void LiftEvenL(float * pBlock, int Stride, float Coef);
+	static void LiftOddR(float * pBlock, int Stride, float Coef);
+	static void LiftEvenR(float * pBlock, int Stride, float Coef);
+	static void LiftOddTL(float * pBlock, int Stride, float Coef);
+	static void LiftEvenTL(float * pBlock, int Stride, float Coef);
+	static void LiftOddTR(float * pBlock, int Stride, float Coef);
+	static void LiftEvenTR(float * pBlock, int Stride, float Coef);
+	static void LiftOddBL(float * pBlock, int Stride, float Coef);
+	static void LiftEvenBL(float * pBlock, int Stride, float Coef);
+	static void LiftOddBR(float * pBlock, int Stride, float Coef);
+	static void LiftEvenBR(float * pBlock, int Stride, float Coef);
 
-	static void LiftBlockDiagOdd(float * pBlock, int Stride, float Coef);
-	static void LiftBlockDiagEven(float * pBlock, int Stride, float Coef);
-	static void LiftBlockDiagEvenT(float * pBlock, int Stride, float Coef);
-	static void LiftBlockDiagOddB(float * pBlock, int Stride, float Coef);
-	static void LiftBlockDiagEvenL(float * pBlock, int Stride, float Coef);
-	static void LiftBlockDiagOddR(float * pBlock, int Stride, float Coef);
-	static void LiftBlockDiagOddBR(float * pBlock, int Stride, float Coef);
-	static void LiftBlockDiagEvenTL(float * pBlock, int Stride, float Coef);
+	static void LiftDiagOdd(float * pBlock, int Stride, float Coef);
+	static void LiftDiagEven(float * pBlock, int Stride, float Coef);
+	static void LiftDiagEvenT(float * pBlock, int Stride, float Coef);
+	static void LiftDiagOddB(float * pBlock, int Stride, float Coef);
+	static void LiftDiagEvenL(float * pBlock, int Stride, float Coef);
+	static void LiftDiagOddR(float * pBlock, int Stride, float Coef);
+	static void LiftDiagOddBR(float * pBlock, int Stride, float Coef);
+	static void LiftDiagEvenTL(float * pBlock, int Stride, float Coef);
+
+	static void LiftHOdd(float * pBlock, int Stride, float Coef);
+	static void LiftHEven(float * pBlock, int Stride, float Coef);
+	static void LiftHOddL(float * pBlock, int Stride, float Coef);
+	static void LiftHEvenL(float * pBlock, int Stride, float Coef);
+	static void LiftHOddR(float * pBlock, int Stride, float Coef);
+	static void LiftHEvenR(float * pBlock, int Stride, float Coef);
+
+	static void LiftVOdd(float * pBlock, int Stride, float Coef);
+	static void LiftVEven(float * pBlock, int Stride, float Coef);
+	static void LiftVOddT(float * pBlock, int Stride, float Coef);
+	static void LiftVEvenT(float * pBlock, int Stride, float Coef);
+	static void LiftVOddB(float * pBlock, int Stride, float Coef);
+	static void LiftVEvenB(float * pBlock, int Stride, float Coef);
+
+	static void LiftDiag1Odd(float * pBlock, int Stride, float Coef);
+	static void LiftDiag1Even(float * pBlock, int Stride, float Coef);
+	static void LiftDiag1EvenT(float * pBlock, int Stride, float Coef);
+	static void LiftDiag1OddB(float * pBlock, int Stride, float Coef);
+	static void LiftDiag1EvenL(float * pBlock, int Stride, float Coef);
+	static void LiftDiag1OddR(float * pBlock, int Stride, float Coef);
+	static void LiftDiag1OddBR(float * pBlock, int Stride, float Coef);
+	static void LiftDiag1EvenTL(float * pBlock, int Stride, float Coef);
+
+	static void LiftDiag2Odd(float * pBlock, int Stride, float Coef);
+	static void LiftDiag2Even(float * pBlock, int Stride, float Coef);
+	static void LiftDiag2EvenT(float * pBlock, int Stride, float Coef);
+	static void LiftDiag2OddB(float * pBlock, int Stride, float Coef);
+	static void LiftDiag2EvenL(float * pBlock, int Stride, float Coef);
+	static void LiftDiag2OddR(float * pBlock, int Stride, float Coef);
+	static void LiftDiag2OddBR(float * pBlock, int Stride, float Coef);
+	static void LiftDiag2EvenTL(float * pBlock, int Stride, float Coef);
 };
 
