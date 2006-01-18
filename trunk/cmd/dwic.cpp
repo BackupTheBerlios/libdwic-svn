@@ -71,7 +71,7 @@ void ProcessImage(string & ImageName, float Quant, float Thres, float RecLevel){
 int main( int argc, char *argv[] )
 {
 	cout << "Nombre d'arguments : " << argc << endl;
-	if (argc > 1) {/home/nico/Documents/Images/Images test
+	if (argc > 1) {
 		cout << "Nom du programme : " << argv[0] << endl;
 		cout << "Image à lire : " << argv[1] << endl;
 		cout << "Lecture de l'image" << endl;

@@ -32,8 +32,33 @@
  ***************************************************************************/
 
 #include "global.h"
-#include "dirwavelet.h"
+#include "map.h"
 
-namespace libdwic{
+namespace libdwic {
+
+CMap::CMap(void):
+		DimX(0),
+		DimY(0),
+		MapSize(0),
+		pMap(0)
+{
+	Init();
+}
+
+
+CMap::~CMap()
+{
+	delete[] pMap;
+}
+
+void CMap::Init(int DimX, int DimY)
+{
+	this->DimX = DimX;
+	this->DimY = DimY;
+	MapSize = DimX * DimY;
+	if (MapSize != 0){
+		pMap = new DirValue[MapSize];
+	}
+}
 
 }

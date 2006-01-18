@@ -34,12 +34,16 @@
 #pragma once
 
 #include "band.h"
+#include "map.h"
+
+namespace libdwic {
 
 #define MAX_WAV_LEVEL 5
 
 /**
 @author Nicolas Botti
 */
+
 class DirWavelet{
 public:
 	DirWavelet(int x, int y, int level, int Align = ALIGN);
@@ -64,11 +68,12 @@ private:
 	int DimX;
 	int DimY;
 	float * pData;
+	CMap HVMap;
+	CMap DMap;
 
-	DirWavelet(int x, int y, int level,
-			   DirWavelet * pHigh, void * pAllocated, int Align);
+	DirWavelet(int x, int y, int level, DirWavelet * pHigh, int Align);
 
-	void Init(int level, void * pAllocated, int Align);
+	void Init(int level, int Align);
 
 	void LazyImage(float * pImage, unsigned int Stride);
 	void LazyImageI(float * pImage, unsigned int Stride);
@@ -81,6 +86,10 @@ private:
 					int DimY, float Coef);
 	static void LiftBandDiagEven(float * pBlock, int Stride, int DimX,
 					int DimY, float Coef);
+
+	void GetDirValues(float * pBlock, int Stride, DirValue * Result);
+	void GetDirValues(float * pBlock, int Stride, DirValue * Result
+			, int BitField);
 
 	static void LiftOdd(float * pBlock, int Stride, float Coef);
 	static void LiftEven(float * pBlock, int Stride, float Coef);
@@ -143,3 +152,4 @@ private:
 	static void LiftDiag2EvenTL(float * pBlock, int Stride, float Coef);
 };
 
+}

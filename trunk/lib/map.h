@@ -31,9 +31,38 @@
  * knowledge of the CeCILL license and that you accept its terms.          *
  ***************************************************************************/
 
-#include "global.h"
-#include "dirwavelet.h"
+#pragma once
 
-namespace libdwic{
+namespace libdwic {
+
+typedef union DirValue{
+	struct {
+		unsigned short H_D1;
+		unsigned short V_D2;
+		unsigned short All;
+		unsigned short Selected;
+	};
+	unsigned short Values[4];
+} DirValue;
+
+/**
+@author Nicolas Botti
+*/
+class CMap{
+public:
+    CMap(void);
+
+    ~CMap();
+
+	void Init(int DimX = 0, int DimY = 0);
+
+
+	unsigned int DimX;		// Width of the map (blocks)
+	unsigned int DimY;		// Height of the map (blocks)
+	unsigned int MapSize;	// (DimX * DimY), the band size in blocks
+	DirValue * pMap;		// Directional map information
+
+};
 
 }
+

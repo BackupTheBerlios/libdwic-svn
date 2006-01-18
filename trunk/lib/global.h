@@ -22,6 +22,8 @@
 
 #include <stdio.h>
 
+namespace libdwic {
+
 #ifndef ASSERT
 #ifdef _DEBUG
 #define ASSERT(condition)	\
@@ -72,3 +74,6 @@
 	(((a) > (b)) ? (a) : (b))
 
 #define ALIGN	8
+
+}
+

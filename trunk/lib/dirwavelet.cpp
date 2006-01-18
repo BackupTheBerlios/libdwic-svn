@@ -42,15 +42,13 @@ pHigh(0),
 pLow(0),
 pData(0)
 {
-	pData = new float [x * y + Align];
-	float * pAllocated = (float*)(((int)pData + Align - 1) & (-Align));
+// 	pData = new float [x * y + Align];
 	if (level > MAX_WAV_LEVEL)
 		level = MAX_WAV_LEVEL;
-	Init(level, pAllocated, Align);
+	Init(level, Align);
 }
 
-DirWavelet::DirWavelet(int x, int y, int level,
-					   DirWavelet * pHigh, void * pAllocated, int Align):
+DirWavelet::DirWavelet(int x, int y, int level, DirWavelet * pHigh, int Align):
 DimX(x),
 DimY(y),
 pHigh(0),
@@ -58,11 +56,11 @@ pLow(0),
 pData(0)
 {
 	this->pHigh = pHigh;
-	pHigh->DBand.pParent = &DBand;
-	DBand.pChild = &pHigh->DBand;
-	pHigh->HVBand.pParent = &HVBand;
-	HVBand.pChild = &pHigh->HVBand;
-	Init(level, pAllocated, Align);
+// 	pHigh->DBand.pParent = &DBand;
+// 	DBand.pChild = &pHigh->DBand;
+// 	pHigh->HVBand.pParent = &HVBand;
+// 	HVBand.pChild = &pHigh->HVBand;
+	Init(level, Align);
 }
 
 DirWavelet::~DirWavelet()
@@ -71,16 +69,16 @@ DirWavelet::~DirWavelet()
 	delete[] pData;
 }
 
-void DirWavelet::Init(int level,void * pAllocated, int Align)
+void DirWavelet::Init(int level, int Align)
 {
-	pAllocated = DBand.Init(DimX, DimY >> 1, (char *)pAllocated, Align);
-	pAllocated = HVBand.Init(DimX >> 1, DimY >> 1, (char *)pAllocated, Align);
+	DBand.Init(DimX, DimY >> 1, Align);
+	HVBand.Init(DimX >> 1, DimY >> 1, Align);
+	HVMap.Init((DimX + 3) >> 2, (DimY + 3) >> 2);
+	DMap.Init((DimX + 3) >> 2, (DimY + 3) >> 2);
 	if (level > 1){
-		pLow = new DirWavelet(DimX >> 1, DimY >> 1, level - 1,
-								   this, pAllocated, Align);
+		pLow = new DirWavelet(DimX >> 1, DimY >> 1, level - 1, this, Align);
 	}else{
-		pAllocated = LBand.Init(DimX >> 1, DimY >> 1,
-								(char *)pAllocated, Align);
+		LBand.Init(DimX >> 1, DimY >> 1, Align);
 	}
 }
 
@@ -793,6 +791,246 @@ void DirWavelet::LiftDiag2EvenTL(float * pBlock, int Stride, float Coef)
 #undef PXL_LIFT
 #undef PXL_LIFT_TR
 #undef PXL_LIFT_BL
+
+#define PXL_VAL(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
+		pBlock[(x) - 1 + (y) * Stride] + pBlock[(x) + ((y) + 1) * Stride] + \
+		pBlock[(x) + ((y) - 1) * Stride]) / 4); \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_T(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
+		pBlock[(x) - 1 + (y) * Stride] + pBlock[(x) + ((y) + 1) * Stride] * 2) \
+		/ 4); \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_B(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
+		pBlock[(x) - 1 + (y) * Stride] + pBlock[(x) + ((y) - 1) * Stride] * 2) \
+		/ 4); \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_L(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] * 2 + \
+		pBlock[(x) + ((y) + 1) * Stride] + \
+		pBlock[(x) + ((y) - 1) * Stride]) / 4); \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_R(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) - 1 + (y) * Stride] * 2 + \
+		pBlock[(x) + ((y) + 1) * Stride] + \
+		pBlock[(x) + ((y) - 1) * Stride]) / 4); \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_TL(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
+		pBlock[(x) + ((y) + 1) * Stride]) / 2); \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_TR(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) - 1 + (y) * Stride] + \
+		pBlock[(x) + ((y) + 1) * Stride]) / 2); \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_BL(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
+		pBlock[(x) + ((y) - 1) * Stride]) / 2); \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_BR(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) - 1 + (y) * Stride] + \
+		pBlock[(x) + ((y) - 1) * Stride]) / 2); \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_H(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
+		pBlock[(x) - 1 + (y) * Stride]) / 2); \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_H_L(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) + 1 + (y) * Stride]; \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_H_R(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) - 1 + (y) * Stride]; \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_V(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + ((y) + 1) * Stride] + \
+		pBlock[(x) + ((y) - 1) * Stride]) / 2); \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_V_T(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) + ((y) + 1) * Stride]; \
+	Sum += Sqr * Sqr;
+
+#define PXL_VAL_V_B(x,y) \
+	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) + ((y) - 1) * Stride]; \
+	Sum += Sqr * Sqr;
+
+void DirWavelet::GetDirValues(float * pBlock, int Stride, DirValue * Result)
+{
+	float Sum = 0;
+	float Sqr;
+
+	PXL_VAL(1,0);
+	PXL_VAL(3,0);
+	PXL_VAL(0,1);
+	PXL_VAL(2,1);
+	PXL_VAL(1,2);
+	PXL_VAL(3,2);
+	PXL_VAL(0,3);
+	PXL_VAL(2,3);
+
+	Result->All = (unsigned short) Sum;
+	if (Sum > 65535)
+		Result->All = 0xFFFF;
+
+	Sum = 0;
+	PXL_VAL_H(1,0);
+	PXL_VAL_H(3,0);
+	PXL_VAL_H(0,1);
+	PXL_VAL_H(2,1);
+	PXL_VAL_H(1,2);
+	PXL_VAL_H(3,2);
+	PXL_VAL_H(0,3);
+	PXL_VAL_H(2,3);
+
+	Result->H_D1 = (unsigned short) Sum;
+	if (Sum > 65535)
+		Result->H_D1 = 0xFFFF;
+
+	Sum = 0;
+	PXL_VAL_V(1,0);
+	PXL_VAL_V(3,0);
+	PXL_VAL_V(0,1);
+	PXL_VAL_V(2,1);
+	PXL_VAL_V(1,2);
+	PXL_VAL_V(3,2);
+	PXL_VAL_V(0,3);
+	PXL_VAL_V(2,3);
+
+	Result->V_D2 = (unsigned short) Sum;
+	if (Sum > 65535)
+		Result->V_D2 = 0xFFFF;
+
+	Result->Selected = 0;
+	if (Result->Values[1] < Result->Values[0])
+		Result->Selected = 1;
+	if (Result->Values[2] < Result->Values[Result->Selected])
+		Result->Selected = 2;
+}
+
+void DirWavelet::GetDirValues(float * pBlock, int Stride, DirValue * Result
+								, int BitField)
+{
+	float Sum = 0;
+	float Sqr;
+
+	if (BitField & TOP){
+		PXL_VAL_T(1,0);
+	} else {
+		PXL_VAL(1,0);
+	}
+	if (BitField & TOP){
+		if (BitField & RIGHT){
+			PXL_VAL_TR(3,0);
+		} else {
+			PXL_VAL_T(3,0);
+		}
+	}else if (BitField & RIGHT) {
+		PXL_VAL_R(3,0);
+	} else {
+		PXL_VAL(3,0);
+	}
+	if (BitField & LEFT){
+		PXL_VAL_L(0,1);
+	} else {
+		PXL_VAL(0,1);
+	}
+	if (BitField & RIGHT) {
+		PXL_VAL_R(3,2);
+	} else {
+		PXL_VAL(3,2);
+	}
+	if (BitField & BOTTOM) {
+		if (BitField & LEFT){
+			PXL_VAL_BL(0,3);
+		} else {
+			PXL_VAL_B(0,3);
+		}
+	} else if (BitField & LEFT) {
+		PXL_VAL_L(0,3);
+	} else {
+		PXL_VAL(0,3);
+	}
+	PXL_VAL(2,1);
+	PXL_VAL(1,2);
+	PXL_VAL(2,3);
+
+	Result->All = (unsigned short) Sum;
+	if (Sum > 65535)
+		Result->All = 0xFFFF;
+
+	Sum = 0;
+
+	if (BitField & LEFT){
+		PXL_VAL_H_L(0,1);
+		PXL_VAL_H_L(0,3);
+	} else {
+		PXL_VAL_H(0,1);
+		PXL_VAL_H(0,3);
+	}
+
+	if (BitField & RIGHT){
+		PXL_VAL_H_R(3,0);
+		PXL_VAL_H_R(3,2);
+	} else {
+		PXL_VAL_H(3,0);
+		PXL_VAL_H(3,2);
+	}
+
+	PXL_VAL_H(1,0);
+	PXL_VAL_H(2,1);
+	PXL_VAL_H(1,2);
+	PXL_VAL_H(2,3);
+
+	Result->H_D1 = (unsigned short) Sum;
+	if (Sum > 65535)
+		Result->H_D1 = 0xFFFF;
+
+	Sum = 0;
+	if (BitField & TOP){
+		PXL_VAL_V_T(1,0);
+		PXL_VAL_V_T(3,0);
+	} else {
+		PXL_VAL_V(1,0);
+		PXL_VAL_V(3,0);
+	}
+
+	if (BitField & BOTTOM){
+		PXL_VAL_V_B(0,3);
+		PXL_VAL_V_B(2,3);
+	} else {
+		PXL_VAL_V(0,3);
+		PXL_VAL_V(2,3);
+	}
+
+	PXL_VAL_V(0,1);
+	PXL_VAL_V(2,1);
+	PXL_VAL_V(1,2);
+	PXL_VAL_V(3,2);
+
+	Result->V_D2 = (unsigned short) Sum;
+	if (Sum > 65535)
+		Result->V_D2 = 0xFFFF;
+
+	Result->Selected = 0;
+	if (Result->Values[1] < Result->Values[0])
+		Result->Selected = 1;
+	if (Result->Values[2] < Result->Values[Result->Selected])
+		Result->Selected = 2;
+}
 
 void DirWavelet::LiftBandDiagOdd(float * pBlock, int Stride, int DimX, int DimY,
 							  float Coef)

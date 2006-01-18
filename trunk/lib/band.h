@@ -35,6 +35,8 @@
 
 //typedef void (*BandFunc)(unsigned int PosX, unsigned int PosY);
 
+namespace libdwic {
+
 #define LL_BAND		0
 #define V_BAND		1
 #define H_BAND		2
@@ -88,8 +90,7 @@ public:
 // 	CBitCodec Tree;			// Tree codec
 // 	CSymbolCodec Symbol;	// Quantized band coeff codec
 
-	void * Init(unsigned int x = 0, unsigned int y = 0,
-				char * pData = 0, int Align = ALIGN);
+	void Init(unsigned int x = 0, unsigned int y = 0, int Align = ALIGN);
 
 // Utilitaires
 	void ListAllPos(void);
@@ -105,4 +106,8 @@ public:
 	void GetBlockDir4x4( float * pBlock , float * Dir);
 	void MarkBlockDir(float * pBlock, int Dir);
 	int FilterDir(float * pDirs);
+private:
+	float * pData;
 };
+
+}

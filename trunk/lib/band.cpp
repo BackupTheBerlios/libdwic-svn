@@ -34,33 +34,37 @@
 #include <math.h>
 #include <string.h>
 
-namespace libdwic {
-
 #include "global.h"
 #include "band.h"
 
-CBand::CBand( void )
+namespace libdwic {
+
+CBand::CBand( void ):
+pData(0)
 {
 	Init();
 }
 
 CBand::~CBand()
-{}
+{
+	delete[] pData;
+}
 
-void * CBand::Init( unsigned int x, unsigned int y, char * pData, int Align )
+void CBand::Init( unsigned int x, unsigned int y, int Align )
 {
 	DimX = x;
 	DimY = y;
 	DimXAlign = ( DimX + Align - 1 ) & ( -Align );
 	BandSize = DimXAlign * DimY;
 	LstLen = 0;
-	pBand = ( typeof( pBand ) ) pData;
-	pData += BandSize * sizeof( *pBand );
 	pTree = 0;
 	pList = 0;
 	Weight = 1;
 	Count = 0;
-	return pData;
+	if (BandSize != 0){
+		pData = new typeof(pBand)[BandSize + Align];
+		pBand = (typeof(pBand))(((int)pData + Align - 1) & (-Align));
+	}
 }
 
 /******************************************************************************
