@@ -54,7 +54,7 @@ void CMap::Init(int DimX, int DimY)
 	this->ImageY = DimY;
 	this->DimX = (DimX + 3) >> 2;
 	this->DimY = (DimY + 3) >> 2;
-	MapSize = DimX * DimY;
+	MapSize = this->DimX * this->DimY;
 	if (MapSize != 0){
 		pMap = new DirValue[MapSize];
 	}

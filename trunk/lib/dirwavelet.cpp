@@ -958,6 +958,7 @@ void DirWavelet::LazyTransformI(float * pImage, int Stride)
 }
 
 void DirWavelet::Transform53(float * pImage, int Stride){
+	HVMap.GetImageDir(pImage, Stride);
 	LiftBandOdd(pImage, Stride, DimX, DimY, -1./4.);
 	LiftBandEven(pImage, Stride, DimX, DimY, 1./8.);
 	LiftBandDiagOdd(pImage, Stride, DimX, DimY, -1./4.);

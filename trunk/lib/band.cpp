@@ -62,8 +62,8 @@ void CBand::Init( unsigned int x, unsigned int y, int Align )
 	Weight = 1;
 	Count = 0;
 	if (BandSize != 0){
-		pData = new typeof(pBand)[BandSize + Align];
-		pBand = (typeof(pBand))(((int)pData + Align - 1) & (-Align));
+		pData = new float[BandSize + Align];
+		pBand = (float*)(((int)pData + Align - 1) & (-Align));
 	}
 }
 
