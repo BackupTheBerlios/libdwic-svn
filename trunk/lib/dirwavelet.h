@@ -87,10 +87,6 @@ private:
 	static void LiftBandDiagEven(float * pBlock, int Stride, int DimX,
 					int DimY, float Coef);
 
-	void GetDirValues(float * pBlock, int Stride, DirValue * Result);
-	void GetDirValues(float * pBlock, int Stride, DirValue * Result
-			, int BitField);
-
 	static void LiftOdd(float * pBlock, int Stride, float Coef);
 	static void LiftEven(float * pBlock, int Stride, float Coef);
 	static void LiftOddT(float * pBlock, int Stride, float Coef);

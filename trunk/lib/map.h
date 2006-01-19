@@ -55,12 +55,21 @@ public:
     ~CMap();
 
 	void Init(int DimX = 0, int DimY = 0);
+	void GetImageDir(float * pBlock, int Stride);
 
 
 	unsigned int DimX;		// Width of the map (blocks)
 	unsigned int DimY;		// Height of the map (blocks)
+	unsigned int ImageX;	// Width of the original image
+	unsigned int ImageY;	// Height of the original image
 	unsigned int MapSize;	// (DimX * DimY), the band size in blocks
 	DirValue * pMap;		// Directional map information
+
+private:
+
+	static void GetDirBlock(float * pBlock, int Stride, DirValue * Result);
+	static void GetDirBlock(float * pBlock, int Stride, DirValue * Result
+			, int BitField);
 
 };
 

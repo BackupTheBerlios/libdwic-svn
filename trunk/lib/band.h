@@ -106,6 +106,7 @@ public:
 	void GetBlockDir4x4( float * pBlock , float * Dir);
 	void MarkBlockDir(float * pBlock, int Dir);
 	int FilterDir(float * pDirs);
+
 private:
 	float * pData;
 };
