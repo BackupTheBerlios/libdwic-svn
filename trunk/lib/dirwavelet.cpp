@@ -4,11 +4,11 @@
  * This software is a computer program whose purpose is to compress        *
  * images.                                                                 *
  *                                                                         *
- * This software is governed by the CeCILL  license under French law and   *
+ * This software is governed by the CeCILL v2 license under French law and *
  * abiding by the rules of distribution of free software.  You can  use,   *
- * modify and/ or redistribute the software under the terms of the CeCILL  *
- * license as circulated by CEA, CNRS and INRIA at the following URL       *
- * "http://www.cecill.info".                                               *
+ * modify and/ or redistribute the software under the terms of the         *
+ * CeCILL v2 license as circulated by CEA, CNRS and INRIA at the following *
+ * URL "http://www.cecill.info".                                           *
  *                                                                         *
  * As a counterpart to the access to the source code and  rights to copy,  *
  * modify and redistribute granted by the license, users are provided only *
@@ -28,7 +28,7 @@
  * in the same conditions as regards security.                             *
  *                                                                         *
  * The fact that you are presently reading this means that you have had    *
- * knowledge of the CeCILL license and that you accept its terms.          *
+ * knowledge of the CeCILL v2 license and that you accept its terms.       *
  ***************************************************************************/
 
 #include "libdwic.h"
@@ -136,6 +136,54 @@ void DirWavelet::LiftOdd(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(2,3);
 }
 
+void DirWavelet::LiftOdd(float * pBlock, int Stride, float Coef, int BitField)
+{
+	if (BitField & TOP){
+		PXL_LIFT_T(1,0);
+	} else {
+		PXL_LIFT(1,0);
+	}
+	if (BitField & TOP){
+		if (BitField & RIGHT){
+			PXL_LIFT_TR(3,0);
+		} else {
+			PXL_LIFT_T(3,0);
+		}
+	}else if (BitField & RIGHT) {
+		PXL_LIFT_R(3,0);
+	} else {
+		PXL_LIFT(3,0);
+	}
+	if (BitField & LEFT){
+		PXL_LIFT_L(0,1);
+	} else {
+		PXL_LIFT(0,1);
+	}
+	if (BitField & RIGHT) {
+		PXL_LIFT_R(3,2);
+	} else {
+		PXL_LIFT(3,2);
+	}
+	if (BitField & BOTTOM) {
+		if (BitField & LEFT){
+			PXL_LIFT_BL(0,3);
+		} else {
+			PXL_LIFT_B(0,3);
+		}
+	} else if (BitField & LEFT) {
+		PXL_LIFT_L(0,3);
+	} else {
+		PXL_LIFT(0,3);
+	}
+	if (BitField & BOTTOM) {
+		PXL_LIFT_B(2,3);
+	} else {
+		PXL_LIFT(2,3);
+	}
+	PXL_LIFT(2,1);
+	PXL_LIFT(1,2);
+}
+
 void DirWavelet::LiftEven(float * pBlock, int Stride, float Coef)
 {
 	PXL_LIFT(0,0);
@@ -148,196 +196,52 @@ void DirWavelet::LiftEven(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(3,3);
 }
 
-void DirWavelet::LiftOddT(float * pBlock, int Stride, float Coef)
+void DirWavelet::LiftEven(float * pBlock, int Stride, float Coef, int BitField)
 {
-	PXL_LIFT_T(1,0);
-	PXL_LIFT_T(3,0);
-	PXL_LIFT(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT(3,2);
-	PXL_LIFT(0,3);
-	PXL_LIFT(2,3);
-}
-
-void DirWavelet::LiftEvenT(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_T(0,0);
-	PXL_LIFT_T(2,0);
+	if (BitField & TOP) {
+		if (BitField & LEFT) {
+			PXL_LIFT_TL(0,0);
+		} else {
+			PXL_LIFT_T(0,0);
+		}
+	} else if (BitField & LEFT) {
+		PXL_LIFT_L(0,0);
+	} else {
+		PXL_LIFT(0,0);
+	}
+	if (BitField & TOP) {
+		PXL_LIFT_T(2,0);
+	} else {
+		PXL_LIFT(2,0);
+	}
+	if (BitField & RIGHT) {
+		PXL_LIFT_R(3,1);
+	} else {
+		PXL_LIFT(3,1);
+	}
+	if (BitField & LEFT) {
+		PXL_LIFT_L(0,2);
+	} else {
+		PXL_LIFT(0,2);
+	}
+	if (BitField & BOTTOM) {
+		PXL_LIFT_B(1,3);
+	} else {
+		PXL_LIFT(1,3);
+	}
+	if (BitField & BOTTOM) {
+		if (BitField & RIGHT) {
+			PXL_LIFT_BR(3,3);
+		} else {
+			PXL_LIFT_B(3,3);
+		}
+	} else if (BitField & RIGHT) {
+		PXL_LIFT_R(3,3);
+	} else {
+		PXL_LIFT(3,3);
+	}
 	PXL_LIFT(1,1);
-	PXL_LIFT(3,1);
-	PXL_LIFT(0,2);
 	PXL_LIFT(2,2);
-	PXL_LIFT(1,3);
-	PXL_LIFT(3,3);
-}
-
-void DirWavelet::LiftOddB(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,0);
-	PXL_LIFT(3,0);
-	PXL_LIFT(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT(3,2);
-	PXL_LIFT_B(0,3);
-	PXL_LIFT_B(2,3);
-}
-
-void DirWavelet::LiftEvenB(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(0,0);
-	PXL_LIFT(2,0);
-	PXL_LIFT(1,1);
-	PXL_LIFT(3,1);
-	PXL_LIFT(0,2);
-	PXL_LIFT(2,2);
-	PXL_LIFT_B(1,3);
-	PXL_LIFT_B(3,3);
-}
-
-void DirWavelet::LiftOddL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,0);
-	PXL_LIFT(3,0);
-	PXL_LIFT_L(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT(3,2);
-	PXL_LIFT_L(0,3);
-	PXL_LIFT(2,3);
-}
-
-void DirWavelet::LiftEvenL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_L(0,0);
-	PXL_LIFT(2,0);
-	PXL_LIFT(1,1);
-	PXL_LIFT(3,1);
-	PXL_LIFT_L(0,2);
-	PXL_LIFT(2,2);
-	PXL_LIFT(1,3);
-	PXL_LIFT(3,3);
-}
-
-void DirWavelet::LiftOddR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,0);
-	PXL_LIFT_R(3,0);
-	PXL_LIFT(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT_R(3,2);
-	PXL_LIFT(0,3);
-	PXL_LIFT(2,3);
-}
-
-void DirWavelet::LiftEvenR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(0,0);
-	PXL_LIFT(2,0);
-	PXL_LIFT(1,1);
-	PXL_LIFT_R(3,1);
-	PXL_LIFT(0,2);
-	PXL_LIFT(2,2);
-	PXL_LIFT(1,3);
-	PXL_LIFT_R(3,3);
-}
-
-void DirWavelet::LiftOddTL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_T(1,0);
-	PXL_LIFT_T(3,0);
-	PXL_LIFT_L(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT(3,2);
-	PXL_LIFT_L(0,3);
-	PXL_LIFT(2,3);
-}
-
-void DirWavelet::LiftEvenTL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_TL(0,0);
-	PXL_LIFT_T(2,0);
-	PXL_LIFT(1,1);
-	PXL_LIFT(3,1);
-	PXL_LIFT_L(0,2);
-	PXL_LIFT(2,2);
-	PXL_LIFT(1,3);
-	PXL_LIFT(3,3);
-}
-
-void DirWavelet::LiftOddTR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_T(1,0);
-	PXL_LIFT_TR(3,0);
-	PXL_LIFT(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT_R(3,2);
-	PXL_LIFT(0,3);
-	PXL_LIFT(2,3);
-}
-
-void DirWavelet::LiftEvenTR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_T(0,0);
-	PXL_LIFT_T(2,0);
-	PXL_LIFT(1,1);
-	PXL_LIFT_R(3,1);
-	PXL_LIFT(0,2);
-	PXL_LIFT(2,2);
-	PXL_LIFT(1,3);
-	PXL_LIFT_R(3,3);
-}
-
-void DirWavelet::LiftOddBL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,0);
-	PXL_LIFT(3,0);
-	PXL_LIFT_L(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT(3,2);
-	PXL_LIFT_BL(0,3);
-	PXL_LIFT_B(2,3);
-}
-
-void DirWavelet::LiftEvenBL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_L(0,0);
-	PXL_LIFT(2,0);
-	PXL_LIFT(1,1);
-	PXL_LIFT(3,1);
-	PXL_LIFT_L(0,2);
-	PXL_LIFT(2,2);
-	PXL_LIFT_B(1,3);
-	PXL_LIFT_B(3,3);
-}
-
-void DirWavelet::LiftOddBR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,0);
-	PXL_LIFT_R(3,0);
-	PXL_LIFT(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT_R(3,2);
-	PXL_LIFT_B(0,3);
-	PXL_LIFT_B(2,3);
-}
-
-void DirWavelet::LiftEvenBR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(0,0);
-	PXL_LIFT(2,0);
-	PXL_LIFT(1,1);
-	PXL_LIFT_R(3,1);
-	PXL_LIFT(0,2);
-	PXL_LIFT(2,2);
-	PXL_LIFT_B(1,3);
-	PXL_LIFT_BR(3,3);
 }
 
 #undef PXL_LIFT
@@ -404,51 +308,57 @@ void DirWavelet::LiftDiagEven(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(2,2);
 }
 
-void DirWavelet::LiftDiagEvenT(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_T(0,0);
-	PXL_LIFT_T(2,0);
-	PXL_LIFT(0,2);
-	PXL_LIFT(2,2);
-}
-
-void DirWavelet::LiftDiagOddB(float * pBlock, int Stride, float Coef)
+void DirWavelet::LiftDiagOdd(float * pBlock, int Stride, float Coef,
+							 int BitField)
 {
 	PXL_LIFT(1,1);
-	PXL_LIFT(3,1);
-	PXL_LIFT_B(1,3);
-	PXL_LIFT_B(3,3);
+	if (BitField & RIGHT) {
+		PXL_LIFT_R(3,1);
+	} else {
+		PXL_LIFT(3,1);
+	}
+	if (BitField & BOTTOM) {
+		PXL_LIFT_B(1,3);
+	} else {
+		PXL_LIFT(1,3);
+	}
+	if (BitField & BOTTOM) {
+		if (BitField & RIGHT) {
+			PXL_LIFT_BR(3,3);
+		} else {
+			PXL_LIFT_B(3,3);
+		}
+	} else if (BitField & RIGHT) {
+		PXL_LIFT_R(3,3);
+	} else {
+		PXL_LIFT(3,3);
+	}
 }
 
-void DirWavelet::LiftDiagEvenL(float * pBlock, int Stride, float Coef)
+void DirWavelet::LiftDiagEven(float * pBlock, int Stride, float Coef,
+							  int BitField)
 {
-	PXL_LIFT_L(0,0);
-	PXL_LIFT(2,0);
-	PXL_LIFT_L(0,2);
-	PXL_LIFT(2,2);
-}
-
-void DirWavelet::LiftDiagOddR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,1);
-	PXL_LIFT_R(3,1);
-	PXL_LIFT(1,3);
-	PXL_LIFT_R(3,3);
-}
-
-void DirWavelet::LiftDiagOddBR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,1);
-	PXL_LIFT_R(3,1);
-	PXL_LIFT_B(1,3);
-	PXL_LIFT_BR(3,3);
-}
-
-void DirWavelet::LiftDiagEvenTL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_TL(0,0);
-	PXL_LIFT_T(2,0);
-	PXL_LIFT_L(0,2);
+	if (BitField & TOP) {
+		if (BitField & LEFT) {
+			PXL_LIFT_TL(0,0);
+		} else {
+			PXL_LIFT_T(0,0);
+		}
+	} else if (BitField & LEFT) {
+		PXL_LIFT_L(0,0);
+	} else {
+		PXL_LIFT(0,0);
+	}
+	if (BitField & TOP) {
+		PXL_LIFT_T(2,0);
+	} else {
+		PXL_LIFT(2,0);
+	}
+	if (BitField & LEFT) {
+		PXL_LIFT_L(0,2);
+	} else {
+		PXL_LIFT(0,2);
+	}
 	PXL_LIFT(2,2);
 }
 
@@ -484,6 +394,28 @@ void DirWavelet::LiftHOdd(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(2,3);
 }
 
+void DirWavelet::LiftHOdd(float * pBlock, int Stride, float Coef, int BitField)
+{
+	if (BitField & LEFT) {
+		PXL_LIFT_L(0,1);
+		PXL_LIFT_L(0,3);
+	} else {
+		PXL_LIFT(0,3);
+		PXL_LIFT(0,1);
+	}
+	if (BitField & RIGHT) {
+		PXL_LIFT_R(3,0);
+		PXL_LIFT_R(3,2);
+	} else {
+		PXL_LIFT(3,0);
+		PXL_LIFT(3,2);
+	}
+	PXL_LIFT(1,0);
+	PXL_LIFT(2,1);
+	PXL_LIFT(1,2);
+	PXL_LIFT(2,3);
+}
+
 void DirWavelet::LiftHEven(float * pBlock, int Stride, float Coef)
 {
 	PXL_LIFT(0,0);
@@ -496,52 +428,26 @@ void DirWavelet::LiftHEven(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(3,3);
 }
 
-void DirWavelet::LiftHOddL(float * pBlock, int Stride, float Coef)
+void DirWavelet::LiftHEven(float * pBlock, int Stride, float Coef, int BitField)
 {
-	PXL_LIFT(1,0);
-	PXL_LIFT(3,0);
-	PXL_LIFT_L(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT(3,2);
-	PXL_LIFT_L(0,3);
-	PXL_LIFT(2,3);
-}
-
-void DirWavelet::LiftHEvenL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_L(0,0);
+	if (BitField & LEFT) {
+		PXL_LIFT_L(0,0);
+		PXL_LIFT_L(0,2);
+	} else {
+		PXL_LIFT(0,0);
+		PXL_LIFT(0,2);
+	}
+	if (BitField & RIGHT) {
+		PXL_LIFT_R(3,1);
+		PXL_LIFT_R(3,3);
+	} else {
+		PXL_LIFT(3,1);
+		PXL_LIFT(3,3);
+	}
 	PXL_LIFT(2,0);
 	PXL_LIFT(1,1);
-	PXL_LIFT(3,1);
-	PXL_LIFT_L(0,2);
 	PXL_LIFT(2,2);
 	PXL_LIFT(1,3);
-	PXL_LIFT(3,3);
-}
-
-void DirWavelet::LiftHOddR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,0);
-	PXL_LIFT_R(3,0);
-	PXL_LIFT(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT_R(3,2);
-	PXL_LIFT(0,3);
-	PXL_LIFT(2,3);
-}
-
-void DirWavelet::LiftHEvenR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(0,0);
-	PXL_LIFT(2,0);
-	PXL_LIFT(1,1);
-	PXL_LIFT_R(3,1);
-	PXL_LIFT(0,2);
-	PXL_LIFT(2,2);
-	PXL_LIFT(1,3);
-	PXL_LIFT_R(3,3);
 }
 
 #undef PXL_LIFT
@@ -570,6 +476,28 @@ void DirWavelet::LiftVOdd(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(2,3);
 }
 
+void DirWavelet::LiftVOdd(float * pBlock, int Stride, float Coef, int BitField)
+{
+	if (BitField & TOP){
+		PXL_LIFT_T(1,0);
+		PXL_LIFT_T(3,0);
+	} else {
+		PXL_LIFT(1,0);
+		PXL_LIFT(3,0);
+	}
+	if (BitField & BOTTOM){
+		PXL_LIFT_B(0,3);
+		PXL_LIFT_B(2,3);
+	} else {
+		PXL_LIFT(0,3);
+		PXL_LIFT(2,3);
+	}
+	PXL_LIFT(0,1);
+	PXL_LIFT(2,1);
+	PXL_LIFT(1,2);
+	PXL_LIFT(3,2);
+}
+
 void DirWavelet::LiftVEven(float * pBlock, int Stride, float Coef)
 {
 	PXL_LIFT(0,0);
@@ -582,52 +510,26 @@ void DirWavelet::LiftVEven(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(3,3);
 }
 
-void DirWavelet::LiftVOddT(float * pBlock, int Stride, float Coef)
+void DirWavelet::LiftVEven(float * pBlock, int Stride, float Coef, int BitField)
 {
-	PXL_LIFT_T(1,0);
-	PXL_LIFT_T(3,0);
-	PXL_LIFT(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT(3,2);
-	PXL_LIFT(0,3);
-	PXL_LIFT(2,3);
-}
-
-void DirWavelet::LiftVEvenT(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_T(0,0);
-	PXL_LIFT_T(2,0);
+	if (BitField & TOP){
+		PXL_LIFT_T(0,0);
+		PXL_LIFT_T(2,0);
+	} else {
+		PXL_LIFT(0,0);
+		PXL_LIFT(2,0);
+	}
+	if (BitField & BOTTOM){
+		PXL_LIFT_B(1,3);
+		PXL_LIFT_B(3,3);
+	} else {
+		PXL_LIFT(1,3);
+		PXL_LIFT(3,3);
+	}
 	PXL_LIFT(1,1);
 	PXL_LIFT(3,1);
 	PXL_LIFT(0,2);
 	PXL_LIFT(2,2);
-	PXL_LIFT(1,3);
-	PXL_LIFT(3,3);
-}
-
-void DirWavelet::LiftVOddB(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,0);
-	PXL_LIFT(3,0);
-	PXL_LIFT(0,1);
-	PXL_LIFT(2,1);
-	PXL_LIFT(1,2);
-	PXL_LIFT(3,2);
-	PXL_LIFT_B(0,3);
-	PXL_LIFT_B(2,3);
-}
-
-void DirWavelet::LiftVEvenB(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(0,0);
-	PXL_LIFT(2,0);
-	PXL_LIFT(1,1);
-	PXL_LIFT(3,1);
-	PXL_LIFT(0,2);
-	PXL_LIFT(2,2);
-	PXL_LIFT_B(1,3);
-	PXL_LIFT_B(3,3);
 }
 
 #undef PXL_LIFT
@@ -654,6 +556,27 @@ void DirWavelet::LiftDiag1Odd(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(3,3);
 }
 
+void DirWavelet::LiftDiag1Odd(float * pBlock, int Stride, float Coef,
+							  int BitField)
+{
+	PXL_LIFT(1,1);
+	if (BitField & RIGHT) {
+		PXL_LIFT_BR(3,1);
+	} else {
+		PXL_LIFT(3,1);
+	}
+	if (BitField & BOTTOM) {
+		PXL_LIFT_BR(1,3);
+	} else {
+		PXL_LIFT(1,3);
+	}
+	if (BitField & (BOTTOM | RIGHT)) {
+		PXL_LIFT_BR(3,3);
+	} else {
+		PXL_LIFT(3,3);
+	}
+}
+
 void DirWavelet::LiftDiag1Even(float * pBlock, int Stride, float Coef)
 {
 	PXL_LIFT(0,0);
@@ -662,51 +585,24 @@ void DirWavelet::LiftDiag1Even(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(2,2);
 }
 
-void DirWavelet::LiftDiag1EvenT(float * pBlock, int Stride, float Coef)
+void DirWavelet::LiftDiag1Even(float * pBlock, int Stride, float Coef,
+							   int BitField)
 {
-	PXL_LIFT_TL(0,0);
-	PXL_LIFT_TL(2,0);
-	PXL_LIFT(0,2);
-	PXL_LIFT(2,2);
-}
-
-void DirWavelet::LiftDiag1OddB(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,1);
-	PXL_LIFT(3,1);
-	PXL_LIFT_BR(1,3);
-	PXL_LIFT_BR(3,3);
-}
-
-void DirWavelet::LiftDiag1EvenL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_TL(0,0);
-	PXL_LIFT(2,0);
-	PXL_LIFT_TL(0,2);
-	PXL_LIFT(2,2);
-}
-
-void DirWavelet::LiftDiag1OddR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,1);
-	PXL_LIFT_BR(3,1);
-	PXL_LIFT(1,3);
-	PXL_LIFT_BR(3,3);
-}
-
-void DirWavelet::LiftDiag1OddBR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,1);
-	PXL_LIFT_BR(3,1);
-	PXL_LIFT_BR(1,3);
-	PXL_LIFT_BR(3,3);
-}
-
-void DirWavelet::LiftDiag1EvenTL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_TL(0,0);
-	PXL_LIFT_TL(2,0);
-	PXL_LIFT_TL(0,2);
+	if (BitField & (TOP | LEFT)) {
+		PXL_LIFT_TL(0,0);
+	} else {
+		PXL_LIFT(0,0);
+	}
+	if (BitField & TOP) {
+		PXL_LIFT_TL(2,0);
+	} else {
+		PXL_LIFT(2,0);
+	}
+	if (BitField & LEFT) {
+		PXL_LIFT_TL(0,2);
+	} else {
+		PXL_LIFT(0,2);
+	}
 	PXL_LIFT(2,2);
 }
 
@@ -734,6 +630,31 @@ void DirWavelet::LiftDiag2Odd(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(3,3);
 }
 
+void DirWavelet::LiftDiag2Odd(float * pBlock, int Stride, float Coef,
+							  int BitField)
+{
+	PXL_LIFT(1,1);
+	if (BitField & RIGHT) {
+		PXL_LIFT_TR(3,1);
+	} else {
+		PXL_LIFT(3,1);
+	}
+	if (BitField & BOTTOM) {
+		PXL_LIFT_BL(1,3);
+	} else {
+		PXL_LIFT(1,3);
+	}
+	if (BitField & RIGHT) {
+		if (! (BitField & BOTTOM)) {
+			PXL_LIFT_TR(3,3);
+		}
+	} else if (BitField & BOTTOM) {
+		PXL_LIFT_BL(3,3);
+	} else {
+		PXL_LIFT(3,3);
+	}
+}
+
 void DirWavelet::LiftDiag2Even(float * pBlock, int Stride, float Coef)
 {
 	PXL_LIFT(0,0);
@@ -742,49 +663,28 @@ void DirWavelet::LiftDiag2Even(float * pBlock, int Stride, float Coef)
 	PXL_LIFT(2,2);
 }
 
-void DirWavelet::LiftDiag2EvenT(float * pBlock, int Stride, float Coef)
+void DirWavelet::LiftDiag2Even(float * pBlock, int Stride, float Coef,
+							   int BitField)
 {
-	PXL_LIFT_TR(0,0);
-	PXL_LIFT_TR(2,0);
-	PXL_LIFT(0,2);
-	PXL_LIFT(2,2);
-}
-
-void DirWavelet::LiftDiag2OddB(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,1);
-	PXL_LIFT(3,1);
-	PXL_LIFT_BL(1,3);
-	PXL_LIFT_BL(3,3);
-}
-
-void DirWavelet::LiftDiag2EvenL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_BL(0,0);
-	PXL_LIFT(2,0);
-	PXL_LIFT_BL(0,2);
-	PXL_LIFT(2,2);
-}
-
-void DirWavelet::LiftDiag2OddR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,1);
-	PXL_LIFT_TR(3,1);
-	PXL_LIFT(1,3);
-	PXL_LIFT_TR(3,3);
-}
-
-void DirWavelet::LiftDiag2OddBR(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT(1,1);
-	PXL_LIFT_TR(3,1);
-	PXL_LIFT_BL(1,3);
-}
-
-void DirWavelet::LiftDiag2EvenTL(float * pBlock, int Stride, float Coef)
-{
-	PXL_LIFT_TR(2,0);
-	PXL_LIFT_BL(0,2);
+	if (BitField & TOP) {
+		if (! (BitField & LEFT)) {
+			PXL_LIFT_TR(0,0);
+		}
+	} else if (BitField & LEFT) {
+		PXL_LIFT_BL(0,0);
+	} else {
+		PXL_LIFT(0,0);
+	}
+	if (BitField & TOP) {
+		PXL_LIFT_TR(2,0);
+	} else {
+		PXL_LIFT(2,0);
+	}
+	if (BitField & LEFT) {
+		PXL_LIFT_BL(0,2);
+	} else {
+		PXL_LIFT(0,2);
+	}
 	PXL_LIFT(2,2);
 }
 
@@ -795,96 +695,139 @@ void DirWavelet::LiftDiag2EvenTL(float * pBlock, int Stride, float Coef)
 void DirWavelet::LiftBandDiagOdd(float * pBlock, int Stride, int DimX, int DimY,
 							  float Coef)
 {
-	int j = 0;
-	for( j; j < DimY - 4; j += 4){
-		int i = 0;
-		for( ; i < DimX - 4; i += 4){
-			LiftDiagOdd(pBlock + i, Stride, Coef);
-		}
-		LiftDiagOddR(pBlock + i, Stride, Coef);
-		pBlock += Stride << 2;
-	}
-	int i = 0;
-	for( ; i < DimX - 4; i += 4){
-		LiftDiagOddB(pBlock + i, Stride, Coef);
-	}
-	LiftDiagOddBR(pBlock + i, Stride, Coef);
+// 	int j = 0;
+// 	for( j; j < DimY - 4; j += 4){
+// 		int i = 0;
+// 		for( ; i < DimX - 4; i += 4){
+// 			LiftDiagOdd(pBlock + i, Stride, Coef);
+// 		}
+// 		LiftDiagOddR(pBlock + i, Stride, Coef);
+// 		pBlock += Stride << 2;
+// 	}
+// 	int i = 0;
+// 	for( ; i < DimX - 4; i += 4){
+// 		LiftDiagOddB(pBlock + i, Stride, Coef);
+// 	}
+// 	LiftDiagOddBR(pBlock + i, Stride, Coef);
 }
 
 void DirWavelet::LiftBandDiagEven(float * pBlock, int Stride, int DimX,
 								int DimY, float Coef)
 {
-	LiftDiagEvenTL(pBlock, Stride, Coef);
-	int i = 4;
-	for( ; i < DimX; i += 4){
-		LiftDiagEvenT(pBlock + i, Stride, Coef);
-	}
-	pBlock += Stride << 2;
-	int j = 4;
-	for( j; j < DimY; j += 4){
-		LiftDiagEvenL(pBlock, Stride, Coef);
-		int i = 4;
-		for( ; i < DimX; i += 4){
-			LiftDiagEven(pBlock + i, Stride, Coef);
-		}
-		pBlock += Stride << 2;
-	}
+// 	LiftDiagEvenTL(pBlock, Stride, Coef);
+// 	int i = 4;
+// 	for( ; i < DimX; i += 4){
+// 		LiftDiagEvenT(pBlock + i, Stride, Coef);
+// 	}
+// 	pBlock += Stride << 2;
+// 	int j = 4;
+// 	for( j; j < DimY; j += 4){
+// 		LiftDiagEvenL(pBlock, Stride, Coef);
+// 		int i = 4;
+// 		for( ; i < DimX; i += 4){
+// 			LiftDiagEven(pBlock + i, Stride, Coef);
+// 		}
+// 		pBlock += Stride << 2;
+// 	}
 }
 
+// void DirWavelet::LiftBandOdd(float * pBlock, int Stride, int DimX, int DimY,
+// 						  float Coef)
+// {
+// 	LiftOddTL(pBlock, Stride, Coef);
+// 	int i = 4;
+// 	for( ; i < DimX - 4; i += 4){
+// 		LiftOddT(pBlock + i, Stride, Coef);
+// 	}
+// 	LiftOddTR(pBlock + i, Stride, Coef);
+// 	pBlock += Stride << 2;
+// 	int j = 4;
+// 	for( j; j < DimY - 4; j += 4){
+// 		LiftOddL(pBlock, Stride, Coef);
+// 		int i = 4;
+// 		for( ; i < DimX - 4; i += 4){
+// 			LiftOdd(pBlock + i, Stride, Coef);
+// 		}
+// 		LiftOddR(pBlock + i, Stride, Coef);
+// 		pBlock += Stride << 2;
+// 	}
+// 	LiftOddBL(pBlock, Stride, Coef);
+// 	i = 4;
+// 	for( ; i < DimX - 4; i += 4){
+// 		LiftOddB(pBlock + i, Stride, Coef);
+// 	}
+// 	LiftOddBR(pBlock + i, Stride, Coef);
+// }
+
 void DirWavelet::LiftBandOdd(float * pBlock, int Stride, int DimX, int DimY,
-						  float Coef)
+							 float Coef, DirValue * pDir)
 {
-	LiftOddTL(pBlock, Stride, Coef);
+	void (*LiftOdd1[3])(float*, int, float, int);
+	void (*LiftOdd2[3])(float*, int, float);
+	LiftOdd1[0] = DirWavelet::LiftHOdd;
+	LiftOdd1[1] = DirWavelet::LiftVOdd;
+	LiftOdd1[2] = DirWavelet::LiftOdd;
+
+	LiftOdd2[0] = DirWavelet::LiftHOdd;
+	LiftOdd2[1] = DirWavelet::LiftVOdd;
+	LiftOdd2[2] = DirWavelet::LiftOdd;
+
+	(*LiftOdd1[pDir->Selected])(pBlock, Stride, Coef, TOP | LEFT);
 	int i = 4;
-	for( ; i < DimX - 4; i += 4){
-		LiftOddT(pBlock + i, Stride, Coef);
+	pDir++;
+	for( ; i < DimX - 4; i += 4, pDir++){
+		(*LiftOdd1[pDir->Selected])(pBlock + i, Stride, Coef, TOP);
 	}
-	LiftOddTR(pBlock + i, Stride, Coef);
+	(*LiftOdd1[pDir->Selected])(pBlock + i, Stride, Coef, TOP | RIGHT);
 	pBlock += Stride << 2;
+	pDir++;
 	int j = 4;
 	for( j; j < DimY - 4; j += 4){
-		LiftOddL(pBlock, Stride, Coef);
+		(*LiftOdd1[pDir->Selected])(pBlock, Stride, Coef, LEFT);
 		int i = 4;
-		for( ; i < DimX - 4; i += 4){
-			LiftOdd(pBlock + i, Stride, Coef);
+		pDir++;
+		for( ; i < DimX - 4; i += 4, pDir++){
+			(*LiftOdd2[pDir->Selected])(pBlock + i, Stride, Coef);
 		}
-		LiftOddR(pBlock + i, Stride, Coef);
+		(*LiftOdd1[pDir->Selected])(pBlock + i, Stride, Coef, RIGHT);
 		pBlock += Stride << 2;
+		pDir++;
 	}
-	LiftOddBL(pBlock, Stride, Coef);
+	(*LiftOdd1[pDir->Selected])(pBlock, Stride, Coef, BOTTOM | LEFT);
 	i = 4;
-	for( ; i < DimX - 4; i += 4){
-		LiftOddB(pBlock + i, Stride, Coef);
+	pDir++;
+	for( ; i < DimX - 4; i += 4, pDir++){
+		(*LiftOdd1[pDir->Selected])(pBlock + i, Stride, Coef, BOTTOM);
 	}
-	LiftOddBR(pBlock + i, Stride, Coef);
+	(*LiftOdd1[pDir->Selected])(pBlock + i, Stride, Coef, BOTTOM | RIGHT);
 }
 
 void DirWavelet::LiftBandEven(float * pBlock, int Stride, int DimX, int DimY,
 						  float Coef)
 {
-	LiftEvenTL(pBlock, Stride, Coef);
-	int i = 4;
-	for( ; i < DimX - 4; i += 4){
-		LiftEvenT(pBlock + i, Stride, Coef);
-	}
-	LiftEvenTR(pBlock + i, Stride, Coef);
-	pBlock += Stride << 2;
-	int j = 4;
-	for( j; j < DimY - 4; j += 4){
-		LiftEvenL(pBlock, Stride, Coef);
-		int i = 4;
-		for( ; i < DimX - 4; i += 4){
-			LiftEven(pBlock + i, Stride, Coef);
-		}
-		LiftEvenR(pBlock + i, Stride, Coef);
-		pBlock += Stride << 2;
-	}
-	LiftEvenBL(pBlock, Stride, Coef);
-	i = 4;
-	for( ; i < DimX - 4; i += 4){
-		LiftEvenB(pBlock + i, Stride, Coef);
-	}
-	LiftEvenBR(pBlock + i, Stride, Coef);
+// 	LiftEvenTL(pBlock, Stride, Coef);
+// 	int i = 4;
+// 	for( ; i < DimX - 4; i += 4){
+// 		LiftEvenT(pBlock + i, Stride, Coef);
+// 	}
+// 	LiftEvenTR(pBlock + i, Stride, Coef);
+// 	pBlock += Stride << 2;
+// 	int j = 4;
+// 	for( j; j < DimY - 4; j += 4){
+// 		LiftEvenL(pBlock, Stride, Coef);
+// 		int i = 4;
+// 		for( ; i < DimX - 4; i += 4){
+// 			LiftEven(pBlock + i, Stride, Coef);
+// 		}
+// 		LiftEvenR(pBlock + i, Stride, Coef);
+// 		pBlock += Stride << 2;
+// 	}
+// 	LiftEvenBL(pBlock, Stride, Coef);
+// 	i = 4;
+// 	for( ; i < DimX - 4; i += 4){
+// 		LiftEvenB(pBlock + i, Stride, Coef);
+// 	}
+// 	LiftEvenBR(pBlock + i, Stride, Coef);
 }
 
 void DirWavelet::LazyImage(float * pImage, unsigned int Stride){
@@ -959,7 +902,7 @@ void DirWavelet::LazyTransformI(float * pImage, int Stride)
 
 void DirWavelet::Transform53(float * pImage, int Stride){
 	HVMap.GetImageDir(pImage, Stride);
-	LiftBandOdd(pImage, Stride, DimX, DimY, -1./4.);
+	LiftBandOdd(pImage, Stride, DimX, DimY, -1./4., HVMap.pMap);
 	LiftBandEven(pImage, Stride, DimX, DimY, 1./8.);
 	LiftBandDiagOdd(pImage, Stride, DimX, DimY, -1./4.);
 	LiftBandDiagEven(pImage, Stride, DimX, DimY, 1./8.);
@@ -984,7 +927,7 @@ void DirWavelet::Transform53I(float * pImage, int Stride){
 	LiftBandDiagEven(pImage, Stride, DimX, DimY, -1./8.);
 	LiftBandDiagOdd(pImage, Stride, DimX, DimY, 1./4.);
 	LiftBandEven(pImage, Stride, DimX, DimY, -1./8.);
-	LiftBandOdd(pImage, Stride, DimX, DimY, 1./4.);
+	LiftBandOdd(pImage, Stride, DimX, DimY, 1./4., HVMap.pMap);
 }
 
 unsigned int DirWavelet::Thres(float Thres){

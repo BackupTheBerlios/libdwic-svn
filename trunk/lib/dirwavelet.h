@@ -4,11 +4,11 @@
  * This software is a computer program whose purpose is to compress        *
  * images.                                                                 *
  *                                                                         *
- * This software is governed by the CeCILL  license under French law and   *
+ * This software is governed by the CeCILL v2 license under French law and *
  * abiding by the rules of distribution of free software.  You can  use,   *
- * modify and/ or redistribute the software under the terms of the CeCILL  *
- * license as circulated by CEA, CNRS and INRIA at the following URL       *
- * "http://www.cecill.info".                                               *
+ * modify and/ or redistribute the software under the terms of the         *
+ * CeCILL v2 license as circulated by CEA, CNRS and INRIA at the following *
+ * URL "http://www.cecill.info".                                           *
  *                                                                         *
  * As a counterpart to the access to the source code and  rights to copy,  *
  * modify and redistribute granted by the license, users are provided only *
@@ -28,7 +28,7 @@
  * in the same conditions as regards security.                             *
  *                                                                         *
  * The fact that you are presently reading this means that you have had    *
- * knowledge of the CeCILL license and that you accept its terms.          *
+ * knowledge of the CeCILL v2 license and that you accept its terms.       *
  ***************************************************************************/
 
 #pragma once
@@ -79,7 +79,7 @@ private:
 	void LazyImageI(float * pImage, unsigned int Stride);
 
 	static void LiftBandOdd(float * pBlock, int Stride, int DimX, int DimY,
-				  float Coef);
+							float Coef, DirValue * pDir);
 	static void LiftBandEven(float * pBlock, int Stride, int DimX, int DimY,
 				   float Coef);
 	static void LiftBandDiagOdd(float * pBlock, int Stride, int DimX,
@@ -89,63 +89,39 @@ private:
 
 	static void LiftOdd(float * pBlock, int Stride, float Coef);
 	static void LiftEven(float * pBlock, int Stride, float Coef);
-	static void LiftOddT(float * pBlock, int Stride, float Coef);
-	static void LiftEvenT(float * pBlock, int Stride, float Coef);
-	static void LiftOddB(float * pBlock, int Stride, float Coef);
-	static void LiftEvenB(float * pBlock, int Stride, float Coef);
-	static void LiftOddL(float * pBlock, int Stride, float Coef);
-	static void LiftEvenL(float * pBlock, int Stride, float Coef);
-	static void LiftOddR(float * pBlock, int Stride, float Coef);
-	static void LiftEvenR(float * pBlock, int Stride, float Coef);
-	static void LiftOddTL(float * pBlock, int Stride, float Coef);
-	static void LiftEvenTL(float * pBlock, int Stride, float Coef);
-	static void LiftOddTR(float * pBlock, int Stride, float Coef);
-	static void LiftEvenTR(float * pBlock, int Stride, float Coef);
-	static void LiftOddBL(float * pBlock, int Stride, float Coef);
-	static void LiftEvenBL(float * pBlock, int Stride, float Coef);
-	static void LiftOddBR(float * pBlock, int Stride, float Coef);
-	static void LiftEvenBR(float * pBlock, int Stride, float Coef);
+	static void LiftOdd(float * pBlock, int Stride, float Coef, int BitField);
+	static void LiftEven(float * pBlock, int Stride, float Coef, int BitField);
 
 	static void LiftDiagOdd(float * pBlock, int Stride, float Coef);
 	static void LiftDiagEven(float * pBlock, int Stride, float Coef);
-	static void LiftDiagEvenT(float * pBlock, int Stride, float Coef);
-	static void LiftDiagOddB(float * pBlock, int Stride, float Coef);
-	static void LiftDiagEvenL(float * pBlock, int Stride, float Coef);
-	static void LiftDiagOddR(float * pBlock, int Stride, float Coef);
-	static void LiftDiagOddBR(float * pBlock, int Stride, float Coef);
-	static void LiftDiagEvenTL(float * pBlock, int Stride, float Coef);
+	static void LiftDiagOdd(float * pBlock, int Stride, float Coef,
+							int BitField);
+	static void LiftDiagEven(float * pBlock, int Stride, float Coef,
+							 int BitField);
 
 	static void LiftHOdd(float * pBlock, int Stride, float Coef);
 	static void LiftHEven(float * pBlock, int Stride, float Coef);
-	static void LiftHOddL(float * pBlock, int Stride, float Coef);
-	static void LiftHEvenL(float * pBlock, int Stride, float Coef);
-	static void LiftHOddR(float * pBlock, int Stride, float Coef);
-	static void LiftHEvenR(float * pBlock, int Stride, float Coef);
+	static void LiftHOdd(float * pBlock, int Stride, float Coef, int BitField);
+	static void LiftHEven(float * pBlock, int Stride, float Coef, int BitField);
 
 	static void LiftVOdd(float * pBlock, int Stride, float Coef);
 	static void LiftVEven(float * pBlock, int Stride, float Coef);
-	static void LiftVOddT(float * pBlock, int Stride, float Coef);
-	static void LiftVEvenT(float * pBlock, int Stride, float Coef);
-	static void LiftVOddB(float * pBlock, int Stride, float Coef);
-	static void LiftVEvenB(float * pBlock, int Stride, float Coef);
+	static void LiftVOdd(float * pBlock, int Stride, float Coef, int BitField);
+	static void LiftVEven(float * pBlock, int Stride, float Coef, int BitField);
 
 	static void LiftDiag1Odd(float * pBlock, int Stride, float Coef);
 	static void LiftDiag1Even(float * pBlock, int Stride, float Coef);
-	static void LiftDiag1EvenT(float * pBlock, int Stride, float Coef);
-	static void LiftDiag1OddB(float * pBlock, int Stride, float Coef);
-	static void LiftDiag1EvenL(float * pBlock, int Stride, float Coef);
-	static void LiftDiag1OddR(float * pBlock, int Stride, float Coef);
-	static void LiftDiag1OddBR(float * pBlock, int Stride, float Coef);
-	static void LiftDiag1EvenTL(float * pBlock, int Stride, float Coef);
+	static void LiftDiag1Odd(float * pBlock, int Stride, float Coef,
+							 int BitField);
+	static void LiftDiag1Even(float * pBlock, int Stride, float Coef,
+							  int BitField);
 
 	static void LiftDiag2Odd(float * pBlock, int Stride, float Coef);
 	static void LiftDiag2Even(float * pBlock, int Stride, float Coef);
-	static void LiftDiag2EvenT(float * pBlock, int Stride, float Coef);
-	static void LiftDiag2OddB(float * pBlock, int Stride, float Coef);
-	static void LiftDiag2EvenL(float * pBlock, int Stride, float Coef);
-	static void LiftDiag2OddR(float * pBlock, int Stride, float Coef);
-	static void LiftDiag2OddBR(float * pBlock, int Stride, float Coef);
-	static void LiftDiag2EvenTL(float * pBlock, int Stride, float Coef);
+	static void LiftDiag2Odd(float * pBlock, int Stride, float Coef,
+							 int BitField);
+	static void LiftDiag2Even(float * pBlock, int Stride, float Coef,
+							  int BitField);
 };
 
 }
