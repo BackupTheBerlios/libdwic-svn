@@ -32,6 +32,9 @@
  ***************************************************************************/
 
 #include "libdwic.h"
+#include <iostream>
+
+using namespace std;
 
 namespace libdwic {
 
@@ -75,13 +78,34 @@ void DirWavelet::Init(int level, int Align)
 	HVBand.Init(DimX >> 1, DimY >> 1, Align);
 	HVMap.Init(DimX, DimY);
 	DMap.Init(DimX, DimY);
-
+	Level = level;
 	InitFuncPtr();
 
 	if (level > 1){
 		pLow = new DirWavelet(DimX >> 1, DimY >> 1, level - 1, this, Align);
 	}else{
 		LBand.Init(DimX >> 1, DimY >> 1, Align);
+	}
+}
+
+void DirWavelet::Stats(void)
+{
+	float Mean = 0, Var = 0;
+	DBand.Mean(Mean, Var);
+	cout << "Niveau (D) : " << Level << endl;
+	cout << "Moyenne : " << Mean << endl;
+	cout << "Variance : " << Var << endl;
+	HVBand.Mean(Mean, Var);
+	cout << "Niveau (HV) : " << Level << endl;
+	cout << "Moyenne : " << Mean << endl;
+	cout << "Variance : " << Var << endl;
+	if (pLow != 0)
+		pLow->Stats();
+	else{
+		LBand.Mean(Mean, Var);
+		cout << "Niveau (L) : " << Level << endl;
+		cout << "Moyenne : " << Mean << endl;
+		cout << "Variance : " << Var << endl;
 	}
 }
 
@@ -412,13 +436,13 @@ void DirWavelet::LiftDiagEven(float * pBlock, int Stride, float Coef,
 
 #define PXL_LIFT(x,y) \
 	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + (y) * Stride] \
-		+ pBlock[(x) - 1 + (y) * Stride]) * Coef;
+		+ pBlock[(x) - 1 + (y) * Stride]) * Coef * 2;
 
 #define PXL_LIFT_L(x,y) \
-	pBlock[(x) + (y) * Stride] += pBlock[(x) + 1 + (y) * Stride] * 2 * Coef;
+	pBlock[(x) + (y) * Stride] += pBlock[(x) + 1 + (y) * Stride] * 4 * Coef;
 
 #define PXL_LIFT_R(x,y) \
-	pBlock[(x) + (y) * Stride] += pBlock[(x) - 1 + (y) * Stride] * 2 * Coef;
+	pBlock[(x) + (y) * Stride] += pBlock[(x) - 1 + (y) * Stride] * 4 * Coef;
 
 void DirWavelet::LiftHOdd(float * pBlock, int Stride, float Coef)
 {
@@ -494,13 +518,13 @@ void DirWavelet::LiftHEven(float * pBlock, int Stride, float Coef, int BitField)
 
 #define PXL_LIFT(x,y) \
 	pBlock[(x) + (y) * Stride] += (pBlock[(x) + ((y) + 1) * Stride] \
-		+ pBlock[(x) + ((y) - 1) * Stride]) * Coef;
+		+ pBlock[(x) + ((y) - 1) * Stride]) * Coef * 2;
 
 #define PXL_LIFT_T(x,y) \
-	pBlock[(x) + (y) * Stride] += pBlock[(x) + ((y) + 1) * Stride] * 2 * Coef;
+	pBlock[(x) + (y) * Stride] += pBlock[(x) + ((y) + 1) * Stride] * 4 * Coef;
 
 #define PXL_LIFT_B(x,y) \
-	pBlock[(x) + (y) * Stride] += pBlock[(x) + ((y) - 1) * Stride] * 2 * Coef;
+	pBlock[(x) + (y) * Stride] += pBlock[(x) + ((y) - 1) * Stride] * 4 * Coef;
 
 void DirWavelet::LiftVOdd(float * pBlock, int Stride, float Coef)
 {
@@ -576,15 +600,15 @@ void DirWavelet::LiftVEven(float * pBlock, int Stride, float Coef, int BitField)
 
 #define PXL_LIFT(x,y) \
 	pBlock[(x) + (y) * Stride] += (pBlock[(x) + 1 + ((y) + 1) * Stride] \
-		+ pBlock[(x) - 1 + ((y) - 1) * Stride]) * Coef;
+		+ pBlock[(x) - 1 + ((y) - 1) * Stride]) * Coef * 2;
 
 #define PXL_LIFT_TL(x,y) \
 	pBlock[(x) + (y) * Stride] += pBlock[(x) + 1 + ((y) + 1) * Stride] \
-		* 2 * Coef;
+		* 4 * Coef;
 
 #define PXL_LIFT_BR(x,y) \
 	pBlock[(x) + (y) * Stride] += pBlock[(x) - 1 + ((y) - 1) * Stride] \
-		* 2 * Coef;
+		* 4 * Coef;
 
 void DirWavelet::LiftDiag1Odd(float * pBlock, int Stride, float Coef)
 {
@@ -650,15 +674,15 @@ void DirWavelet::LiftDiag1Even(float * pBlock, int Stride, float Coef,
 
 #define PXL_LIFT(x,y) \
 	pBlock[(x) + (y) * Stride] += (pBlock[(x) - 1 + ((y) + 1) * Stride] \
-		+ pBlock[(x) + 1 + ((y) - 1) * Stride]) * Coef;
+		+ pBlock[(x) + 1 + ((y) - 1) * Stride]) * Coef * 2;
 
 #define PXL_LIFT_TR(x,y) \
 	pBlock[(x) + (y) * Stride] += pBlock[(x) - 1 + ((y) + 1) * Stride] \
-		* 2 * Coef;
+		* 4 * Coef;
 
 #define PXL_LIFT_BL(x,y) \
 	pBlock[(x) + (y) * Stride] += pBlock[(x) + 1 + ((y) - 1) * Stride] \
-		* 2 * Coef;
+		* 4 * Coef;
 
 void DirWavelet::LiftDiag2Odd(float * pBlock, int Stride, float Coef)
 {
@@ -841,6 +865,7 @@ void DirWavelet::Transform53(float * pImage, int Stride){
 			 LiftInOdd);
 	LiftBand(pImage, Stride, DimX, DimY, 1./8., HVMap.pMap, LiftEdgeEven,
 			 LiftInEven);
+	DMap.GetImageDirDiag(pImage, Stride);
 	LiftBand(pImage, Stride, DimX, DimY, -1./4., DMap.pMap, LiftEdgeDiagOdd,
 			 LiftInDiagOdd);
 	LiftBand(pImage, Stride, DimX, DimY, 1./8., DMap.pMap, LiftEdgeDiagEven,

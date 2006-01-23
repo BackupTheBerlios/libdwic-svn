@@ -58,6 +58,7 @@ void ProcessImage(string & ImageName, float Quant, float Thres, float RecLevel){
  	DirWavelet Wavelet(img.columns(), img.rows(),5);
 
  	Wavelet.Transform53(ImgPixels, img.columns());
+	Wavelet.Stats();
  	Wavelet.Transform53I(ImgPixels, img.columns());
 
  	img.read(img.columns(), img.rows(), "R", FloatPixel, ImgPixels);

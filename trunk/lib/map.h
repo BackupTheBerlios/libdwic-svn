@@ -56,7 +56,8 @@ public:
 
 	void Init(int DimX = 0, int DimY = 0);
 	void GetImageDir(float * pBlock, int Stride);
-
+	void GetImageDirDiag(float * pBlock, int Stride);
+	void SetSelected(int Sel);
 
 	unsigned int DimX;		// Width of the map (blocks)
 	unsigned int DimY;		// Height of the map (blocks)
@@ -70,7 +71,9 @@ private:
 	static void GetDirBlock(float * pBlock, int Stride, DirValue * Result);
 	static void GetDirBlock(float * pBlock, int Stride, DirValue * Result
 			, int BitField);
-
+	static void GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result);
+	static void GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result
+			, int BitField);
 };
 
 }

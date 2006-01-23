@@ -56,6 +56,7 @@ public:
 	void Transform53I(float * pImage, int Stride);
 	unsigned int Thres(float Thres);
 	unsigned int TSUQ(float Quant, float Thres, float RecLevel);
+	void Stats(void);
 
 	DirWavelet * pLow;
 	DirWavelet * pHigh;
@@ -67,6 +68,7 @@ private:
 
 	int DimX;
 	int DimY;
+	int Level;
 	float * pData;
 	CMap HVMap;
 	CMap DMap;
