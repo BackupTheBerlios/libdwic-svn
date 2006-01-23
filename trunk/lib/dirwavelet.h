@@ -71,21 +71,27 @@ private:
 	CMap HVMap;
 	CMap DMap;
 
+	void (*LiftEdgeOdd[3])(float*, int, float, int);
+	void (*LiftInOdd[3])(float*, int, float);
+	void (*LiftEdgeEven[3])(float*, int, float, int);
+	void (*LiftInEven[3])(float*, int, float);
+	void (*LiftEdgeDiagOdd[3])(float*, int, float, int);
+	void (*LiftInDiagOdd[3])(float*, int, float);
+	void (*LiftEdgeDiagEven[3])(float*, int, float, int);
+	void (*LiftInDiagEven[3])(float*, int, float);
+
 	DirWavelet(int x, int y, int level, DirWavelet * pHigh, int Align);
 
 	void Init(int level, int Align);
+	void InitFuncPtr(void);
 
 	void LazyImage(float * pImage, unsigned int Stride);
 	void LazyImageI(float * pImage, unsigned int Stride);
 
-	static void LiftBandOdd(float * pBlock, int Stride, int DimX, int DimY,
-							float Coef, DirValue * pDir);
-	static void LiftBandEven(float * pBlock, int Stride, int DimX, int DimY,
-				   float Coef);
-	static void LiftBandDiagOdd(float * pBlock, int Stride, int DimX,
-					int DimY, float Coef);
-	static void LiftBandDiagEven(float * pBlock, int Stride, int DimX,
-					int DimY, float Coef);
+	static void LiftBand(float * pBlock, int Stride, int DimX, int DimY,
+							  float Coef, DirValue * pDir,
+							  void (**LiftEdge)(float*, int, float, int),
+							  void (**Lift)(float*, int, float));
 
 	static void LiftOdd(float * pBlock, int Stride, float Coef);
 	static void LiftEven(float * pBlock, int Stride, float Coef);
