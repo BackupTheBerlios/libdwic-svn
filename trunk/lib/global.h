@@ -52,10 +52,6 @@ namespace libdwic {
 #endif
 #endif
 
-#ifndef NULL
-#define NULL	0
-#endif
-
 #define NO_RESET	0
 #define RESET		1
 

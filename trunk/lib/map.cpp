@@ -36,9 +36,13 @@
 
 namespace libdwic {
 
-CMap::CMap(void):
-		pMap(0)
+CMap::CMap(CMap * pHighMap):
+pMap(0),
+pLow(0)
 {
+	pHigh = pHighMap;
+	if (pHigh != 0)
+		pHigh->pLow = this;
 	Init();
 }
 
@@ -64,6 +68,25 @@ void CMap::SetSelected(int Sel)
 {
 	for( int i = 0; i < MapSize ; i++){
 		pMap[i].Selected = Sel;
+	}
+}
+
+/**
+ * This function complete the direction map where no direction has been found
+ * (so Selected == 2) with the direction found on the parent map.
+ * @param
+ */
+void CMap::CompleteFromParent(void)
+{
+	DirValue * pParent = pLow->pMap;
+	DirValue * pCurMap = pMap;
+	for( int j = 0; j < DimY; j++){
+		for( int i = 0; i < DimX; i++){
+			if (pCurMap[i].Selected == 2)
+				pCurMap[i].Selected = pParent[i >> 1].Selected;
+		}
+		pParent += pLow->DimX;
+		pCurMap += DimX;
 	}
 }
 
@@ -255,11 +278,11 @@ void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result)
 	if (Sum > 1)
 		Result->V_D2 = 0xFFFF;
 
-	Result->Selected = 0;
-	if (Result->Values[1] < Result->Values[0])
+	Result->Selected = 2;
+	if (Result->Values[1] < Result->Values[2])
 		Result->Selected = 1;
-	if (Result->Values[2] < Result->Values[Result->Selected])
-		Result->Selected = 2;
+	if (Result->Values[0] < Result->Values[Result->Selected])
+		Result->Selected = 0;
 }
 
 void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result
@@ -370,11 +393,11 @@ void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result
 	if (Sum > 1)
 		Result->V_D2 = 0xFFFF;
 
-	Result->Selected = 0;
-	if (Result->Values[1] < Result->Values[0])
+	Result->Selected = 2;
+	if (Result->Values[1] < Result->Values[2])
 		Result->Selected = 1;
-	if (Result->Values[2] < Result->Values[Result->Selected])
-		Result->Selected = 2;
+	if (Result->Values[0] < Result->Values[Result->Selected])
+		Result->Selected = 0;
 }
 
 #define PXL_DIAG(x,y) \

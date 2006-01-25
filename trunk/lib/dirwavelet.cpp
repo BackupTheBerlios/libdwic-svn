@@ -43,9 +43,9 @@ DimX(x),
 DimY(y),
 pHigh(0),
 pLow(0),
-pData(0)
+HVMap((CMap*)0),
+DMap((CMap*)0)
 {
-// 	pData = new float [x * y + Align];
 	if (level > MAX_WAV_LEVEL)
 		level = MAX_WAV_LEVEL;
 	Init(level, Align);
@@ -56,7 +56,8 @@ DimX(x),
 DimY(y),
 pHigh(0),
 pLow(0),
-pData(0)
+HVMap(&pHigh->HVMap),
+DMap(&pHigh->DMap)
 {
 	this->pHigh = pHigh;
 // 	pHigh->DBand.pParent = &DBand;
@@ -69,7 +70,6 @@ pData(0)
 DirWavelet::~DirWavelet()
 {
 	delete pLow;
-	delete[] pData;
 }
 
 void DirWavelet::Init(int level, int Align)

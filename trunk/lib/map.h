@@ -50,7 +50,7 @@ typedef union DirValue{
 */
 class CMap{
 public:
-    CMap(void);
+	CMap(CMap * pHighMap);
 
     ~CMap();
 
@@ -58,6 +58,7 @@ public:
 	void GetImageDir(float * pBlock, int Stride);
 	void GetImageDirDiag(float * pBlock, int Stride);
 	void SetSelected(int Sel);
+	void CompleteFromParent(void);
 
 	unsigned int DimX;		// Width of the map (blocks)
 	unsigned int DimY;		// Height of the map (blocks)
@@ -67,6 +68,8 @@ public:
 	DirValue * pMap;		// Directional map information
 
 private:
+
+	CMap * pLow, * pHigh;	// Pointers to low and high direction map
 
 	static void GetDirBlock(float * pBlock, int Stride, DirValue * Result);
 	static void GetDirBlock(float * pBlock, int Stride, DirValue * Result

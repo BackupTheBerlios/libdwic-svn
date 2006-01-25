@@ -69,7 +69,6 @@ private:
 	int DimX;
 	int DimY;
 	int Level;
-	float * pData;
 	CMap HVMap;
 	CMap DMap;
 

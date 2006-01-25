@@ -33,8 +33,6 @@
 
 #pragma once
 
-//typedef void (*BandFunc)(unsigned int PosX, unsigned int PosY);
-
 namespace libdwic {
 
 #define LL_BAND		0
@@ -100,12 +98,6 @@ public:
 	unsigned int TSUQ(float Quant, float Thres, float RecLevel);
 	void Correlation(float * pOut, int x, int y);
 	void Add(float val);
-
-// Directions
-	void MarkBandDir(void);
-	void GetBlockDir4x4( float * pBlock , float * Dir);
-	void MarkBlockDir(float * pBlock, int Dir);
-	int FilterDir(float * pDirs);
 
 private:
 	float * pData;
