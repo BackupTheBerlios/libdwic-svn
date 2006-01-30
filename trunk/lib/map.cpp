@@ -85,8 +85,77 @@ void CMap::CompleteFromParent(void)
 			if (pCurMap[i].Selected == 2)
 				pCurMap[i].Selected = pParent[i >> 1].Selected;
 		}
-		pParent += pLow->DimX;
+		if (j & 1)
+			pParent += pLow->DimX;
 		pCurMap += DimX;
+	}
+}
+
+/**
+ * This function complete the direction map where no direction has been found
+ * using a simple IIR filter
+ * @param
+ */
+void CMap::CompleteFromNeighbourg(void)
+{
+	int conv[3] = {-4096,4096,0};
+	DirValue * pCurMap = pMap;
+	DirValue * pLstMap;
+
+	for( int j = 0; j < DimY; j++ ){
+		int a = 0;
+		for( int i = 0; i < DimX; i++){
+			a += conv[pCurMap[i].Selected] - (a >> 2);
+			pCurMap[i].sValues[2] = a;
+		}
+		a = 0;
+		for( int i = DimX - 1; i >= 0 ; i--){
+			a += conv[pCurMap[i].Selected] - (a >> 2);
+			pCurMap[i].sValues[2] += a;
+		}
+		pCurMap += DimX;
+	}
+
+	pCurMap = pMap;
+	for( int i = 0; i < DimX; i++ ){
+		pCurMap[i].sValues[0] = conv[pCurMap[i].Selected];
+	}
+	pLstMap = pCurMap;
+	pCurMap += DimX;
+	for( int j = 1; j < DimY; j++ ){
+		for( int i = 0; ; ){
+			pCurMap[i].sValues[0] = pLstMap[i].sValues[0] -
+					(pLstMap[i].sValues[0] >> 2) + conv[pCurMap[i].Selected];
+		}
+		pLstMap = pCurMap;
+		pCurMap += DimX;
+	}
+
+	pCurMap -= DimX;
+	for( int i = 0; i < DimX; i++ ){
+		pCurMap[i].sValues[1] = conv[pCurMap[i].Selected];
+		if (pCurMap[i].Selected == 2){
+			pCurMap[i].Selected = 0;
+			if ((pCurMap[i].sValues[0] + pCurMap[i].sValues[1] +
+						  pCurMap[i].sValues[2]) > 0)
+				pCurMap[i].Selected = 1;
+		}
+	}
+	pLstMap = pCurMap;
+	pCurMap -= DimX;
+	for( int j = 1; j < DimY; j++ ){
+		for( int i = 0; ; ){
+			pCurMap[i].sValues[1] = pLstMap[i].sValues[1] -
+					(pLstMap[i].sValues[1] >> 2) + conv[pCurMap[i].Selected];
+			if (pCurMap[i].Selected == 2){
+				pCurMap[i].Selected = 0;
+				if ((pCurMap[i].sValues[0] + pCurMap[i].sValues[1] +
+								 pCurMap[i].sValues[2]) > 0)
+					pCurMap[i].Selected = 1;
+			}
+		}
+		pLstMap = pCurMap;
+		pCurMap -= DimX;
 	}
 }
 

@@ -18,7 +18,7 @@
   </general>
   <kdevautoproject>
     <general>
-      <activetarget>cmd/dwic</activetarget>
+      <activetarget>lib/libdwic.a</activetarget>
       <useconfiguration>debug</useconfiguration>
     </general>
     <run>

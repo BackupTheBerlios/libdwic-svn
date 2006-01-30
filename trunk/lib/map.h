@@ -43,6 +43,7 @@ typedef union DirValue{
 		unsigned short Selected;
 	};
 	unsigned short Values[4];
+	short sValues[4];
 } DirValue;
 
 /**
@@ -59,6 +60,7 @@ public:
 	void GetImageDirDiag(float * pBlock, int Stride);
 	void SetSelected(int Sel);
 	void CompleteFromParent(void);
+	void CompleteFromNeighbourg(void);
 
 	unsigned int DimX;		// Width of the map (blocks)
 	unsigned int DimY;		// Height of the map (blocks)
