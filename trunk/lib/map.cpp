@@ -123,7 +123,7 @@ void CMap::CompleteFromNeighbourg(void)
 	pLstMap = pCurMap;
 	pCurMap += DimX;
 	for( int j = 1; j < DimY; j++ ){
-		for( int i = 0; ; ){
+		for( int i = 0; i < DimX; i++ ){
 			pCurMap[i].sValues[0] = pLstMap[i].sValues[0] -
 					(pLstMap[i].sValues[0] >> 2) + conv[pCurMap[i].Selected];
 		}
@@ -144,7 +144,7 @@ void CMap::CompleteFromNeighbourg(void)
 	pLstMap = pCurMap;
 	pCurMap -= DimX;
 	for( int j = 1; j < DimY; j++ ){
-		for( int i = 0; ; ){
+		for( int i = 0; i < DimX; i++ ){
 			pCurMap[i].sValues[1] = pLstMap[i].sValues[1] -
 					(pLstMap[i].sValues[1] >> 2) + conv[pCurMap[i].Selected];
 			if (pCurMap[i].Selected == 2){

@@ -109,6 +109,27 @@ void DirWavelet::Stats(void)
 	}
 }
 
+/**
+ * Complete all the directional maps by replacing the "all directions" direction
+ * by one of the others directions.
+ * @param
+ */
+void DirWavelet::CompleteMap(void)
+{
+	if (pLow != 0){
+		pLow->CompleteMap();
+		HVMap.CompleteFromParent();
+		DMap.CompleteFromParent();
+	} else {
+		HVMap.CompleteFromNeighbourg();
+		DMap.CompleteFromNeighbourg();
+	}
+}
+
+/**
+ * Initialize the function pointers arrays
+ * @param
+ */
 void DirWavelet::InitFuncPtr(void)
 {
 	LiftInOdd[0] = DirWavelet::LiftHOdd;
@@ -882,6 +903,9 @@ void DirWavelet::Transform53(float * pImage, int Stride){
 	}
  	if (pLow != 0)
 		pLow->Transform53(pImage, Stride);
+
+	if (pHigh == 0)
+		CompleteMap();
 }
 
 void DirWavelet::Transform53I(float * pImage, int Stride){

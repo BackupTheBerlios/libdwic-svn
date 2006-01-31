@@ -89,6 +89,8 @@ private:
 	void LazyImage(float * pImage, unsigned int Stride);
 	void LazyImageI(float * pImage, unsigned int Stride);
 
+	void CompleteMap(void);
+
 	static void LiftBand(float * pBlock, int Stride, int DimX, int DimY,
 							  float Coef, DirValue * pDir,
 							  void (**LiftEdge)(float*, int, float, int),
