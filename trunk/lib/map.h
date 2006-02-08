@@ -40,7 +40,8 @@ typedef union DirValue{
 		unsigned short H_D1;
 		unsigned short V_D2;
 		unsigned short All;
-		unsigned short Selected;
+		unsigned char Selected;
+		unsigned char Completed;
 	};
 	unsigned short Values[4];
 	short sValues[4];

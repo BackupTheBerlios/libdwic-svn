@@ -82,8 +82,9 @@ void CMap::CompleteFromParent(void)
 	DirValue * pCurMap = pMap;
 	for( int j = 0; j < DimY; j++){
 		for( int i = 0; i < DimX; i++){
+			pCurMap[i].Completed = pCurMap[i].Selected;
 			if (pCurMap[i].Selected == 2)
-				pCurMap[i].Selected = pParent[i >> 1].Selected;
+				pCurMap[i].Completed = pParent[i >> 1].Completed;
 		}
 		if (j & 1)
 			pParent += pLow->DimX;
@@ -134,11 +135,12 @@ void CMap::CompleteFromNeighbourg(void)
 	pCurMap -= DimX;
 	for( int i = 0; i < DimX; i++ ){
 		pCurMap[i].sValues[1] = conv[pCurMap[i].Selected];
+		pCurMap[i].Completed = pCurMap[i].Selected;
 		if (pCurMap[i].Selected == 2){
-			pCurMap[i].Selected = 0;
+			pCurMap[i].Completed = 0;
 			if ((pCurMap[i].sValues[0] + pCurMap[i].sValues[1] +
 						  pCurMap[i].sValues[2]) > 0)
-				pCurMap[i].Selected = 1;
+				pCurMap[i].Completed = 1;
 		}
 	}
 	pLstMap = pCurMap;
@@ -147,11 +149,12 @@ void CMap::CompleteFromNeighbourg(void)
 		for( int i = 0; i < DimX; i++ ){
 			pCurMap[i].sValues[1] = pLstMap[i].sValues[1] -
 					(pLstMap[i].sValues[1] >> 2) + conv[pCurMap[i].Selected];
+			pCurMap[i].Completed = pCurMap[i].Selected;
 			if (pCurMap[i].Selected == 2){
-				pCurMap[i].Selected = 0;
+				pCurMap[i].Completed = 0;
 				if ((pCurMap[i].sValues[0] + pCurMap[i].sValues[1] +
 								 pCurMap[i].sValues[2]) > 0)
-					pCurMap[i].Selected = 1;
+					pCurMap[i].Completed = 1;
 			}
 		}
 		pLstMap = pCurMap;

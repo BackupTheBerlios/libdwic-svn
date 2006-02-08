@@ -70,6 +70,8 @@ DMap(&pHigh->DMap)
 DirWavelet::~DirWavelet()
 {
 	delete pLow;
+	delete[] pD1D;
+	delete[] pHV1D;
 }
 
 void DirWavelet::Init(int level, int Align)
@@ -80,6 +82,9 @@ void DirWavelet::Init(int level, int Align)
 	DMap.Init(DimX, DimY);
 	Level = level;
 	InitFuncPtr();
+
+	pD1D = new float[DimX * (DimY >> 1)];
+	pHV1D = new float[(DimX >> 1) * (DimY >> 1)];
 
 	if (level > 1){
 		pLow = new DirWavelet(DimX >> 1, DimY >> 1, level - 1, this, Align);
@@ -99,6 +104,8 @@ void DirWavelet::Stats(void)
 	cout << "Niveau (HV) : " << Level << endl;
 	cout << "Moyenne : " << Mean << endl;
 	cout << "Variance : " << Var << endl;
+	cout << "Dimension de HV1D (horizontal) : " << DimHVDir << endl;
+	cout << "Dimension de HV1D (vertical) : " << DimDDir << endl;
 	if (pLow != 0)
 		pLow->Stats();
 	else{
@@ -110,6 +117,72 @@ void DirWavelet::Stats(void)
 }
 
 /**
+ * Fills pHV1D with horizontal and then vertical oriented coeffs from HVBand
+ * @param
+ */
+void DirWavelet::FillHV1D(void)
+{
+	float * p1D = pHV1D;
+	float * pCurPos = HVBand.pBand;
+	DirValue * pMap = pLow->HVMap.pMap;
+	int MapDimX = pLow->HVMap.DimX;
+
+	// horizontal direction
+	for (int j = 0; j < HVBand.DimY; j++) {
+		DirValue * pCurMap = pMap + (j >> 2) * MapDimX;
+		for(int i = 0; i < HVBand.DimX ; i++){
+			if (pCurMap[i >> 2].Completed == 0){
+				p1D[0] = pCurPos[i];
+				p1D++;
+			}
+		}
+		j++;
+		pCurPos += HVBand.DimXAlign;
+		if (j >= HVBand.DimY)
+			break;
+		pCurMap = pMap + (j >> 2) * MapDimX;
+		for(int i = HVBand.DimX - 1; i >= 0; i--){
+			if (pCurMap[i >> 2].Completed == 0){
+				p1D[0] = pCurPos[i];
+				p1D++;
+			}
+		}
+		pCurPos += HVBand.DimXAlign;
+	}
+
+	DimHVDir = p1D - pHV1D;
+	pCurPos = HVBand.pBand;
+	int mod[4] = {0,0,0,MapDimX};
+
+	// vertical direction
+	for(int i = 0; i < HVBand.DimX; i++){
+		DirValue * pCurMap = pMap + (i >> 2);
+		int j, k = 0, l = 0;
+		for(j = i; j < HVBand.BandSize ; j += HVBand.DimXAlign, k++){
+			if (pCurMap[l].Completed == 1){
+				p1D[0] = pCurPos[j];
+				p1D++;
+			}
+			l += mod[k & 3];
+		}
+		i++;
+		if (i >= HVBand.DimX)
+			break;
+		pCurMap = pMap + (i >> 2);
+		j -= HVBand.DimXAlign - 1;
+		k--;
+		for(; j >= 0 ; j -= HVBand.DimXAlign, k--){
+			l -= mod[k & 3];
+			if (pCurMap[l].Completed == 1){
+				p1D[0] = pCurPos[j];
+				p1D++;
+			}
+		}
+	}
+	DimDDir = p1D - pHV1D - DimHVDir;
+}
+
+/**
  * Complete all the directional maps by replacing the "all directions" direction
  * by one of the others directions.
  * @param
@@ -118,12 +191,25 @@ void DirWavelet::CompleteMap(void)
 {
 	if (pLow != 0){
 		pLow->CompleteMap();
-		HVMap.CompleteFromParent();
+		if (pHigh != 0)
+			HVMap.CompleteFromParent();
 		DMap.CompleteFromParent();
 	} else {
 		HVMap.CompleteFromNeighbourg();
 		DMap.CompleteFromNeighbourg();
 	}
+}
+
+/**
+ * Fills the 1D arrays from the 2D bands
+ * @param
+ */
+void DirWavelet::Fill1D(void)
+{
+	if (pHigh != 0)
+		pHigh->FillHV1D();
+	if (pLow != 0)
+		pLow->Fill1D();
 }
 
 /**
@@ -904,8 +990,10 @@ void DirWavelet::Transform53(float * pImage, int Stride){
  	if (pLow != 0)
 		pLow->Transform53(pImage, Stride);
 
-	if (pHigh == 0)
+	if (pHigh == 0){
 		CompleteMap();
+		Fill1D();
+	}
 }
 
 void DirWavelet::Transform53I(float * pImage, int Stride){

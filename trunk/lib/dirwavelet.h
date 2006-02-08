@@ -72,6 +72,11 @@ private:
 	CMap HVMap;
 	CMap DMap;
 
+	int DimDDir;
+	int DimHVDir;
+	float * pD1D;
+	float * pHV1D;
+
 	void (*LiftEdgeOdd[3])(float*, int, float, int);
 	void (*LiftInOdd[3])(float*, int, float);
 	void (*LiftEdgeEven[3])(float*, int, float, int);
@@ -90,6 +95,8 @@ private:
 	void LazyImageI(float * pImage, unsigned int Stride);
 
 	void CompleteMap(void);
+	void Fill1D(void);
+	void FillHV1D(void);
 
 	static void LiftBand(float * pBlock, int Stride, int DimX, int DimY,
 							  float Coef, DirValue * pDir,
