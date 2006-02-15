@@ -33,15 +33,15 @@
 
 #pragma once
 
+#include "bitcodec.h"
+
 namespace libdwic {
 
 typedef union DirValue{
 	struct {
 		unsigned short H_D1;
 		unsigned short V_D2;
-		unsigned short All;
-		unsigned char Selected;
-		unsigned char Completed;
+		unsigned int Selected;
 	};
 	unsigned short Values[4];
 	short sValues[4];
@@ -60,8 +60,10 @@ public:
 	void GetImageDir(float * pBlock, int Stride);
 	void GetImageDirDiag(float * pBlock, int Stride);
 	void SetSelected(int Sel);
-	void CompleteFromParent(void);
-	void CompleteFromNeighbourg(void);
+
+	void SetRange(CRangeCodec * RangeCodec);
+	void Order0Code(void);
+	void Order0Dec(void);
 
 	unsigned int DimX;		// Width of the map (blocks)
 	unsigned int DimY;		// Height of the map (blocks)
@@ -73,6 +75,7 @@ public:
 private:
 
 	CMap * pLow, * pHigh;	// Pointers to low and high direction map
+	CBitCodec DirCodec;
 
 	static void GetDirBlock(float * pBlock, int Stride, DirValue * Result);
 	static void GetDirBlock(float * pBlock, int Stride, DirValue * Result

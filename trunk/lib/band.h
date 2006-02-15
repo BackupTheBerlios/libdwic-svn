@@ -64,7 +64,8 @@ public:
 	unsigned int DimY;		// Height of the band
 	unsigned int DimXAlign;	// Alignement Width (Buffer)
 	unsigned int BandSize;	// (DimXAlign * DimY), the band size in SAMPLES
-	unsigned int Max;		// Max of the band
+	int Max;				// Max of the band
+	int Min;				// Min of the band
 	unsigned int Dist;		// Distortion (Square Error)
 	unsigned int Count;		// Count of non-zero coeffs
 	float Weight;			// Weighting of the band distortion
@@ -95,7 +96,8 @@ public:
 	void SimpleQuant(int quant);
 	void Mean(float & Mean, float & Var);
 	unsigned int Thres(float Thres);
-	unsigned int TSUQ(float Quant, float Thres, float RecLevel);
+	unsigned int TSUQ(float Quant, float Thres);
+	void CBand::TSUQi( float Quant, float RecLevel);
 	void Correlation(float * pOut, int x, int y);
 	void Add(float val);
 

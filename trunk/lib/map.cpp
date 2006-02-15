@@ -71,94 +71,30 @@ void CMap::SetSelected(int Sel)
 	}
 }
 
-/**
- * This function complete the direction map where no direction has been found
- * (so Selected == 2) with the direction found on the parent map.
- * @param
- */
-void CMap::CompleteFromParent(void)
+void CMap::SetRange(CRangeCodec * RangeCodec)
 {
-	DirValue * pParent = pLow->pMap;
-	DirValue * pCurMap = pMap;
+	DirCodec.SetRange(RangeCodec);
+}
+
+void CMap::Order0Code(void)
+{
+	DirCodec.InitModel();
 	for( int j = 0; j < DimY; j++){
-		for( int i = 0; i < DimX; i++){
-			pCurMap[i].Completed = pCurMap[i].Selected;
-			if (pCurMap[i].Selected == 2)
-				pCurMap[i].Completed = pParent[i >> 1].Completed;
+		DirValue * pCur = pMap + j * DimX;
+		for( int i = 0; i < DimX; i++ ){
+			DirCodec.Code(pCur[i].Selected, 0);
 		}
-		if (j & 1)
-			pParent += pLow->DimX;
-		pCurMap += DimX;
 	}
 }
 
-/**
- * This function complete the direction map where no direction has been found
- * using a simple IIR filter
- * @param
- */
-void CMap::CompleteFromNeighbourg(void)
+void CMap::Order0Dec(void)
 {
-	int conv[3] = {-4096,4096,0};
-	DirValue * pCurMap = pMap;
-	DirValue * pLstMap;
-
-	for( int j = 0; j < DimY; j++ ){
-		int a = 0;
-		for( int i = 0; i < DimX; i++){
-			a += conv[pCurMap[i].Selected] - (a >> 2);
-			pCurMap[i].sValues[2] = a;
-		}
-		a = 0;
-		for( int i = DimX - 1; i >= 0 ; i--){
-			a += conv[pCurMap[i].Selected] - (a >> 2);
-			pCurMap[i].sValues[2] += a;
-		}
-		pCurMap += DimX;
-	}
-
-	pCurMap = pMap;
-	for( int i = 0; i < DimX; i++ ){
-		pCurMap[i].sValues[0] = conv[pCurMap[i].Selected];
-	}
-	pLstMap = pCurMap;
-	pCurMap += DimX;
-	for( int j = 1; j < DimY; j++ ){
+	DirCodec.InitModel();
+	for( int j = 0; j < DimY; j++){
+		DirValue * pCur = pMap + j * DimX;
 		for( int i = 0; i < DimX; i++ ){
-			pCurMap[i].sValues[0] = pLstMap[i].sValues[0] -
-					(pLstMap[i].sValues[0] >> 2) + conv[pCurMap[i].Selected];
+			pCur[i].Selected = DirCodec.Decode(0);
 		}
-		pLstMap = pCurMap;
-		pCurMap += DimX;
-	}
-
-	pCurMap -= DimX;
-	for( int i = 0; i < DimX; i++ ){
-		pCurMap[i].sValues[1] = conv[pCurMap[i].Selected];
-		pCurMap[i].Completed = pCurMap[i].Selected;
-		if (pCurMap[i].Selected == 2){
-			pCurMap[i].Completed = 0;
-			if ((pCurMap[i].sValues[0] + pCurMap[i].sValues[1] +
-						  pCurMap[i].sValues[2]) > 0)
-				pCurMap[i].Completed = 1;
-		}
-	}
-	pLstMap = pCurMap;
-	pCurMap -= DimX;
-	for( int j = 1; j < DimY; j++ ){
-		for( int i = 0; i < DimX; i++ ){
-			pCurMap[i].sValues[1] = pLstMap[i].sValues[1] -
-					(pLstMap[i].sValues[1] >> 2) + conv[pCurMap[i].Selected];
-			pCurMap[i].Completed = pCurMap[i].Selected;
-			if (pCurMap[i].Selected == 2){
-				pCurMap[i].Completed = 0;
-				if ((pCurMap[i].sValues[0] + pCurMap[i].sValues[1] +
-								 pCurMap[i].sValues[2]) > 0)
-					pCurMap[i].Completed = 1;
-			}
-		}
-		pLstMap = pCurMap;
-		pCurMap -= DimX;
 	}
 }
 
@@ -228,56 +164,6 @@ void CMap::GetImageDirDiag(float * pBlock, int Stride)
 	GetDirBlockDiag(pBlock + i, Stride, pDir, BOTTOM | RIGHT);
 }
 
-#define PXL_VAL(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
-		pBlock[(x) - 1 + (y) * Stride] + pBlock[(x) + ((y) + 1) * Stride] + \
-		pBlock[(x) + ((y) - 1) * Stride]) * .25); \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_T(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
-		pBlock[(x) - 1 + (y) * Stride] + pBlock[(x) + ((y) + 1) * Stride] * 2) \
-		* .25); \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_B(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
-		pBlock[(x) - 1 + (y) * Stride] + pBlock[(x) + ((y) - 1) * Stride] * 2) \
-		* .25); \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_L(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] * 2 + \
-		pBlock[(x) + ((y) + 1) * Stride] + \
-		pBlock[(x) + ((y) - 1) * Stride]) * .25); \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_R(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) - 1 + (y) * Stride] * 2 + \
-		pBlock[(x) + ((y) + 1) * Stride] + \
-		pBlock[(x) + ((y) - 1) * Stride]) * .25); \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_TL(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
-		pBlock[(x) + ((y) + 1) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_TR(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) - 1 + (y) * Stride] + \
-		pBlock[(x) + ((y) + 1) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_BL(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
-		pBlock[(x) + ((y) - 1) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_BR(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) - 1 + (y) * Stride] + \
-		pBlock[(x) + ((y) - 1) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
-
 #define PXL_VAL_H(x,y) \
 	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
 		pBlock[(x) - 1 + (y) * Stride]) * .5); \
@@ -309,20 +195,6 @@ void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result)
 	float Sum = 0;
 	float Sqr;
 
-	PXL_VAL(1,0);
-	PXL_VAL(3,0);
-	PXL_VAL(0,1);
-	PXL_VAL(2,1);
-	PXL_VAL(1,2);
-	PXL_VAL(3,2);
-	PXL_VAL(0,3);
-	PXL_VAL(2,3);
-
-	Result->All = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->All = 0xFFFF;
-
-	Sum = 0;
 	PXL_VAL_H(1,0);
 	PXL_VAL_H(3,0);
 	PXL_VAL_H(0,1);
@@ -350,11 +222,9 @@ void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result)
 	if (Sum > 1)
 		Result->V_D2 = 0xFFFF;
 
-	Result->Selected = 2;
-	if (Result->Values[1] < Result->Values[2])
+	Result->Selected = 0;
+	if (Result->Values[1] < Result->Values[0])
 		Result->Selected = 1;
-	if (Result->Values[0] < Result->Values[Result->Selected])
-		Result->Selected = 0;
 }
 
 void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result
@@ -362,57 +232,6 @@ void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result
 {
 	float Sum = 0;
 	float Sqr;
-
-	if (BitField & TOP){
-		PXL_VAL_T(1,0);
-	} else {
-		PXL_VAL(1,0);
-	}
-	if (BitField & TOP){
-		if (BitField & RIGHT){
-			PXL_VAL_TR(3,0);
-		} else {
-			PXL_VAL_T(3,0);
-		}
-	}else if (BitField & RIGHT) {
-		PXL_VAL_R(3,0);
-	} else {
-		PXL_VAL(3,0);
-	}
-	if (BitField & LEFT){
-		PXL_VAL_L(0,1);
-	} else {
-		PXL_VAL(0,1);
-	}
-	if (BitField & RIGHT) {
-		PXL_VAL_R(3,2);
-	} else {
-		PXL_VAL(3,2);
-	}
-	if (BitField & BOTTOM) {
-		if (BitField & LEFT){
-			PXL_VAL_BL(0,3);
-		} else {
-			PXL_VAL_B(0,3);
-		}
-	} else if (BitField & LEFT) {
-		PXL_VAL_L(0,3);
-	} else {
-		PXL_VAL(0,3);
-	}
-	if (BitField & BOTTOM) {
-		PXL_VAL_B(2,3);
-	} else {
-		PXL_VAL(2,3);
-	}
-	PXL_VAL(2,1);
-	PXL_VAL(1,2);
-
-	Result->All = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->All = 0xFFFF;
-
-	Sum = 0;
 
 	if (BitField & LEFT){
 		PXL_VAL_H_L(0,1);
@@ -465,38 +284,10 @@ void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result
 	if (Sum > 1)
 		Result->V_D2 = 0xFFFF;
 
-	Result->Selected = 2;
-	if (Result->Values[1] < Result->Values[2])
+	Result->Selected = 0;
+	if (Result->Values[1] < Result->Values[0])
 		Result->Selected = 1;
-	if (Result->Values[0] < Result->Values[Result->Selected])
-		Result->Selected = 0;
 }
-
-#define PXL_DIAG(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + ((y) + 1) * Stride] +\
- 	pBlock[(x) - 1 + ((y) + 1) * Stride] + pBlock[(x) + 1 + ((y) - 1) * Stride]\
- 	+ pBlock[(x) - 1 + ((y) - 1) * Stride]) * .25); \
-	Sum += Sqr * Sqr;
-
-#define PXL_DIAG_T(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + ((y) + 1) * Stride] \
- 	+ pBlock[(x) - 1 + ((y) + 1) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
-
-#define PXL_DIAG_B(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + ((y) - 1) * Stride] \
- 	+ pBlock[(x) - 1 + ((y) - 1) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
-
-#define PXL_DIAG_L(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + ((y) + 1) * Stride] \
- 	+ pBlock[(x) + 1 + ((y) - 1) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
-
-#define PXL_DIAG_R(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) - 1 + ((y) + 1) * Stride] \
- 	+ pBlock[(x) - 1 + ((y) - 1) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
 
 #define PXL_D1(x,y) \
 	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + ((y) + 1) * Stride] \
@@ -529,16 +320,6 @@ void CMap::GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result)
 	float Sum = 0;
 	float Sqr;
 
-	PXL_DIAG(1,1);
-	PXL_DIAG(3,1);
-	PXL_DIAG(1,3);
-	PXL_DIAG(3,3);
-
-	Result->All = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->All = 0xFFFF;
-
-	Sum = 0;
 	PXL_D1(1,1);
 	PXL_D1(3,1);
 	PXL_D1(1,3);
@@ -558,11 +339,9 @@ void CMap::GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result)
 	if (Sum > 1)
 		Result->V_D2 = 0xFFFF;
 
-	Result->Selected = 2;
-	if (Result->Values[1] < Result->Values[2])
+	Result->Selected = 0;
+	if (Result->Values[1] < Result->Values[0])
 		Result->Selected = 1;
-	if (Result->Values[0] < Result->Values[Result->Selected])
-		Result->Selected = 0;
 }
 
 void CMap::GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result,
@@ -571,34 +350,6 @@ void CMap::GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result,
 	float Sum = 0;
 	float Sqr;
 
-	PXL_DIAG(1,1);
-	if (BitField & RIGHT) {
-		PXL_DIAG_R(3,1);
-	} else {
-		PXL_DIAG(3,1);
-	}
-	if (BitField & BOTTOM) {
-		PXL_DIAG_B(1,3);
-	} else {
-		PXL_DIAG(1,3);
-	}
-	if (BitField & BOTTOM) {
-		if (BitField & RIGHT) {
-			PXL_D1_BR(3,3);
-		} else {
-			PXL_DIAG_B(3,3);
-		}
-	} else if (BitField & RIGHT) {
-		PXL_DIAG_R(3,3);
-	} else {
-		PXL_DIAG(3,3);
-	}
-
-	Result->All = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->All = 0xFFFF;
-
-	Sum = 0;
 	PXL_D1(1,1);
 	if (BitField & RIGHT) {
 		PXL_D1_BR(3,1);
@@ -649,8 +400,6 @@ void CMap::GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result,
 	Result->Selected = 0;
 	if (Result->Values[1] < Result->Values[0])
 		Result->Selected = 1;
-	if (Result->Values[2] < Result->Values[Result->Selected])
-		Result->Selected = 2;
 }
 
 }

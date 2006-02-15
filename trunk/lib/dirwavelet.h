@@ -35,6 +35,7 @@
 
 #include "band.h"
 #include "map.h"
+#include "rangecodec.h"
 
 namespace libdwic {
 
@@ -54,15 +55,19 @@ public:
 	void LazyTransformI(float * pImage, int Stride);
 	void Transform53(float * pImage, int Stride);
 	void Transform53I(float * pImage, int Stride);
-	unsigned int Thres(float Thres);
-	unsigned int TSUQ(float Quant, float Thres, float RecLevel);
-	void Stats(void);
+	void Transform97(float * pImage, int Stride);
+	void Transform97I(float * pImage, int Stride);
 
-	DirWavelet * pLow;
-	DirWavelet * pHigh;
-	CBand DBand;
-	CBand HVBand;
-	CBand LBand;
+	void SetRange(CRangeCodec * RangeCodec);
+	void Code(int Options = 0);
+	void Decode(int Options = 0);
+
+	unsigned int Thres(float Thres);
+	unsigned int TSUQ(float Quant, float Thres);
+	void DirWavelet::TSUQi(float Quant, float RecLevel);
+
+	void Stats(void);
+	void SetSelected(int Sel);
 
 private:
 
@@ -71,6 +76,13 @@ private:
 	int Level;
 	CMap HVMap;
 	CMap DMap;
+
+	DirWavelet * pLow;
+	DirWavelet * pHigh;
+
+	CBand DBand;
+	CBand HVBand;
+	CBand LBand;
 
 	int DimDDir;
 	int DimHVDir;
@@ -94,26 +106,14 @@ private:
 	void LazyImage(float * pImage, unsigned int Stride);
 	void LazyImageI(float * pImage, unsigned int Stride);
 
-	void CompleteMap(void);
 	void Fill1D(void);
 	void FillHV1D(void);
+	void FillD1D(void);
 
 	static void LiftBand(float * pBlock, int Stride, int DimX, int DimY,
 							  float Coef, DirValue * pDir,
 							  void (**LiftEdge)(float*, int, float, int),
 							  void (**Lift)(float*, int, float));
-
-	static void LiftOdd(float * pBlock, int Stride, float Coef);
-	static void LiftEven(float * pBlock, int Stride, float Coef);
-	static void LiftOdd(float * pBlock, int Stride, float Coef, int BitField);
-	static void LiftEven(float * pBlock, int Stride, float Coef, int BitField);
-
-	static void LiftDiagOdd(float * pBlock, int Stride, float Coef);
-	static void LiftDiagEven(float * pBlock, int Stride, float Coef);
-	static void LiftDiagOdd(float * pBlock, int Stride, float Coef,
-							int BitField);
-	static void LiftDiagEven(float * pBlock, int Stride, float Coef,
-							 int BitField);
 
 	static void LiftHOdd(float * pBlock, int Stride, float Coef);
 	static void LiftHEven(float * pBlock, int Stride, float Coef);

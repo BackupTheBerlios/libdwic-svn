@@ -47,41 +47,46 @@ void ProcessImage(string & ImageName, float Quant, float Thres, float RecLevel){
 	img.type( GrayscaleType );
 
 	float * ImgPixels = new float [img.columns() * img.rows()];
-//	float * CorrPix = new float [15 * 15];
+	unsigned char * pStream = new unsigned char[img.columns() * img.rows()];
 
 	img.write(0, 0, img.columns(), img.rows(),
 			  "R", FloatPixel, ImgPixels);
 
-	cout << "Largeur de l'image : " << img.columns() << endl;
-	cout << "Hauteur de l'image : " << img.rows() << endl;
-
  	DirWavelet Wavelet(img.columns(), img.rows(),5);
+	CRangeCodec RangeCodec(pStream, 0);
 
- 	Wavelet.Transform53(ImgPixels, img.columns());
-	Wavelet.Stats();
- 	Wavelet.Transform53I(ImgPixels, img.columns());
+	Wavelet.SetRange(&RangeCodec);
+ 	Wavelet.Transform97(ImgPixels, img.columns());
+	cout << Wavelet.TSUQ(Quant, Thres) << endl;
+	Wavelet.Code(0);
+	cout << "Taille des Cartes : " << (int)(RangeCodec.EndCoding() - pStream);
+	cout << endl;
+	RangeCodec.InitDecoder(pStream);
+	Wavelet.Decode(0);
+	Wavelet.TSUQi(Quant, RecLevel);
+ 	Wavelet.Transform97I(ImgPixels, img.columns());
 
  	img.read(img.columns(), img.rows(), "R", FloatPixel, ImgPixels);
 
- 	img.write(ImageName + ".53.png");
+ 	img.write(ImageName + ".97.png");
 
 	delete[] ImgPixels;
-//	delete[] CorrPix;
+	delete[] pStream;
 }
 
 int main( int argc, char *argv[] )
 {
-	cout << "Nombre d'arguments : " << argc << endl;
+// 	cout << "Nombre d'arguments : " << argc << endl;
 	if (argc > 1) {
-		cout << "Nom du programme : " << argv[0] << endl;
-		cout << "Image à lire : " << argv[1] << endl;
-		cout << "Lecture de l'image" << endl;
+// 		cout << "Nom du programme : " << argv[0] << endl;
+// 		cout << "Image à lire : " << argv[1] << endl;
+// 		cout << "Lecture de l'image" << endl;
 		try {
 			string ImgName = argv[1];
-// 			float Thres = atof(argv[3]);
-// 			float Quant = atof(argv[2]);
-// 			float RecLevel = atof(argv[4]);
-			ProcessImage(ImgName, 0, 0, 0);
+			float ThresRatio = atof(argv[3]);
+ 			float Quant = atof(argv[2]);
+ 			float RecLevelRatio = atof(argv[4]);
+			ProcessImage(ImgName, Quant, ThresRatio * Quant, RecLevelRatio * Quant);
 		} catch ( Exception & error_ ) {
 			cout << "Exception : " << error_.what() << endl;
 			return -1;

@@ -133,14 +133,15 @@ unsigned int CBand::Thres( float Thres )
 	return Count;
 }
 
-unsigned int CBand::TSUQ( float Quant, float Thres, float RecLevel )
+unsigned int CBand::TSUQ( float Quant, float Thres)
 {
 	int Diff = DimXAlign - DimX;
 	float iQuant = Weight / Quant;
 	Quant /= Weight;
-	RecLevel /= Weight;
 	Thres /= Weight;
 	float negThres = -Thres;
+	float halfQuant = Quant * .5;
+	float Min = 0, Max = 0;
 	Count = 0;
 	for ( int j = 0, n = 0; j < DimY ; j ++ ) {
 		for ( int nEnd = n + DimX; n < nEnd ; n++ ) {
@@ -148,17 +149,42 @@ unsigned int CBand::TSUQ( float Quant, float Thres, float RecLevel )
 				pBand[ n ] = 0;
 			} else {
 				Count++;
-				if ( pBand[ n ] > 0 )
-					pBand[ n ] = truncf( pBand[ n ] * iQuant ) * Quant
-					             + RecLevel;
-				else
-					pBand[ n ] = truncf( pBand[ n ] * iQuant ) * Quant
-					             - RecLevel;
+				if ( pBand[n] > 0 ){
+					pBand[n] = truncf( (pBand[n] + halfQuant) * iQuant );
+					if (pBand[n] > Max)
+						Max = pBand[n];
+				} else {
+					pBand[n] = truncf( (pBand[n] - halfQuant) * iQuant );
+					if (pBand[n] < Min)
+						Min = pBand[n];
+				}
 			}
 		}
 		n += Diff;
 	}
+	this->Min = (int) Min;
+	this->Max = (int) Max;
 	return Count;
+}
+
+void CBand::TSUQi( float Quant, float RecLevel)
+{
+	int Diff = DimXAlign - DimX;
+	float iQuant = Weight / Quant;
+	Quant /= Weight;
+	RecLevel /= Weight;
+	for ( int j = 0, n = 0; j < DimY ; j ++ ) {
+		for ( int nEnd = n + DimX; n < nEnd ; n++ ) {
+			if (pBand[n] != 0) {
+				pBand[n] *= Quant;
+				if ( pBand[n] > 0 )
+					pBand[n] += RecLevel;
+				else
+					pBand[n] -= RecLevel;
+			}
+		}
+		n += Diff;
+	}
 }
 
 void CBand::Correlation( float * pOut, int x, int y )
