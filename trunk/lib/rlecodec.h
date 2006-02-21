@@ -54,14 +54,14 @@ public:
 	void RLEDecode(float * pBuffer, int stride);
 	unsigned char * EndCoding(void);
 
-	void fiboCode(unsigned int nb);
-	unsigned int fiboDecode(void);
-
 private:
 	unsigned char * pStream;
 	unsigned int nbBits;
 	unsigned int buffer;
 	unsigned int count;
+
+	void fiboCode(unsigned int nb);
+	unsigned int fiboDecode(void);
 
 	void EmptyBuffer(void);
 	void FillBuffer(void);

@@ -33,6 +33,8 @@
 
 #pragma once
 
+#include "rlecodec.h"
+
 namespace libdwic {
 
 #define LL_BAND		0
@@ -91,14 +93,22 @@ public:
 
 	void Init(unsigned int x = 0, unsigned int y = 0, int Align = ALIGN);
 
-// Utilitaires
-	void ListAllPos(void);
-	void SimpleQuant(int quant);
-	void Mean(float & Mean, float & Var);
+	// Quantification
 	unsigned int Thres(float Thres);
 	unsigned int TSUQ(float Quant, float Thres);
 	void CBand::TSUQi( float Quant, float RecLevel);
+	void SimpleQuant(int quant);
+
+	// Codage
+	void RLECode(CRLECodec * pCodec);
+	void RLEDecode(CRLECodec * pCodec);
+
+	// Statistiques
+	void Mean(float & Mean, float & Var);
 	void Correlation(float * pOut, int x, int y);
+
+	// Utilitaires
+	void ListAllPos(void);
 	void Add(float val);
 
 private:

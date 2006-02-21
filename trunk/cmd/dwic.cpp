@@ -57,12 +57,15 @@ void ProcessImage(string & ImageName, float Quant, float Thres, float RecLevel){
 
 	Wavelet.SetRange(&RangeCodec);
  	Wavelet.Transform97(ImgPixels, img.columns());
-	cout << Wavelet.TSUQ(Quant, Thres) << endl;
-	Wavelet.Code(0);
-	cout << "Taille des Cartes : " << (int)(RangeCodec.EndCoding() - pStream);
-	cout << endl;
+	cout << "Nb de Coeff non nuls : " << Wavelet.TSUQ(Quant, Thres) << endl;
+	Wavelet.CodeMap(0);
+	unsigned char * pEnd = RangeCodec.EndCoding();
+	cout << "Taille des Cartes : " << (int)(pEnd - pStream) << endl;
+	unsigned char * pEnd2 = Wavelet.CodeBand(pEnd);
+	cout << "Taille des Bandes : " << (int)(pEnd2 - pEnd) << endl;
 	RangeCodec.InitDecoder(pStream);
-	Wavelet.Decode(0);
+	Wavelet.DecodeMap(0);
+	Wavelet.DecodeBand(pEnd);
 	Wavelet.TSUQi(Quant, RecLevel);
  	Wavelet.Transform97I(ImgPixels, img.columns());
 

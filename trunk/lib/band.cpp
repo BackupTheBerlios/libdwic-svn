@@ -67,11 +67,24 @@ void CBand::Init( unsigned int x, unsigned int y, int Align )
 	}
 }
 
-/******************************************************************************
-*																			  *
-*			Utilitaires														  *
-*																			  *
-******************************************************************************/
+void CBand::RLECode(CRLECodec * pCodec)
+{
+	float * pCur = pBand;
+	for( int j = 0; j < DimY; j++){
+		pCodec->RLECode(pCur, DimX);
+		pCur += DimXAlign;
+	}
+}
+
+void CBand::RLEDecode(CRLECodec * pCodec)
+{
+	float * pCur = pBand;
+	for( int j = 0; j < DimY; j++){
+		pCodec->RLEDecode(pCur, DimX);
+		pCur += DimXAlign;
+	}
+}
+
 
 void CBand::ListAllPos( void )
 {

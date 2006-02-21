@@ -59,8 +59,10 @@ public:
 	void Transform97I(float * pImage, int Stride);
 
 	void SetRange(CRangeCodec * RangeCodec);
-	void Code(int Options = 0);
-	void Decode(int Options = 0);
+	void CodeMap(int Options = 0);
+	void DecodeMap(int Options = 0);
+	unsigned char * CodeBand(unsigned char * pBuf);
+	void DecodeBand(unsigned char * pBuf);
 
 	unsigned int Thres(float Thres);
 	unsigned int TSUQ(float Quant, float Thres);

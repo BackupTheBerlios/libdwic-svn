@@ -33,6 +33,7 @@
 
 #include "global.h"
 #include "dirwavelet.h"
+#include "rlecodec.h"
 
 namespace libdwic{
 

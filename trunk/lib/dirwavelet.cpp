@@ -134,7 +134,7 @@ void DirWavelet::SetSelected(int Sel)
 		pLow->SetSelected(Sel);
 }
 
-void DirWavelet::Code(int Options)
+void DirWavelet::CodeMap(int Options)
 {
 	DirWavelet * pCurWav = this;
 	while( pCurWav->pLow != 0 ){
@@ -150,7 +150,7 @@ void DirWavelet::Code(int Options)
 	}
 }
 
-void DirWavelet::Decode(int Options)
+void DirWavelet::DecodeMap(int Options)
 {
 	DirWavelet * pCurWav = this;
 	while( pCurWav->pLow != 0 ){
@@ -163,6 +163,36 @@ void DirWavelet::Decode(int Options)
 		pCurWav = pCurWav->pHigh;
 		pCurWav->DMap.Order0Dec();
 		pCurWav->HVMap.Order0Dec();
+	}
+}
+
+unsigned char * DirWavelet::CodeBand(unsigned char * pBuf)
+{
+	CRLECodec Codec(pBuf);
+
+	DBand.RLECode(&Codec);
+	HVBand.RLECode(&Codec);
+
+	DirWavelet * pCurWav = this;
+	while( pCurWav->pLow != 0 ){
+		pCurWav = pCurWav->pLow;
+		pCurWav->DBand.RLECode(&Codec);
+		pCurWav->HVBand.RLECode(&Codec);
+	}
+	return Codec.EndCoding();
+}
+
+void DirWavelet::DecodeBand(unsigned char * pBuf)
+{
+	CRLECodec Codec(pBuf);
+	DBand.RLEDecode(&Codec);
+	HVBand.RLEDecode(&Codec);
+
+	DirWavelet * pCurWav = this;
+	while( pCurWav->pLow != 0 ){
+		pCurWav = pCurWav->pLow;
+		pCurWav->DBand.RLEDecode(&Codec);
+		pCurWav->HVBand.RLEDecode(&Codec);
 	}
 }
 

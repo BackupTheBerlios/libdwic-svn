@@ -31,7 +31,11 @@
  * knowledge of the CeCILL v2 license and that you accept its terms.       *
  ***************************************************************************/
 
+#include <iostream>
+#include <cstdlib>
 #include "rlecodec.h"
+
+using namespace std;
 
 namespace libdwic {
 
@@ -46,19 +50,16 @@ CRLECodec::~CRLECodec()
 
 void CRLECodec::RLECode(float * pBuffer, int stride)
 {
-	unsigned int cnt = count;
-
 	for( int i = 0; i < stride; i++){
 		if (pBuffer[i] == 0.) {
-			cnt++;
+			count++;
 		} else {
-			if (cnt != 0) {
+			if (count != 0) {
 				if (nbBits >= 32)
 					EmptyBuffer();
 				buffer <<= 1;
 				nbBits++;
-				fiboCode(cnt);
-				cnt = 0;
+				fiboCode(count);
 				if (nbBits >= 32)
 					EmptyBuffer();
 				int Value = (int) pBuffer[i];
@@ -69,6 +70,7 @@ void CRLECodec::RLECode(float * pBuffer, int stride)
 				}
 				nbBits++;
 				fiboCode(Value);
+				count = 0;
 			} else {
 				if (nbBits >= 31)
 					EmptyBuffer();
@@ -83,79 +85,157 @@ void CRLECodec::RLECode(float * pBuffer, int stride)
 			}
 		}
 	}
-	count = cnt;
 }
 
 void CRLECodec::RLEDecode(float * pBuffer, int stride)
 {
-	unsigned int cnt = count;
-
 	for( int i = 0; i < stride; i++){
-		if (cnt == (unsigned int) -1){
-			cnt = 0;
+		if (count == (unsigned int) -1){
+			count = 0;
 			if (nbBits < 1)
 				FillBuffer();
 			nbBits--;
 			if (buffer & (1 << nbBits)) {
-				pBuffer[i] = (float) -fiboDecode();
+				int n = fiboDecode();
+				if (pBuffer[i] != - (float) n)
+					throw 1;
 			} else {
-				pBuffer[i] = (float) fiboDecode();
+				int n = fiboDecode();
+				if (pBuffer[i] != (float) n)
+					throw 1;
 			}
 			continue;
 		}
-		if (cnt > 0) {
+
+		if (count > 0) {
 			do {
-				pBuffer[i] = 0.;
+				if (pBuffer[i] != 0.)
+					throw 1;
 				i++;
-				cnt--;
-			} while( i < stride && cnt > 0 ) ;
-			if (cnt == 0) {
-				if (i < stride){
-					if (nbBits < 1)
-						FillBuffer();
-					nbBits--;
-					if (buffer & (1 << nbBits)) {
-						pBuffer[i] = (float) -fiboDecode();
-					} else {
-						pBuffer[i] = (float) fiboDecode();
-					}
-				} else {
-					cnt = (unsigned int) -1;
-					break;
-				}
+				count--;
+			} while( i < stride && count > 0 ) ;
+			if (count == 0) {
+				i--;
+				count = (unsigned int) -1;
+				continue;
 			} else {
 				break;
 			}
 		}
 
-		if (nbBits < 1)
+		if (nbBits < 2)
 			FillBuffer();
 		nbBits--;
 		if (buffer & (1 << nbBits)) {
-			if (nbBits < 1)
-				FillBuffer();
 			nbBits--;
 			if (buffer & (1 << nbBits)) {
-				pBuffer[i] = (float) -fiboDecode();
+				int n = fiboDecode();
+				if (pBuffer[i] != - (float) n)
+					throw 1;
 			} else {
-				pBuffer[i] = (float) fiboDecode();
+				int n = fiboDecode();
+				if (pBuffer[i] != (float) n)
+					throw 1;
 			}
 		} else {
-			cnt = fiboDecode();
-			pBuffer[i] = 0.;
+			count = fiboDecode();
+			i--;
 		}
 	}
-	count = cnt;
 }
+
+static const unsigned int nbFibo[32] =
+{
+	1,
+	2,
+	3,
+	5,
+	8,
+	13,
+	21,
+	34,
+	55,
+	89,
+	144,
+	233,
+	377,
+	610,
+	987,
+	1597,
+	2584,
+	4181,
+	6765,
+	10946,
+	17711,
+	28657,
+	46368,
+	75025,
+	121393,
+	196418,
+	317811,
+	514229,
+	832040,
+	1346269,
+	2178309,
+	3524578
+};
+
 
 void CRLECodec::fiboCode(unsigned int nb)
 {
+	if ( nbBits >= 8 )
+		EmptyBuffer();
 
+	int i = 1, t;
+	for( ; nbFibo[i] <= nb; i++){
+	}
+	int l = i + 1;
+	i--;
+	nb -= nbFibo[i];
+
+	register unsigned int r = 0xC0000000;
+	t = i;
+	i--;
+	while( nb > 0 ){
+		i--;
+		if (nbFibo[i] <= nb){
+			nb -= nbFibo[i];
+			r >>= t-i;
+			r |= 0x80000000;
+			t = i;
+			i--;
+		}
+	}
+	buffer = (buffer << l) | (r >> (33 - l + i));
+	nbBits += l;
 }
 
 unsigned int CRLECodec::fiboDecode(void)
 {
+	if ( nbBits < 24 )
+		FillBuffer();
 
+	unsigned int t = 3 << (nbBits - 2);
+	int l = 2;
+	while( (buffer & t) != t ){
+		t >>= 1;
+		l++;
+	}
+	nbBits -= l;
+	l -= 2;
+	unsigned int nb = nbFibo[l];
+	t = 1 << (nbBits + 2);
+	l--;
+	while( l > 0 ){
+		l--;
+		t <<= 1;
+		if (buffer & t){
+			nb += nbFibo[l];
+			t <<= 1;
+			l--;
+		}
+	}
+	return nb;
 }
 
 void CRLECodec::EmptyBuffer(void)
@@ -173,7 +253,25 @@ void CRLECodec::FillBuffer(void)
 		nbBits += 8;
 		buffer = (buffer << 8) | pStream[0];
 		pStream++;
-	} while( nbBits < 24 );
+	} while( nbBits <= 24 );
+}
+
+unsigned char * CRLECodec::EndCoding(void){
+	if (count != 0) {
+		if (nbBits >= 32)
+			EmptyBuffer();
+		buffer <<= 1;
+		nbBits++;
+		fiboCode(count);
+		count = 0;
+	}
+	if ( nbBits >= 8 )
+		EmptyBuffer();
+	if ( nbBits > 0 ) {
+		pStream[0] = (unsigned char) (buffer << (8-nbBits));
+		pStream++;
+	}
+	return pStream;
 }
 
 }
