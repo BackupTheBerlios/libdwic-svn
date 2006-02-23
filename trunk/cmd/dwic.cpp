@@ -31,47 +31,89 @@
  * knowledge of the CeCILL v2 license and that you accept its terms.       *
  ***************************************************************************/
 
+#include <fstream>
 #include <iostream>
 #include <cstdlib>
 
+#include <unistd.h>
 #include <Magick++.h>
-#include <string.h>
+
 #include <libdwic.h>
 
 using namespace std;
 using namespace Magick;
 using namespace libdwic;
 
-void ProcessImage(string & ImageName, float Quant, float Thres, float RecLevel){
-	Image img( ImageName );
-	img.type( GrayscaleType );
+void CompressImage(string & infile, string & outfile, float Quant, float Thres){
+	ofstream oFile( outfile.c_str() , ios::out );
+	oFile << "DWIC";
 
+	Image img( infile );
+	img.type( GrayscaleType );
 	float * ImgPixels = new float [img.columns() * img.rows()];
 	unsigned char * pStream = new unsigned char[img.columns() * img.rows()];
 
-	img.write(0, 0, img.columns(), img.rows(),
-			  "R", FloatPixel, ImgPixels);
+	img.write(0, 0, img.columns(), img.rows(), "R", FloatPixel, ImgPixels);
+
+	unsigned short tmp = img.columns();
+	oFile.write((char *)&tmp, sizeof(unsigned short));
+	tmp = img.rows();
+	oFile.write((char *)&tmp, sizeof(unsigned short));
 
  	DirWavelet Wavelet(img.columns(), img.rows(),5);
-	CRangeCodec RangeCodec(pStream, 0);
+ 	CRangeCodec RangeCodec(0, 0);
+ 	Wavelet.SetRange(&RangeCodec);
 
-	Wavelet.SetRange(&RangeCodec);
  	Wavelet.Transform97(ImgPixels, img.columns());
-	cout << "Nb de Coeff non nuls : " << Wavelet.TSUQ(Quant, Thres) << endl;
-	Wavelet.CodeMap(0);
-	unsigned char * pEnd = RangeCodec.EndCoding();
-	cout << "Taille des Cartes : " << (int)(pEnd - pStream) << endl;
-	unsigned char * pEnd2 = Wavelet.CodeBand(pEnd);
-	cout << "Taille des Bandes : " << (int)(pEnd2 - pEnd) << endl;
-	RangeCodec.InitDecoder(pStream);
-	Wavelet.DecodeMap(0);
-	Wavelet.DecodeBand(pEnd);
+	Wavelet.TSUQ(Quant, Thres);
+
+	unsigned char * pEnd = Wavelet.CodeBand(pStream);
+	RangeCodec.InitCoder(0, pEnd);
+ 	Wavelet.CodeMap(0);
+	pEnd = RangeCodec.EndCoding();
+	oFile.write((char *) pStream, (pEnd - pStream));
+
+	oFile.close();
+
+	delete[] ImgPixels;
+	delete[] pStream;
+}
+
+void DecompressImage(string & infile, string & outfile, float Quant,
+					 float RecLevel){
+	ifstream iFile( infile.c_str() , ios::in );
+	char * magic[5] = {0,0,0,0,0};
+
+	iFile.read((char *)magic, 4);
+
+	unsigned short width, heigth;
+	iFile.read((char *) &width, sizeof(unsigned short));
+	iFile.read((char *) &heigth, sizeof(unsigned short));
+
+	cout << (char *)magic << endl;
+	cout << width << endl;
+	cout << heigth << endl;
+
+	float * ImgPixels = new float [width * heigth];
+	unsigned char * pStream = new unsigned char[width * heigth];
+
+	iFile.read((char *) pStream, width * heigth);
+
+ 	DirWavelet Wavelet(width, heigth,5);
+ 	CRangeCodec RangeCodec(0);
+ 	Wavelet.SetRange(&RangeCodec);
+
+ 	unsigned char * pEnd = Wavelet.DecodeBand(pStream);
+ 	RangeCodec.InitDecoder(pEnd);
+ 	Wavelet.DecodeMap(0);
+
 	Wavelet.TSUQi(Quant, RecLevel);
- 	Wavelet.Transform97I(ImgPixels, img.columns());
+ 	Wavelet.Transform97I(ImgPixels, width);
 
- 	img.read(img.columns(), img.rows(), "R", FloatPixel, ImgPixels);
+	Image img(width, heigth, "R", FloatPixel, ImgPixels);
+	img.type( GrayscaleType );
 
- 	img.write(ImageName + ".97.png");
+	img.write(outfile);
 
 	delete[] ImgPixels;
 	delete[] pStream;
@@ -79,21 +121,70 @@ void ProcessImage(string & ImageName, float Quant, float Thres, float RecLevel){
 
 int main( int argc, char *argv[] )
 {
-// 	cout << "Nombre d'arguments : " << argc << endl;
-	if (argc > 1) {
-// 		cout << "Nom du programme : " << argv[0] << endl;
-// 		cout << "Image à lire : " << argv[1] << endl;
-// 		cout << "Lecture de l'image" << endl;
-		try {
-			string ImgName = argv[1];
-			float ThresRatio = atof(argv[3]);
- 			float Quant = atof(argv[2]);
- 			float RecLevelRatio = atof(argv[4]);
-			ProcessImage(ImgName, Quant, ThresRatio * Quant, RecLevelRatio * Quant);
-		} catch ( Exception & error_ ) {
-			cout << "Exception : " << error_.what() << endl;
-			return -1;
+	int c;
+	extern char * optarg;
+	extern int optind, opterr;
+	char * progname = argv[0];
+	string infile;
+	string outfile;
+	float ThresRatio = 0.75;
+	float Quant = 0.05;
+	float RecLevelRatio = 0;
+
+	while ((c = getopt(argc , argv, "i:o:q:r:t:")) != -1) {
+		switch (c) {
+			case 'i':
+				infile = optarg;
+				break;
+			case 'o':
+				outfile = optarg;
+				break;
+			case 'q':
+				Quant = atof(optarg);
+				break;
+			case 'r':
+				RecLevelRatio = atof(optarg);
+				break;
+			case 't':
+				ThresRatio = atof(optarg);
+				break;
 		}
 	}
+	if (infile.length() == 0) {
+		cout << "An input file name must be specified (option -i)" << endl;
+		exit(1);
+	}
+
+	int mode = 0; // 0 = code , 1 = decode
+	int loc;
+	if ((loc = infile.rfind(".dwi", 4)) != string::npos){
+		// mode décodage
+		mode = 1;
+		if (outfile.length() == 0) {
+			outfile = infile;
+			outfile.resize(loc);
+			outfile.append(".png");
+		}
+	} else {
+		// mode codage
+		mode = 0;
+		if (outfile.length() == 0) {
+			outfile = infile;
+			loc = infile.find_last_of(".", 5);
+			int loc2 = infile.find_last_of("/");
+			if (loc != string::npos && loc2 < loc) {
+				outfile.resize(loc);
+			}
+			outfile.append(".dwi");
+		}
+	}
+
+
+	if (mode == 0) {
+		CompressImage(infile, outfile, Quant, ThresRatio * Quant);
+	} else {
+		DecompressImage(infile, outfile, Quant, RecLevelRatio * Quant);
+	}
+
 	return EXIT_SUCCESS;
 }

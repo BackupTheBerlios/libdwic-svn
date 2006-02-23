@@ -62,7 +62,7 @@ public:
 	void CodeMap(int Options = 0);
 	void DecodeMap(int Options = 0);
 	unsigned char * CodeBand(unsigned char * pBuf);
-	void DecodeBand(unsigned char * pBuf);
+	unsigned char * DecodeBand(unsigned char * pBuf);
 
 	unsigned int Thres(float Thres);
 	unsigned int TSUQ(float Quant, float Thres);

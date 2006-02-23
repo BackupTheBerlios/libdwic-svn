@@ -96,21 +96,16 @@ void CRLECodec::RLEDecode(float * pBuffer, int stride)
 				FillBuffer();
 			nbBits--;
 			if (buffer & (1 << nbBits)) {
-				int n = fiboDecode();
-				if (pBuffer[i] != - (float) n)
-					throw 1;
+				pBuffer[i] = - (float) fiboDecode();
 			} else {
-				int n = fiboDecode();
-				if (pBuffer[i] != (float) n)
-					throw 1;
+				pBuffer[i] = (float) fiboDecode();
 			}
 			continue;
 		}
 
 		if (count > 0) {
 			do {
-				if (pBuffer[i] != 0.)
-					throw 1;
+				pBuffer[i] = 0.;
 				i++;
 				count--;
 			} while( i < stride && count > 0 ) ;
@@ -129,13 +124,9 @@ void CRLECodec::RLEDecode(float * pBuffer, int stride)
 		if (buffer & (1 << nbBits)) {
 			nbBits--;
 			if (buffer & (1 << nbBits)) {
-				int n = fiboDecode();
-				if (pBuffer[i] != - (float) n)
-					throw 1;
+				pBuffer[i] = - (float) fiboDecode();
 			} else {
-				int n = fiboDecode();
-				if (pBuffer[i] != (float) n)
-					throw 1;
+				pBuffer[i] = (float) fiboDecode();
 			}
 		} else {
 			count = fiboDecode();
@@ -272,6 +263,10 @@ unsigned char * CRLECodec::EndCoding(void){
 		pStream++;
 	}
 	return pStream;
+}
+
+unsigned char * CRLECodec::EndDecoding(void){
+	return pStream - (nbBits / 8);
 }
 
 }

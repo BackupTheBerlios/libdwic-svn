@@ -53,6 +53,7 @@ public:
 	void RLECode(float * pBuffer, int stride);
 	void RLEDecode(float * pBuffer, int stride);
 	unsigned char * EndCoding(void);
+	unsigned char * EndDecoding(void);
 
 private:
 	unsigned char * pStream;

@@ -182,7 +182,7 @@ unsigned char * DirWavelet::CodeBand(unsigned char * pBuf)
 	return Codec.EndCoding();
 }
 
-void DirWavelet::DecodeBand(unsigned char * pBuf)
+unsigned char * DirWavelet::DecodeBand(unsigned char * pBuf)
 {
 	CRLECodec Codec(pBuf);
 	DBand.RLEDecode(&Codec);
@@ -194,6 +194,7 @@ void DirWavelet::DecodeBand(unsigned char * pBuf)
 		pCurWav->DBand.RLEDecode(&Codec);
 		pCurWav->HVBand.RLEDecode(&Codec);
 	}
+	return Codec.EndDecoding();
 }
 
 /**
