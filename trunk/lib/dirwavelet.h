@@ -55,8 +55,10 @@ public:
 	void LazyTransformI(float * pImage, int Stride);
 	void Transform53(float * pImage, int Stride);
 	void Transform53I(float * pImage, int Stride);
+	void SetWeight53(void);
 	void Transform97(float * pImage, int Stride);
 	void Transform97I(float * pImage, int Stride);
+	void SetWeight97(void);
 
 	void SetRange(CRangeCodec * RangeCodec);
 	void CodeMap(int Options = 0);
@@ -66,7 +68,8 @@ public:
 
 	unsigned int Thres(float Thres);
 	unsigned int TSUQ(float Quant, float Thres);
-	void DirWavelet::TSUQi(float Quant, float RecLevel);
+	void TSUQi(float Quant, float RecLevel);
+	void Saturate(float * pImage, int stride);
 
 	void Stats(void);
 	void SetSelected(int Sel);

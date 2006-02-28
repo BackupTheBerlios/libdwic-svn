@@ -183,7 +183,6 @@ unsigned int CBand::TSUQ( float Quant, float Thres)
 void CBand::TSUQi( float Quant, float RecLevel)
 {
 	int Diff = DimXAlign - DimX;
-	float iQuant = Weight / Quant;
 	Quant /= Weight;
 	RecLevel /= Weight;
 	for ( int j = 0, n = 0; j < DimY ; j ++ ) {

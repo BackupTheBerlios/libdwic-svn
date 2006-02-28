@@ -60,7 +60,8 @@ void CompressImage(string & infile, string & outfile, float Quant, float Thres){
 	tmp = img.rows();
 	oFile.write((char *)&tmp, sizeof(unsigned short));
 
- 	DirWavelet Wavelet(img.columns(), img.rows(),5);
+	DirWavelet Wavelet(img.columns(), img.rows(), 5);
+	Wavelet.SetWeight97();
  	CRangeCodec RangeCodec(0, 0);
  	Wavelet.SetRange(&RangeCodec);
 
@@ -75,6 +76,12 @@ void CompressImage(string & infile, string & outfile, float Quant, float Thres){
 
 	oFile.close();
 
+// 	Wavelet.TSUQi(Quant, 0);
+// 	Wavelet.Transform97I(ImgPixels, img.columns());
+//
+// 	img.read(img.columns(), img.rows(), "R", FloatPixel, ImgPixels);
+// 	img.write("./test_encode.png");
+
 	delete[] ImgPixels;
 	delete[] pStream;
 }
@@ -82,24 +89,24 @@ void CompressImage(string & infile, string & outfile, float Quant, float Thres){
 void DecompressImage(string & infile, string & outfile, float Quant,
 					 float RecLevel){
 	ifstream iFile( infile.c_str() , ios::in );
-	char * magic[5] = {0,0,0,0,0};
+	char magic[4] = {0,0,0,0};
 
-	iFile.read((char *)magic, 4);
+	iFile.read(magic, 4);
+
+	if (magic[0] != 'D' || magic[1] != 'W' || magic[2]!= 'I' || magic[3] != 'C')
+		throw 2;
 
 	unsigned short width, heigth;
 	iFile.read((char *) &width, sizeof(unsigned short));
 	iFile.read((char *) &heigth, sizeof(unsigned short));
 
-	cout << (char *)magic << endl;
-	cout << width << endl;
-	cout << heigth << endl;
-
-	float * ImgPixels = new float [width * heigth];
+	float * ImgPixels = new float [width * heigth * 3];
 	unsigned char * pStream = new unsigned char[width * heigth];
 
 	iFile.read((char *) pStream, width * heigth);
 
- 	DirWavelet Wavelet(width, heigth,5);
+	DirWavelet Wavelet(width, heigth, 5);
+	Wavelet.SetWeight97();
  	CRangeCodec RangeCodec(0);
  	Wavelet.SetRange(&RangeCodec);
 
@@ -110,8 +117,13 @@ void DecompressImage(string & infile, string & outfile, float Quant,
 	Wavelet.TSUQi(Quant, RecLevel);
  	Wavelet.Transform97I(ImgPixels, width);
 
-	Image img(width, heigth, "R", FloatPixel, ImgPixels);
+	for( int i = width * heigth - 1, j = width * heigth * 3 - 3; i > 0 ; i--){
+		ImgPixels[j] = ImgPixels[j+1] = ImgPixels[j+2] = ImgPixels[i];
+		j-=3;
+	}
+	Image img(width, heigth, "RGB", FloatPixel, ImgPixels);
 	img.type( GrayscaleType );
+	img.display();
 
 	img.write(outfile);
 
@@ -157,7 +169,7 @@ int main( int argc, char *argv[] )
 
 	int mode = 0; // 0 = code , 1 = decode
 	int loc;
-	if ((loc = infile.rfind(".dwi", 4)) != string::npos){
+	if ((loc = infile.rfind(".dwi", string::npos, 4)) != string::npos){
 		// mode décodage
 		mode = 1;
 		if (outfile.length() == 0) {
@@ -170,7 +182,7 @@ int main( int argc, char *argv[] )
 		mode = 0;
 		if (outfile.length() == 0) {
 			outfile = infile;
-			loc = infile.find_last_of(".", 5);
+			loc = infile.find_last_of(".", string::npos, 5);
 			int loc2 = infile.find_last_of("/");
 			if (loc != string::npos && loc2 < loc) {
 				outfile.resize(loc);
