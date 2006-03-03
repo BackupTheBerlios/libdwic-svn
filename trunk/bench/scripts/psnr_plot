@@ -1,0 +1,53 @@
+#!/bin/bash
+
+Q=( 1 0.5 0.2 0.1 0.05 0.025 0.015 )
+Qu=( 10 20 30 40 50 60 70 80 90 93 96 )
+
+
+IN_IMAGE="lena.png"
+OUT_IMAGE="test.png"
+
+for IN_IMAGE in *.png ; do
+
+	OUT_FILE="test.dwi"
+	BENCH_FILE="${IN_IMAGE%.png}.dwic.dat"
+	echo "# Image : $IN_IMAGE" > $BENCH_FILE
+	for q in ${Q[@]} ; do
+		dwic -i $IN_IMAGE -o $OUT_FILE -q $q
+		tmp=( `ls -l $OUT_FILE` )
+		file_size=${tmp[4]}
+		dwic -i $OUT_FILE -o $OUT_IMAGE -q $q
+		tmp=( `compare -metric PSNR $IN_IMAGE $OUT_IMAGE /dev/null | grep dB` )
+		psnr=${tmp[0]}
+		echo "$file_size	$psnr" >> $BENCH_FILE
+	done
+	rm $OUT_FILE $OUT_IMAGE
+	
+# 	OUT_FILE="test.jpg"
+# 	BENCH_FILE="${IN_IMAGE%.png}.jpeg.dat"
+# 	echo "# Image : $IN_IMAGE" > $BENCH_FILE
+# 	for q in ${Qu[@]} ; do
+# 		convert $IN_IMAGE -quality $q $OUT_FILE
+# 		tmp=( `ls -l $OUT_FILE` )
+# 		file_size=${tmp[4]}
+# 		convert $OUT_FILE $OUT_IMAGE
+# 		tmp=( `compare -metric PSNR $IN_IMAGE $OUT_IMAGE /dev/null | grep dB` )
+# 		psnr=${tmp[0]}
+# 		echo "$file_size	$psnr" >> $BENCH_FILE
+# 	done
+# 	rm $OUT_FILE $OUT_IMAGE
+# 	
+# 	OUT_FILE="test.jp2"
+# 	BENCH_FILE="${IN_IMAGE%.png}.jp2k.dat"
+# 	echo "# Image : $IN_IMAGE" > $BENCH_FILE
+# 	for q in ${Qu[@]} ; do
+# 		convert $IN_IMAGE -quality $q $OUT_FILE
+# 		tmp=( `ls -l $OUT_FILE` )
+# 		file_size=${tmp[4]}
+# 		convert $OUT_FILE $OUT_IMAGE
+# 		tmp=( `compare -metric PSNR $IN_IMAGE $OUT_IMAGE /dev/null | grep dB` )
+# 		psnr=${tmp[0]}
+# 		echo "$file_size	$psnr" >> $BENCH_FILE
+# 	done
+# 	rm $OUT_FILE $OUT_IMAGE
+done

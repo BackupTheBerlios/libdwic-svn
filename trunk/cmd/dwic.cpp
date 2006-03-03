@@ -123,7 +123,7 @@ void DecompressImage(string & infile, string & outfile, float Quant,
 	}
 	Image img(width, heigth, "RGB", FloatPixel, ImgPixels);
 	img.type( GrayscaleType );
-	img.display();
+	// img.display();
 
 	img.write(outfile);
 
