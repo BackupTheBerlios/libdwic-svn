@@ -41,7 +41,8 @@ typedef union DirValue{
 	struct {
 		unsigned short H_D1;
 		unsigned short V_D2;
-		unsigned int Selected;
+		unsigned short Selected;
+		unsigned short Old;
 	};
 	unsigned short Values[4];
 	short sValues[4];
@@ -64,6 +65,10 @@ public:
 	void SetRange(CRangeCodec * RangeCodec);
 	void Order0Code(void);
 	void Order0Dec(void);
+	void Neighbor4Code(void);
+	void Neighbor4Dec(void);
+
+	void NeighborOptimise(float const lambda);
 
 	unsigned int DimX;		// Width of the map (blocks)
 	unsigned int DimY;		// Height of the map (blocks)

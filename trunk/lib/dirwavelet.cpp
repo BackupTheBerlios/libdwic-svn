@@ -141,12 +141,22 @@ void DirWavelet::CodeMap(int Options)
 		pCurWav = pCurWav->pLow;
 	}
 
-	pCurWav->DMap.Order0Code();
-	pCurWav->HVMap.Order0Code();
-	while( pCurWav->pHigh != 0 ){
-		pCurWav = pCurWav->pHigh;
+	if (Options == 0) {
 		pCurWav->DMap.Order0Code();
 		pCurWav->HVMap.Order0Code();
+		while( pCurWav->pHigh != 0 ){
+			pCurWav = pCurWav->pHigh;
+			pCurWav->DMap.Order0Code();
+			pCurWav->HVMap.Order0Code();
+		}
+	} else if (Options == 1) {
+		pCurWav->DMap.Neighbor4Code();
+		pCurWav->HVMap.Neighbor4Code();
+		while( pCurWav->pHigh != 0 ){
+			pCurWav = pCurWav->pHigh;
+			pCurWav->DMap.Neighbor4Code();
+			pCurWav->HVMap.Neighbor4Code();
+		}
 	}
 }
 
@@ -157,12 +167,22 @@ void DirWavelet::DecodeMap(int Options)
 		pCurWav = pCurWav->pLow;
 	}
 
-	pCurWav->DMap.Order0Dec();
-	pCurWav->HVMap.Order0Dec();
-	while( pCurWav->pHigh != 0 ){
-		pCurWav = pCurWav->pHigh;
+	if (Options == 0) {
 		pCurWav->DMap.Order0Dec();
 		pCurWav->HVMap.Order0Dec();
+		while( pCurWav->pHigh != 0 ){
+			pCurWav = pCurWav->pHigh;
+			pCurWav->DMap.Order0Dec();
+			pCurWav->HVMap.Order0Dec();
+		}
+	} else if (Options == 1) {
+		pCurWav->DMap.Neighbor4Dec();
+		pCurWav->HVMap.Neighbor4Dec();
+		while( pCurWav->pHigh != 0 ){
+			pCurWav = pCurWav->pHigh;
+			pCurWav->DMap.Neighbor4Dec();
+			pCurWav->HVMap.Neighbor4Dec();
+		}
 	}
 }
 
@@ -823,6 +843,8 @@ void DirWavelet::SetWeight53(void)
 void DirWavelet::Transform97(float * pImage, int Stride)
 {
 	HVMap.GetImageDir(pImage, Stride);
+	HVMap.NeighborOptimise(0.000001 * HVBand.Weight * HVBand.Weight);
+	// ...
 	LiftBand(pImage, Stride, DimX, DimY, ALPHA, HVMap.pMap, LiftEdgeOdd,
 			 LiftInOdd);
 	LiftBand(pImage, Stride, DimX, DimY, BETA, HVMap.pMap, LiftEdgeEven,
@@ -832,6 +854,8 @@ void DirWavelet::Transform97(float * pImage, int Stride)
 	LiftBand(pImage, Stride, DimX, DimY, DELTA, HVMap.pMap, LiftEdgeEven,
 			 LiftInEven);
 	DMap.GetImageDirDiag(pImage, Stride);
+	DMap.NeighborOptimise(0.000001 * DBand.Weight * DBand.Weight);
+	// ...
 	LiftBand(pImage, Stride, DimX, DimY, ALPHA, DMap.pMap, LiftEdgeDiagOdd,
 			 LiftInDiagOdd);
 	LiftBand(pImage, Stride, DimX, DimY, BETA, DMap.pMap, LiftEdgeDiagEven,

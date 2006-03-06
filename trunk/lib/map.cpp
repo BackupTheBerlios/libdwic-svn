@@ -98,6 +98,91 @@ void CMap::Order0Dec(void)
 	}
 }
 
+void CMap::Neighbor4Code(void)
+{
+	DirValue * pCur = pMap;
+	unsigned int context;
+	DirCodec.InitModel();
+
+	DirCodec.Code(pCur[0].Selected, 2);
+	for( int i = 1; i < DimX; i++ ){
+		context = pCur[i - 1].Selected * 2 + 1;
+		DirCodec.Code(pCur[i].Selected, context);
+	}
+
+	for( int j = 1; j < DimY; j++){
+		pCur += DimX;
+		context = (pCur[-DimX].Selected + pCur[1 - DimX].Selected) * 2;
+		DirCodec.Code(pCur[0].Selected, context);
+		for( int i = 1; i < DimX; i++ ){
+			context = pCur[i - 1].Selected + pCur[i - 1 - DimX].Selected
+					+ pCur[i - DimX].Selected + pCur[i + 1 - DimX].Selected;
+			DirCodec.Code(pCur[i].Selected, context);
+		}
+	}
+}
+
+void CMap::Neighbor4Dec(void)
+{
+	DirValue * pCur = pMap;
+	unsigned int context;
+	DirCodec.InitModel();
+
+	pCur[0].Selected = DirCodec.Decode(2);
+	for( int i = 1; i < DimX; i++ ){
+		context = pCur[i - 1].Selected * 2 + 1;
+		pCur[i].Selected = DirCodec.Decode(context);
+	}
+
+	for( int j = 1; j < DimY; j++){
+		pCur += DimX;
+		context = (pCur[-DimX].Selected + pCur[1 - DimX].Selected) * 2;
+		pCur[0].Selected = DirCodec.Decode(context);
+		for( int i = 1; i < DimX; i++ ){
+			context = pCur[i - 1].Selected + pCur[i - 1 - DimX].Selected
+					+ pCur[i - DimX].Selected + pCur[i + 1 - DimX].Selected;
+			pCur[i].Selected = DirCodec.Decode(context);
+		}
+	}
+}
+
+// rate^2 * cst
+static const unsigned int rate[9][2] =
+{
+	{7, 17806},
+	{71, 6842},
+	{226, 3497},
+	{517, 1901},
+	{1024, 1024},
+	{1901, 517},
+	{3497, 226},
+	{6842, 71},
+	{17806, 7}
+};
+
+void CMap::NeighborOptimise(float const lambda)
+{
+	DirValue * pCur = pMap;
+	unsigned int context;
+
+	pCur += DimX;
+
+	for( int j = 1; j < DimY - 1; j++){
+		for( int i = 1; i < DimX - 1; i++ ){
+			context = pCur[i - 1].Old + pCur[i + 1].Selected
+					+ pCur[i - 1 - DimX].Old + pCur[i - DimX].Old
+					+ pCur[i + 1 - DimX].Old + pCur[i - 1 + DimX].Selected
+					+ pCur[i + DimX].Selected + pCur[i + 1 + DimX].Selected;
+			float min = rate[context][0] + lambda * pCur[i].H_D1;
+			pCur[i].Old = pCur[i].Selected;
+			pCur[i].Selected = 0;
+			if (min > (rate[context][1] + lambda * pCur[i].V_D2))
+				pCur[i].Selected = 1;
+		}
+		pCur += DimX;
+	}
+}
+
 void CMap::GetImageDir(float * pBlock, int Stride)
 {
 	DirValue * pDir = this->pMap;
