@@ -70,7 +70,7 @@ void CompressImage(string & infile, string & outfile, float Quant, float Thres){
 
 	unsigned char * pEnd = Wavelet.CodeBand(pStream);
 	RangeCodec.InitCoder(0, pEnd);
- 	Wavelet.CodeMap(1);
+ 	Wavelet.CodeMap(2);
 	pEnd = RangeCodec.EndCoding();
 	oFile.write((char *) pStream, (pEnd - pStream));
 
@@ -112,7 +112,7 @@ void DecompressImage(string & infile, string & outfile, float Quant,
 
  	unsigned char * pEnd = Wavelet.DecodeBand(pStream);
  	RangeCodec.InitDecoder(pEnd);
- 	Wavelet.DecodeMap(1);
+ 	Wavelet.DecodeMap(2);
 
 	Wavelet.TSUQi(Quant, RecLevel);
  	Wavelet.Transform97I(ImgPixels, width);

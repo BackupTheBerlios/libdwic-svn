@@ -65,10 +65,14 @@ public:
 	void SetRange(CRangeCodec * RangeCodec);
 	void Order0Code(void);
 	void Order0Dec(void);
-	void Neighbor4Code(void);
-	void Neighbor4Dec(void);
+	void Neighbor4Code(int CodeTree = 0);
+	void Neighbor4Dec(int DecodeTree = 0);
+	void TreeCode(void);
+	void TreeDec(void);
 
-	void NeighborOptimise(float const lambda);
+	void OptimiseDir(float const lambda);
+	void SelectDir(void);
+	void TreeSum(void);
 
 	unsigned int DimX;		// Width of the map (blocks)
 	unsigned int DimY;		// Height of the map (blocks)
@@ -80,7 +84,9 @@ public:
 private:
 
 	CMap * pLow, * pHigh;	// Pointers to low and high direction map
-	CBitCodec DirCodec;
+	CBitCodec DirCodec;		// Context coder for directions
+	CBitCodec TreeCodec;	// Context coder for the tree
+	unsigned int AllOnes;
 
 	static void GetDirBlock(float * pBlock, int Stride, DirValue * Result);
 	static void GetDirBlock(float * pBlock, int Stride, DirValue * Result
