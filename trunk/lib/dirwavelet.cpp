@@ -137,6 +137,15 @@ void DirWavelet::SetSelected(int Sel)
 void DirWavelet::CodeMap(int Options)
 {
 	DirWavelet * pCurWav = this;
+
+	if (Options == 2){
+		while( pCurWav->pLow != 0 ){
+			pCurWav = pCurWav->pLow;
+			pCurWav->HVMap.TreeSum();
+			pCurWav->DMap.TreeSum();
+		}
+	}
+
 	while( pCurWav->pLow != 0 ){
 		pCurWav = pCurWav->pLow;
 	}
