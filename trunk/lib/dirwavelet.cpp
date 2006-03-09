@@ -174,6 +174,14 @@ void DirWavelet::CodeMap(int Options)
 			pCurWav->DMap.TreeCode();
 			pCurWav->HVMap.TreeCode();
 		}
+	} else if (Options == 3) {
+		pCurWav->DMap.Neighbor4Code();
+		pCurWav->HVMap.Neighbor4Code();
+		while( pCurWav->pHigh != 0 ){
+			pCurWav = pCurWav->pHigh;
+			pCurWav->DMap.TreeCode2();
+			pCurWav->HVMap.TreeCode2();
+		}
 	}
 }
 
@@ -207,6 +215,14 @@ void DirWavelet::DecodeMap(int Options)
 			pCurWav = pCurWav->pHigh;
 			pCurWav->DMap.TreeDec();
 			pCurWav->HVMap.TreeDec();
+		}
+	} else if (Options == 3) {
+		pCurWav->DMap.Neighbor4Dec();
+		pCurWav->HVMap.Neighbor4Dec();
+		while( pCurWav->pHigh != 0 ){
+			pCurWav = pCurWav->pHigh;
+			pCurWav->DMap.TreeDec2();
+			pCurWav->HVMap.TreeDec2();
 		}
 	}
 }
@@ -869,7 +885,10 @@ void DirWavelet::Transform97(float * pImage, int Stride)
 {
 	HVMap.GetImageDir(pImage, Stride);
 	HVMap.SelectDir();
- 	HVMap.OptimiseDir(4 * HVBand.Weight);
+	if (pHigh)
+		HVMap.OptimiseDirTree(4 * HVBand.Weight);
+	else
+		HVMap.OptimiseDir(4 * HVBand.Weight);
 
 	LiftBand(pImage, Stride, DimX, DimY, ALPHA, HVMap.pMap, LiftEdgeOdd,
 			 LiftInOdd);
@@ -881,7 +900,10 @@ void DirWavelet::Transform97(float * pImage, int Stride)
 			 LiftInEven);
 	DMap.GetImageDirDiag(pImage, Stride);
 	DMap.SelectDir();
- 	DMap.OptimiseDir(4 * DBand.Weight);
+	if (pHigh)
+		DMap.OptimiseDirTree(4 * DBand.Weight);
+	else
+		DMap.OptimiseDir(4 * DBand.Weight);
 
 	LiftBand(pImage, Stride, DimX, DimY, ALPHA, DMap.pMap, LiftEdgeDiagOdd,
 			 LiftInDiagOdd);

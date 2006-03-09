@@ -69,8 +69,11 @@ public:
 	void Neighbor4Dec(int DecodeTree = 0);
 	void TreeCode(void);
 	void TreeDec(void);
+	void TreeCode2(void);
+	void TreeDec2(void);
 
 	void OptimiseDir(float const lambda);
+	void OptimiseDirTree(float const lambda);
 	void SelectDir(void);
 	void TreeSum(void);
 

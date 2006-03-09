@@ -313,6 +313,84 @@ void CMap::TreeDec(void)
 	}
 }
 
+void CMap::TreeCode2(void)
+{
+	DirValue * pCur = pMap;
+	DirValue * pCurLow = pLow->pMap;
+	unsigned int context;
+	DirCodec.InitModel();
+	unsigned int const conv[2] = {pLow->DimX, 0};
+
+	int k = 0;
+	int i = 0;
+	DirCodec.Code(pCur[i].Selected, 4 | pCurLow[k].Selected);
+	for( i = 1; i < DimX; i++ ){
+		context = pCur[i - 1].Selected * 2 + 1;
+		context = (context << 1) | pCurLow[k].Selected;
+		DirCodec.Code(pCur[i].Selected, context);
+		k += i & 1;
+	}
+
+	for( int j = 1; j < DimY; j++){
+		pCur += DimX;
+		pCurLow += conv[j & 1];
+		k = 0;
+		i = 0;
+		context = pCur[-DimX].Selected + pCur[1 - DimX].Selected + 1;
+		context = (context << 1) | pCurLow[k].Selected;
+		DirCodec.Code(pCur[i].Selected, context);
+		for( i = 1; i < DimX - 1; i++ ){
+			context = pCur[i - 1].Selected + pCur[i - 1 - DimX].Selected
+					+ pCur[i - DimX].Selected + pCur[i + 1 - DimX].Selected;
+			context = (context << 1) | pCurLow[k].Selected;
+			DirCodec.Code(pCur[i].Selected, context);
+			k += i & 1;
+		}
+		context = pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
+		context = (context << 1) | pCurLow[k].Selected;
+		DirCodec.Code(pCur[i].Selected, context);
+	}
+}
+
+void CMap::TreeDec2(void)
+{
+	DirValue * pCur = pMap;
+	DirValue * pCurLow = pLow->pMap;
+	unsigned int context;
+	DirCodec.InitModel();
+	unsigned int const conv[2] = {pLow->DimX, 0};
+
+	int k = 0;
+	int i = 0;
+	pCur[i].Selected = DirCodec.Decode(4 | pCurLow[k].Selected);
+	for( i = 1; i < DimX; i++ ){
+		context = pCur[i - 1].Selected * 2 + 1;
+		context = (context << 1) | pCurLow[k].Selected;
+		pCur[i].Selected = DirCodec.Decode(context);
+		k += i & 1;
+	}
+
+	for( int j = 1; j < DimY; j++){
+		pCur += DimX;
+		pCurLow += conv[j & 1];
+		k = 0;
+		i = 0;
+		context = pCur[-DimX].Selected + pCur[1 - DimX].Selected + 1;
+		context = (context << 1) | pCurLow[k].Selected;
+		pCur[i].Selected = DirCodec.Decode(context);
+		for( i = 1; i < DimX - 1; i++ ){
+			context = pCur[i - 1].Selected + pCur[i - 1 - DimX].Selected
+					+ pCur[i - DimX].Selected + pCur[i + 1 - DimX].Selected;
+			context = (context << 1) | pCurLow[k].Selected;
+			pCur[i].Selected = DirCodec.Decode(context);
+			k += i & 1;
+		}
+		context = pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
+		context = (context << 1) | pCurLow[k].Selected;
+		pCur[i].Selected = DirCodec.Decode(context);
+	}
+}
+
 void CMap::TreeSum(void)
 {
 	DirValue * pCur = pMap;
@@ -352,19 +430,18 @@ void CMap::TreeSum(void)
 // 	{11300, 24}
 // };
 
-static const unsigned int rate[5][2] =
-{
-	{156, 3402},
-	{527, 1779},
-	{1024, 1024},
-	{1779, 527},
-	{3402, 156}
-};
-
 void CMap::OptimiseDir(float const lambda)
 {
 	DirValue * pCur = pMap;
 	unsigned int context;
+	unsigned int const rate[5][2] =
+	{
+		{156, 3402},
+		{527, 1779},
+		{1024, 1024},
+		{1779, 527},
+		{3402, 156}
+	};
 
 	for( int i = 1; i < DimX; i++ ){
 		context = pCur[i - 1].Selected * 2 + 1;
@@ -391,6 +468,81 @@ void CMap::OptimiseDir(float const lambda)
 				pCur[i].Selected = 1;
 		}
 		context = pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
+		min = rate[context][0] + lambda * pCur[i].H_D1;
+		pCur[i].Selected = 0;
+		if (min > (rate[context][1] + lambda * pCur[i].V_D2))
+			pCur[i].Selected = 1;
+	}
+}
+
+void CMap::OptimiseDirTree(float const lambda)
+{
+	DirValue * pCur = pMap;
+	DirValue * pCurH1 = pHigh->pMap;
+	DirValue * pCurH2 = pCurH1 + pHigh->DimX;
+	unsigned int DimXH2 = pHigh->DimX * 2;
+	unsigned int context;
+	unsigned int const rate[7][2] =
+	{
+		{	109	,	3898	},
+		{	356	,	2275	},
+		{	652	,	1521	},
+		{	1024	,	1024	},
+		{	1521	,	652	},
+		{	2275	,	356	},
+		{	3898	,	109	}
+
+	};
+
+	unsigned int const trans[5] = {0, 1, 1, 1, 2};
+
+
+	context = pCurH1[0].Selected + pCurH1[1].Selected
+			+ pCurH2[0].Selected + pCurH2[1].Selected;
+	context = trans[context] + 2;
+	float min = rate[context][0] + lambda * pCur[0].H_D1;
+	pCur[0].Selected = 0;
+	if (min > (rate[context][1] + lambda * pCur[0].V_D2))
+		pCur[0].Selected = 1;
+	for( int i = 1; i < DimX; i++ ){
+		context = pCurH1[2*i].Selected + pCurH1[2*i+1].Selected
+				+ pCurH2[2*i].Selected + pCurH2[2*i+1].Selected;
+		context = trans[context];
+		context += pCur[i - 1].Selected * 2 + 1;
+		float min = rate[context][0] + lambda * pCur[i].H_D1;
+		pCur[i].Selected = 0;
+		if (min > (rate[context][1] + lambda * pCur[i].V_D2))
+			pCur[i].Selected = 1;
+	}
+
+	for( int j = 1; j < DimY; j++){
+		pCur += DimX;
+		pCurH1 += DimXH2;
+		pCurH2 += DimXH2;
+		context = pCurH1[0].Selected + pCurH1[1].Selected
+				+ pCurH2[0].Selected + pCurH2[1].Selected;
+		context = trans[context];
+		context += pCur[-DimX].Selected + pCur[1 - DimX].Selected + 1;
+		float min = rate[context][0] + lambda * pCur[0].H_D1;
+		pCur[0].Selected = 0;
+		if (min > (rate[context][1] + lambda * pCur[0].V_D2))
+			pCur[0].Selected = 1;
+		int i = 1;
+		for( ; i < DimX - 1; i++ ){
+			context = pCurH1[2*i].Selected + pCurH1[2*i+1].Selected
+					+ pCurH2[2*i].Selected + pCurH2[2*i+1].Selected;
+			context = trans[context];
+			context += pCur[i - 1].Selected + pCur[i + 1 - DimX].Selected
+					+ pCur[i - 1 - DimX].Selected + pCur[i - DimX].Selected;
+			min = rate[context][0] + lambda * pCur[i].H_D1;
+			pCur[i].Selected = 0;
+			if (min > (rate[context][1] + lambda * pCur[i].V_D2))
+				pCur[i].Selected = 1;
+		}
+		context = pCurH1[2*i].Selected + pCurH1[2*i+1].Selected
+				+ pCurH2[2*i].Selected + pCurH2[2*i+1].Selected;
+		context = trans[context];
+		context += pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
 		min = rate[context][0] + lambda * pCur[i].H_D1;
 		pCur[i].Selected = 0;
 		if (min > (rate[context][1] + lambda * pCur[i].V_D2))

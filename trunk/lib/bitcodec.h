@@ -37,7 +37,7 @@
 
 namespace libdwic {
 
-#define BIT_CONTEXT_NB	8
+#define BIT_CONTEXT_NB	16
 
 #if FREQ_COUNT != 4096
 #error "mod values calculated for FREQ_COUNT = 4096"
