@@ -44,7 +44,7 @@ using namespace std;
 using namespace Magick;
 using namespace libdwic;
 
-void CompressImage(string & infile, string & outfile, float Quant, float Thres){
+void CompressImage(string & infile, string & outfile, int Quant, float Thres){
 	ofstream oFile( outfile.c_str() , ios::out );
 	oFile << "DWIC";
 
@@ -66,28 +66,21 @@ void CompressImage(string & infile, string & outfile, float Quant, float Thres){
  	Wavelet.SetRange(&RangeCodec);
 
  	Wavelet.Transform97(ImgPixels, img.columns());
-	Wavelet.TSUQ(Quant, Thres);
+	Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
 
-	unsigned char * pEnd = Wavelet.CodeBand(pStream);
-	RangeCodec.InitCoder(0, pEnd);
- 	Wavelet.CodeMap(3);
-	pEnd = RangeCodec.EndCoding();
+	RangeCodec.InitCoder(Quant, pStream);
+	Wavelet.CodeMap(3);
+	unsigned char * pEnd = RangeCodec.EndCoding() + 1;
+	pEnd = Wavelet.CodeBand(pEnd);
 	oFile.write((char *) pStream, (pEnd - pStream));
 
 	oFile.close();
-
-// 	Wavelet.TSUQi(Quant, 0);
-// 	Wavelet.Transform97I(ImgPixels, img.columns());
-//
-// 	img.read(img.columns(), img.rows(), "R", FloatPixel, ImgPixels);
-// 	img.write("./test_encode.png");
 
 	delete[] ImgPixels;
 	delete[] pStream;
 }
 
-void DecompressImage(string & infile, string & outfile, float Quant,
-					 float RecLevel){
+void DecompressImage(string & infile, string & outfile, float RecLevel){
 	ifstream iFile( infile.c_str() , ios::in );
 	char magic[4] = {0,0,0,0};
 
@@ -110,11 +103,13 @@ void DecompressImage(string & infile, string & outfile, float Quant,
  	CRangeCodec RangeCodec(0);
  	Wavelet.SetRange(&RangeCodec);
 
- 	unsigned char * pEnd = Wavelet.DecodeBand(pStream);
- 	RangeCodec.InitDecoder(pEnd);
- 	Wavelet.DecodeMap(3);
+	RangeCodec.InitDecoder(pStream);
+	int Quant = RangeCodec.GetFirstByte();
+	Wavelet.DecodeMap(3);
+	unsigned char * pEnd = pStream + RangeCodec.GetCurrentSize();
+	Wavelet.DecodeBand(pEnd);
 
-	Wavelet.TSUQi(Quant, RecLevel);
+	Wavelet.TSUQi(Quants[Quant], Quants[Quant] * RecLevel);
  	Wavelet.Transform97I(ImgPixels, width);
 
 	for( int i = width * heigth - 1, j = width * heigth * 3 - 3; i > 0 ; i--){
@@ -140,7 +135,7 @@ int main( int argc, char *argv[] )
 	string infile;
 	string outfile;
 	float ThresRatio = 0.75;
-	float Quant = 0.05;
+	int Quant = 9;
 	float RecLevelRatio = 0;
 
 	while ((c = getopt(argc , argv, "i:o:q:r:t:")) != -1) {
@@ -152,7 +147,7 @@ int main( int argc, char *argv[] )
 				outfile = optarg;
 				break;
 			case 'q':
-				Quant = atof(optarg);
+				Quant = atoi(optarg);
 				break;
 			case 'r':
 				RecLevelRatio = atof(optarg);
@@ -193,9 +188,9 @@ int main( int argc, char *argv[] )
 
 
 	if (mode == 0) {
-		CompressImage(infile, outfile, Quant, ThresRatio * Quant);
+		CompressImage(infile, outfile, Quant, ThresRatio);
 	} else {
-		DecompressImage(infile, outfile, Quant, RecLevelRatio * Quant);
+		DecompressImage(infile, outfile, RecLevelRatio);
 	}
 
 	return EXIT_SUCCESS;

@@ -36,10 +36,9 @@
 #include "band.h"
 #include "map.h"
 #include "rangecodec.h"
+#include "wavelet.h"
 
 namespace libdwic {
-
-#define MAX_WAV_LEVEL 5
 
 /**
 @author Nicolas Botti
@@ -59,6 +58,8 @@ public:
 	void Transform97(float * pImage, int Stride);
 	void Transform97I(float * pImage, int Stride);
 	void SetWeight97(void);
+	void Transform75(float * pImage, int Stride);
+	void Transform75I(float * pImage, int Stride);
 
 	void SetRange(CRangeCodec * RangeCodec);
 	void CodeMap(int Options = 0);
@@ -89,10 +90,9 @@ private:
 	CBand HVBand;
 	CBand LBand;
 
-	int DimDDir;
-	int DimHVDir;
-	float * pD1D;
-	float * pHV1D;
+	CWavelet D1D;
+	CWavelet HV1D;
+	float * pTmp;
 
 	void (*LiftEdgeOdd[3])(float*, int, float, int);
 	void (*LiftInOdd[3])(float*, int, float);
@@ -110,10 +110,6 @@ private:
 
 	void LazyImage(float * pImage, unsigned int Stride);
 	void LazyImageI(float * pImage, unsigned int Stride);
-
-	void Fill1D(void);
-	void FillHV1D(void);
-	void FillD1D(void);
 
 	static void LiftBand(float * pBlock, int Stride, int DimX, int DimY,
 							  float Coef, DirValue * pDir,
@@ -143,6 +139,12 @@ private:
 							 int BitField);
 	static void LiftDiag2Even(float * pBlock, int Stride, float Coef,
 							  int BitField);
+
+
+	void FillHV1D(void);
+	void FillHV1DI(void);
+	void CountHV1D(void);
+	void FillD1D(void);
 };
 
 }

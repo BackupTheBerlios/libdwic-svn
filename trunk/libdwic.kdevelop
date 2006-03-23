@@ -180,7 +180,7 @@
   </cppsupportpart>
   <kdevdebugger>
     <general>
-      <programargs>-i ~/Documents/Images/Images\ test/lena.png  -o ~/Documents/Images/Images\ test/lena.dwi</programargs>
+      <programargs>-i ~/Documents/Images/Images\ test/lena.dwi -o ~/Documents/Images/Images\ test/lena.tst.png</programargs>
       <gdbpath></gdbpath>
       <dbgshell>libtool</dbgshell>
       <configGdbScript></configGdbScript>

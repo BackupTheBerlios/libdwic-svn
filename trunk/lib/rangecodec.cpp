@@ -59,9 +59,9 @@ void CRangeCodec::InitCoder(unsigned char FirstByte = 0,
 void CRangeCodec::InitDecoder(unsigned char *pInStream){
 	if (pInStream){
 		StreamBuff = *pInStream;
+		pInitStream = pInStream + 1;
 		pStream = pInStream + 1;
 		Range = 0x80;							// 1<<7
-//		LowRange = (*pStream) >> 1;
 		LowRange = *pStream;
 		pStream++;
 	}

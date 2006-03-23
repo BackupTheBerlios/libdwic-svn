@@ -33,41 +33,66 @@
 
 #pragma once
 
+#include "rlecodec.h"
+
 namespace libdwic {
+
+#define MAX_WAV_LEVEL 5
+
+// #define ALPHA (-1.586134342)
+// #define BETA (-0.05298011854)
+// #define GAMMA (0.8829110762)
+// #define DELTA (0.4435068522)
+#define XI 1.149604398
+
+
+// http://www.ece.vt.edu/fac_support/dspcl/docs/TCASII05.pdf
+#define ALPHA (-3./2.)
+#define BETA (-1./16.)
+#define GAMMA (4./5.)
+#define DELTA (15./32.)
+// #define XI 1.13137085
 
 /**
 @author Nicolas Botti
 */
-class CRLECodec{
+class CWavelet{
 public:
-	CRLECodec(unsigned char * pBuf);
+    CWavelet(int stride, int Level);
 
-    ~CRLECodec();
+    ~CWavelet();
 
-	void Init(unsigned char * pBuf){
-		pStream = pBuf;
-		nbBits = 0;
-		count = 0;
-	}
+	void Trans1D97(float * pIn);
+	void Trans1D97I(float * pOut);
 
-	void RLECode(float * pBuffer, int stride);
-	void RLEDecode(float * pBuffer, int stride);
-	unsigned char * EndCoding(void);
-	unsigned char * EndDecoding(void);
+	void TSUQ(float Quant, float Thres);
+	void TSUQi(float Quant, float Thres);
+
+	void SetWeight97(float baseWeight);
+	void SetDirLength(int length);
+
+	void RLECode(CRLECodec * pCodec);
+	void RLEDecode(CRLECodec * pCodec);
 
 private:
-	unsigned char * pStream;
-	unsigned int nbBits;
-	unsigned int buffer;
-	unsigned int count;
 
-	void fiboCode(unsigned int nb);
-	unsigned int fiboDecode(void);
+	float * pData;
+	float * pBand[MAX_WAV_LEVEL + 1][2];
+	int strides[MAX_WAV_LEVEL + 1][2];
+	float weights[MAX_WAV_LEVEL + 1];
+	int Levels;
+	int totalStride;
 
-	void EmptyBuffer(void);
-	void FillBuffer(void);
 
-	static const unsigned int nbFibo[32];
+	static void Lift1D(float * pBuf, int stride, float Predict, float Update);
+	static void Lift1DI(float * pBuf, int stride, float Predict, float Update);
+	static void Lazy1D(float * pIn, int stride, float * pOut);
+	static void Lazy1DI(float * pIn, int stride, float * pOut);
+
+	static void TSUQ(float * pIn, int stride, float Quant, float Thres);
+	static void TSUQi(float * pIn, int stride, float Quant, float RecLevel);
+
 };
 
 }
+

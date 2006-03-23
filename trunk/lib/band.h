@@ -96,7 +96,7 @@ public:
 	// Quantification
 	unsigned int Thres(float Thres);
 	unsigned int TSUQ(float Quant, float Thres);
-	void CBand::TSUQi( float Quant, float RecLevel);
+	void TSUQi( float Quant, float RecLevel);
 	void SimpleQuant(int quant);
 
 	// Codage

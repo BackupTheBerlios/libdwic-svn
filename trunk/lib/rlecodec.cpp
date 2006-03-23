@@ -135,7 +135,7 @@ void CRLECodec::RLEDecode(float * pBuffer, int stride)
 	}
 }
 
-static const unsigned int nbFibo[32] =
+const unsigned int CRLECodec::nbFibo[32] =
 {
 	1,
 	2,
