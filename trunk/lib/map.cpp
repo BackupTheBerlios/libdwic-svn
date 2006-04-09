@@ -34,19 +34,20 @@
 #include "global.h"
 #include "map.h"
 
+#include <math.h>
+#include <string.h>
+
 namespace libdwic {
 
 CMap::CMap(CMap * pHighMap):
 pMap(0),
+pDist(0),
 pLow(0)
 {
 	pHigh = pHighMap;
-	if (pHigh != 0){
+	if (pHigh != 0)
 		pHigh->pLow = this;
-		AllOnes = 4 * pHigh->AllOnes + 1;
-	} else {
-		AllOnes = 1;
-	}
+	pTree[0] = 0;
 	Init();
 }
 
@@ -54,6 +55,8 @@ pLow(0)
 CMap::~CMap()
 {
 	delete[] pMap;
+	delete[] pDist;
+	delete[] pTree[0];
 }
 
 void CMap::Init(int DimX, int DimY)
@@ -64,30 +67,66 @@ void CMap::Init(int DimX, int DimY)
 	this->DimY = (DimY + 3) >> 2;
 	MapSize = this->DimX * this->DimY;
 	if (MapSize != 0){
-		pMap = new DirValue[MapSize];
+		pMap = new char[MapSize];
+		pDist = new short[MapSize];
+		if (MapSize > 8192) {
+			pTree[0] = new node[(MapSize - (MapSize >> (2 * TREE_DEPTH))) / 3];
+			for( int i = 1; i < TREE_DEPTH; i++)
+				pTree[i] = pTree[i-1] + (MapSize >> (2 * i));
+		}
 	}
 }
 
-void CMap::SetSelected(int Sel)
+void CMap::SetDir(int Dir)
 {
 	for( int i = 0; i < MapSize ; i++){
-		pMap[i].Selected = Sel;
+		pMap[i] = Dir;
+	}
+}
+
+void CMap::SetDir(int Dir, int x, int y, int treeDepth)
+{
+	char * pCurMap = pMap;
+	int size = 1 << treeDepth;
+	pCurMap += (x << treeDepth) + (y << treeDepth) * DimX;
+
+	for( int j = 0; j < size; j++){
+		for( int i = 0; i < size; i++){
+			pCurMap[i] = Dir;
+		}
+		pCurMap += DimX;
+	}
+}
+
+void CMap::GetMap(unsigned char * pOut)
+{
+	memcpy(pOut, pMap, MapSize);
+}
+
+void CMap::GetDist(unsigned char * pOut)
+{
+	for( int i = 0; i < MapSize; i++){
+		int Out = ((int)pDist[i]>>8) + 128;
+		if (Out > 255)
+			Out = 255;
+		if (Out < 0)
+			Out = 0;
+		pOut[i] = (unsigned char) Out;
 	}
 }
 
 void CMap::SetRange(CRangeCodec * RangeCodec)
 {
 	DirCodec.SetRange(RangeCodec);
-	TreeCodec.SetRange(RangeCodec);
 }
 
 void CMap::Order0Code(void)
 {
 	DirCodec.InitModel();
 	for( int j = 0; j < DimY; j++){
-		DirValue * pCur = pMap + j * DimX;
+		char * pCur = pMap + j * DimX;
 		for( int i = 0; i < DimX; i++ ){
-			DirCodec.Code(pCur[i].Selected, 0);
+			DirCodec.Code(pCur[i], 0);
 		}
 	}
 }
@@ -96,119 +135,82 @@ void CMap::Order0Dec(void)
 {
 	DirCodec.InitModel();
 	for( int j = 0; j < DimY; j++){
-		DirValue * pCur = pMap + j * DimX;
+		char * pCur = pMap + j * DimX;
 		for( int i = 0; i < DimX; i++ ){
-			pCur[i].Selected = DirCodec.Decode(0);
+			pCur[i] = DirCodec.Decode(0);
 		}
 	}
 }
 
-void CMap::Neighbor4Code(int CodeTree)
+void CMap::Neighbor4Code(void)
 {
-	DirValue * pCur = pMap;
+	char * pCur = pMap;
 	unsigned int context;
 	DirCodec.InitModel();
-	if (CodeTree)
-		TreeCodec.InitModel();
 
-	DirCodec.Code(pCur[0].Selected, 2);
-	if (CodeTree)
-		TreeCodec.Code(pCur[0].Old == 0 || pCur[0].Old == AllOnes, 2);
+	DirCodec.Code(pCur[0], 2);
 	for( int i = 1; i < DimX; i++ ){
-		context = pCur[i - 1].Selected * 2 + 1;
-		DirCodec.Code(pCur[i].Selected, context);
-		if (CodeTree)
-			TreeCodec.Code(pCur[i].Old == 0 || pCur[i].Old == AllOnes, context);
+		context = pCur[i - 1] * 2 + 1;
+		DirCodec.Code(pCur[i], context);
 	}
 
 	for( int j = 1; j < DimY; j++){
 		pCur += DimX;
-		context = pCur[-DimX].Selected + pCur[1 - DimX].Selected + 1;
-		DirCodec.Code(pCur[0].Selected, context);
-		if (CodeTree)
-			TreeCodec.Code(pCur[0].Old == 0 || pCur[0].Old == AllOnes,
-						   context);
+		context = pCur[-DimX] + pCur[1 - DimX] + 1;
+		DirCodec.Code(pCur[0], context);
 		int i = 1;
 		for( ; i < DimX - 1; i++ ){
-			context = pCur[i - 1].Selected + pCur[i - 1 - DimX].Selected
-					+ pCur[i - DimX].Selected + pCur[i + 1 - DimX].Selected;
-			DirCodec.Code(pCur[i].Selected, context);
-			if (CodeTree)
-				TreeCodec.Code(pCur[i].Old == 0 || pCur[i].Old == AllOnes,
-						   context);
+			context = pCur[i - 1] + pCur[i - 1 - DimX] + pCur[i - DimX]
+					+ pCur[i + 1 - DimX];
+			DirCodec.Code(pCur[i], context);
 		}
-		context = pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
-		DirCodec.Code(pCur[i].Selected, context);
-		if (CodeTree)
-			TreeCodec.Code(pCur[i].Old == 0 || pCur[i].Old == AllOnes,
-						   context);
+		context = pCur[i - 1] + pCur[i - DimX] + 1;
+		DirCodec.Code(pCur[i], context);
 	}
 }
 
-void CMap::Neighbor4Dec(int DecodeTree)
+void CMap::Neighbor4Dec(void)
 {
-	DirValue * pCur = pMap;
+	char * pCur = pMap;
 	unsigned int context;
 	DirCodec.InitModel();
-	if (DecodeTree)
-		TreeCodec.InitModel();
 
-	pCur[0].Selected = DirCodec.Decode(2);
-	if (DecodeTree)
-		pCur[0].Old = TreeCodec.Decode(2);
+	pCur[0] = DirCodec.Decode(2);
 	for( int i = 1; i < DimX; i++ ){
-		context = pCur[i - 1].Selected * 2 + 1;
-		pCur[i].Selected = DirCodec.Decode(context);
-		if (DecodeTree)
-			pCur[i].Old = TreeCodec.Decode(context);
+		context = pCur[i - 1] * 2 + 1;
+		pCur[i] = DirCodec.Decode(context);
 	}
 
 	for( int j = 1; j < DimY; j++){
 		pCur += DimX;
-		context = pCur[-DimX].Selected + pCur[1 - DimX].Selected + 1;
-		pCur[0].Selected = DirCodec.Decode(context);
-		if (DecodeTree)
-			pCur[0].Old = TreeCodec.Decode(context);
+		context = pCur[-DimX] + pCur[1 - DimX] + 1;
+		pCur[0] = DirCodec.Decode(context);
 		int i = 1;
 		for( ; i < DimX - 1; i++ ){
-			context = pCur[i - 1].Selected + pCur[i - 1 - DimX].Selected
-					+ pCur[i - DimX].Selected + pCur[i + 1 - DimX].Selected;
-			pCur[i].Selected = DirCodec.Decode(context);
-			if (DecodeTree)
-				pCur[i].Old = TreeCodec.Decode(context);
+			context = pCur[i - 1] + pCur[i - 1 - DimX]
+					+ pCur[i - DimX] + pCur[i + 1 - DimX];
+			pCur[i] = DirCodec.Decode(context);
 		}
-		context = pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
-		pCur[i].Selected = DirCodec.Decode(context);
-		if (DecodeTree)
-			pCur[i].Old = TreeCodec.Decode(context);
+		context = pCur[i - 1] + pCur[i - DimX] + 1;
+		pCur[i] = DirCodec.Decode(context);
 	}
 }
 
 void CMap::TreeCode(void)
 {
-	DirValue * pCur = pMap;
-	DirValue * pCurLow = pLow->pMap;
+	char * pCur = pMap;
+	char * pCurLow = pLow->pMap;
 	unsigned int context;
-	unsigned int LowAllOnes = pLow->AllOnes;
 	DirCodec.InitModel();
-	TreeCodec.InitModel();
 	unsigned int const conv[2] = {pLow->DimX, 0};
 
 	int k = 0;
 	int i = 0;
-	if (pCurLow[k].Old != LowAllOnes && pCurLow[k].Old != 0) {
-		DirCodec.Code(pCur[i].Selected, 2);
-		if (pHigh != 0)
-			TreeCodec.Code(pCur[i].Old == 0 || pCur[i].Old == AllOnes, 2);
-	}
+	DirCodec.Code(pCur[i], 4 | pCurLow[k]);
 	for( i = 1; i < DimX; i++ ){
-		if (pCurLow[k].Old != LowAllOnes && pCurLow[k].Old != 0) {
-			context = pCur[i - 1].Selected * 2 + 1;
-			DirCodec.Code(pCur[i].Selected, context);
-			if (pHigh != 0)
-				TreeCodec.Code(pCur[i].Old == 0 || pCur[i].Old == AllOnes,
-							   context);
-		}
+		context = pCur[i - 1] * 2 + 1;
+		context = (context << 1) | pCurLow[k];
+		DirCodec.Code(pCur[i], context);
 		k += i & 1;
 	}
 
@@ -217,63 +219,37 @@ void CMap::TreeCode(void)
 		pCurLow += conv[j & 1];
 		k = 0;
 		i = 0;
-		if (pCurLow[k].Old != LowAllOnes && pCurLow[k].Old != 0) {
-			context = pCur[-DimX].Selected + pCur[1 - DimX].Selected + 1;
-			DirCodec.Code(pCur[i].Selected, context);
-			if (pHigh != 0)
-				TreeCodec.Code(pCur[i].Old == 0 || pCur[i].Old == AllOnes,
-							   context);
-		}
+		context = pCur[-DimX] + pCur[1 - DimX] + 1;
+		context = (context << 1) | pCurLow[k];
+		DirCodec.Code(pCur[i], context);
 		for( i = 1; i < DimX - 1; i++ ){
-			if (pCurLow[k].Old != LowAllOnes && pCurLow[k].Old != 0) {
-				context = pCur[i - 1].Selected + pCur[i - 1 - DimX].Selected
-						+ pCur[i - DimX].Selected + pCur[i + 1 - DimX].Selected;
-				DirCodec.Code(pCur[i].Selected, context);
-				if (pHigh != 0)
-					TreeCodec.Code(pCur[i].Old == 0 || pCur[i].Old == AllOnes,
-								   context);
-			}
+			context = pCur[i - 1] + pCur[i - 1 - DimX]
+					+ pCur[i - DimX] + pCur[i + 1 - DimX];
+			context = (context << 1) | pCurLow[k];
+			DirCodec.Code(pCur[i], context);
 			k += i & 1;
 		}
-		if (pCurLow[k].Old != LowAllOnes && pCurLow[k].Old != 0) {
-			context = pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
-			DirCodec.Code(pCur[i].Selected, context);
-			if (pHigh != 0)
-				TreeCodec.Code(pCur[i].Old == 0 || pCur[i].Old == AllOnes,
-							   context);
-		}
+		context = pCur[i - 1] + pCur[i - DimX] + 1;
+		context = (context << 1) | pCurLow[k];
+		DirCodec.Code(pCur[i], context);
 	}
 }
 
 void CMap::TreeDec(void)
 {
-	DirValue * pCur = pMap;
-	DirValue * pCurLow = pLow->pMap;
+	char * pCur = pMap;
+	char * pCurLow = pLow->pMap;
 	unsigned int context;
-	unsigned int LowAllOnes = pLow->AllOnes;
 	DirCodec.InitModel();
-	TreeCodec.InitModel();
 	unsigned int const conv[2] = {pLow->DimX, 0};
 
 	int k = 0;
 	int i = 0;
-
-	pCur[i].Selected = pCurLow[k].Selected;
-	pCur[i].Old = 1;
-	if (pCurLow[k].Old == 0) {
-		pCur[i].Selected = DirCodec.Decode(2);
-		if (pHigh != 0)
-			pCur[i].Old = TreeCodec.Decode(2);
-	}
+	pCur[i] = DirCodec.Decode(4 | pCurLow[k]);
 	for( i = 1; i < DimX; i++ ){
-		pCur[i].Selected = pCurLow[k].Selected;
-		pCur[i].Old = 1;
-		if (pCurLow[k].Old == 0) {
-			context = pCur[i - 1].Selected * 2 + 1;
-			pCur[i].Selected = DirCodec.Decode(context);
-			if (pHigh != 0)
-				pCur[i].Old = TreeCodec.Decode(context);
-		}
+		context = pCur[i - 1] * 2 + 1;
+		context = (context << 1) | pCurLow[k];
+		pCur[i] = DirCodec.Decode(context);
 		k += i & 1;
 	}
 
@@ -282,141 +258,19 @@ void CMap::TreeDec(void)
 		pCurLow += conv[j & 1];
 		k = 0;
 		i = 0;
-		pCur[i].Selected = pCurLow[k].Selected;
-		pCur[i].Old = 1;
-		if (pCurLow[k].Old == 0) {
-			context = pCur[-DimX].Selected + pCur[1 - DimX].Selected + 1;
-			pCur[i].Selected = DirCodec.Decode(context);
-			if (pHigh != 0)
-				pCur[i].Old = TreeCodec.Decode(context);
-		}
+		context = pCur[-DimX] + pCur[1 - DimX] + 1;
+		context = (context << 1) | pCurLow[k];
+		pCur[i] = DirCodec.Decode(context);
 		for( i = 1; i < DimX - 1; i++ ){
-			pCur[i].Selected = pCurLow[k].Selected;
-			pCur[i].Old = 1;
-			if (pCurLow[k].Old == 0) {
-				context = pCur[i - 1].Selected + pCur[i - 1 - DimX].Selected
-						+ pCur[i - DimX].Selected + pCur[i + 1 - DimX].Selected;
-				pCur[i].Selected = DirCodec.Decode(context);
-				if (pHigh != 0)
-					pCur[i].Old = TreeCodec.Decode(context);
-			}
+			context = pCur[i - 1] + pCur[i - 1 - DimX]
+					+ pCur[i - DimX] + pCur[i + 1 - DimX];
+			context = (context << 1) | pCurLow[k];
+			pCur[i] = DirCodec.Decode(context);
 			k += i & 1;
 		}
-		pCur[i].Selected = pCurLow[k].Selected;
-		pCur[i].Old = 1;
-		if (pCurLow[k].Old == 0) {
-			context = pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
-			pCur[i].Selected = DirCodec.Decode(context);
-			if (pHigh != 0)
-				pCur[i].Old = TreeCodec.Decode(context);
-		}
-	}
-}
-
-void CMap::TreeCode2(void)
-{
-	DirValue * pCur = pMap;
-	DirValue * pCurLow = pLow->pMap;
-	unsigned int context;
-	DirCodec.InitModel();
-	unsigned int const conv[2] = {pLow->DimX, 0};
-
-	int k = 0;
-	int i = 0;
-	DirCodec.Code(pCur[i].Selected, 4 | pCurLow[k].Selected);
-	for( i = 1; i < DimX; i++ ){
-		context = pCur[i - 1].Selected * 2 + 1;
-		context = (context << 1) | pCurLow[k].Selected;
-		DirCodec.Code(pCur[i].Selected, context);
-		k += i & 1;
-	}
-
-	for( int j = 1; j < DimY; j++){
-		pCur += DimX;
-		pCurLow += conv[j & 1];
-		k = 0;
-		i = 0;
-		context = pCur[-DimX].Selected + pCur[1 - DimX].Selected + 1;
-		context = (context << 1) | pCurLow[k].Selected;
-		DirCodec.Code(pCur[i].Selected, context);
-		for( i = 1; i < DimX - 1; i++ ){
-			context = pCur[i - 1].Selected + pCur[i - 1 - DimX].Selected
-					+ pCur[i - DimX].Selected + pCur[i + 1 - DimX].Selected;
-			context = (context << 1) | pCurLow[k].Selected;
-			DirCodec.Code(pCur[i].Selected, context);
-			k += i & 1;
-		}
-		context = pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
-		context = (context << 1) | pCurLow[k].Selected;
-		DirCodec.Code(pCur[i].Selected, context);
-	}
-}
-
-void CMap::TreeDec2(void)
-{
-	DirValue * pCur = pMap;
-	DirValue * pCurLow = pLow->pMap;
-	unsigned int context;
-	DirCodec.InitModel();
-	unsigned int const conv[2] = {pLow->DimX, 0};
-
-	int k = 0;
-	int i = 0;
-	pCur[i].Selected = DirCodec.Decode(4 | pCurLow[k].Selected);
-	for( i = 1; i < DimX; i++ ){
-		context = pCur[i - 1].Selected * 2 + 1;
-		context = (context << 1) | pCurLow[k].Selected;
-		pCur[i].Selected = DirCodec.Decode(context);
-		k += i & 1;
-	}
-
-	for( int j = 1; j < DimY; j++){
-		pCur += DimX;
-		pCurLow += conv[j & 1];
-		k = 0;
-		i = 0;
-		context = pCur[-DimX].Selected + pCur[1 - DimX].Selected + 1;
-		context = (context << 1) | pCurLow[k].Selected;
-		pCur[i].Selected = DirCodec.Decode(context);
-		for( i = 1; i < DimX - 1; i++ ){
-			context = pCur[i - 1].Selected + pCur[i - 1 - DimX].Selected
-					+ pCur[i - DimX].Selected + pCur[i + 1 - DimX].Selected;
-			context = (context << 1) | pCurLow[k].Selected;
-			pCur[i].Selected = DirCodec.Decode(context);
-			k += i & 1;
-		}
-		context = pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
-		context = (context << 1) | pCurLow[k].Selected;
-		pCur[i].Selected = DirCodec.Decode(context);
-	}
-}
-
-void CMap::TreeSum(void)
-{
-	DirValue * pCur = pMap;
-	unsigned int HDimX2 = pHigh->DimX * 2;
-	DirValue * pCurH1 = pHigh->pMap;
-	DirValue * pCurH2 = pHigh->pMap + pHigh->DimX;
-	unsigned int SumOld = 0;
-
-	if (pHigh->pHigh != 0)
-		SumOld = 1;
-
-	for( int j = 0; j < DimY; j++){
-		for ( int i = 0; i < DimX; i++){
-			pCur[i].Old = pCur[i].Selected;
-			if (SumOld == 1)
-				pCur[i].Old += pCurH1[2 * i].Old + pCurH1[2 * i + 1].Old
-						+ pCurH2[2 * i].Old + pCurH2[2 * i + 1].Old;
-			else
-				pCur[i].Old +=
-						pCurH1[2 * i].Selected + pCurH1[2 * i + 1].Selected
-						+ pCurH2[2 * i].Selected + pCurH2[2 * i + 1].Selected;
-		}
-
-		pCur += DimX;
-		pCurH1 += HDimX2;
-		pCurH2 += HDimX2;
+		context = pCur[i - 1] + pCur[i - DimX] + 1;
+		context = (context << 1) | pCurLow[k];
+		pCur[i] = DirCodec.Decode(context);
 	}
 }
 
@@ -432,190 +286,244 @@ void CMap::TreeSum(void)
 
 void CMap::OptimiseDir(float const lambda)
 {
-	DirValue * pCur = pMap;
+	char * pCur = pMap;
+	short * pCurDist = pDist;
 	unsigned int context;
-	unsigned int const rate[5][2] =
-	{
-		{156, 3402},
-		{527, 1779},
-		{1024, 1024},
-		{1779, 527},
-		{3402, 156}
-	};
+	int const rate[] = { -3246, -1252, 0, 1252, 3246 };
 
 	for( int i = 1; i < DimX; i++ ){
-		context = pCur[i - 1].Selected * 2 + 1;
-		float min = rate[context][0] + lambda * pCur[i].H_D1;
-		pCur[i].Selected = 0;
-		if (min > (rate[context][1] + lambda * pCur[i].V_D2))
-			pCur[i].Selected = 1;
+		context = pCur[i - 1] * 2 + 1;
+		pCur[i] = 0;
+		if ((rate[context] + lambda * pCurDist[i]) > 0)
+			pCur[i] = 1;
 	}
 
 	for( int j = 1; j < DimY; j++){
 		pCur += DimX;
-		context = pCur[-DimX].Selected + pCur[1 - DimX].Selected + 1;
-		float min = rate[context][0] + lambda * pCur[0].H_D1;
-		pCur[0].Selected = 0;
-		if (min > (rate[context][1] + lambda * pCur[0].V_D2))
-			pCur[0].Selected = 1;
+		pCurDist += DimX;
+		context = pCur[-DimX] + pCur[1 - DimX] + 1;
+		pCur[0] = 0;
+		if ((rate[context] + lambda * pCurDist[0]) > 0)
+			pCur[0] = 1;
 		int i = 1;
 		for( ; i < DimX - 1; i++ ){
-			context = pCur[i - 1].Selected + pCur[i + 1 - DimX].Selected
-					+ pCur[i - 1 - DimX].Selected + pCur[i - DimX].Selected;
-			min = rate[context][0] + lambda * pCur[i].H_D1;
-			pCur[i].Selected = 0;
-			if (min > (rate[context][1] + lambda * pCur[i].V_D2))
-				pCur[i].Selected = 1;
+			context = pCur[i - 1] + pCur[i + 1 - DimX]
+					+ pCur[i - 1 - DimX] + pCur[i - DimX];
+			pCur[i] = 0;
+			if ((rate[context] + lambda * pCurDist[i]) > 0)
+				pCur[i] = 1;
 		}
-		context = pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
-		min = rate[context][0] + lambda * pCur[i].H_D1;
-		pCur[i].Selected = 0;
-		if (min > (rate[context][1] + lambda * pCur[i].V_D2))
-			pCur[i].Selected = 1;
-	}
-}
-
-void CMap::OptimiseDirTree(float const lambda)
-{
-	DirValue * pCur = pMap;
-	DirValue * pCurH1 = pHigh->pMap;
-	DirValue * pCurH2 = pCurH1 + pHigh->DimX;
-	unsigned int DimXH2 = pHigh->DimX * 2;
-	unsigned int context;
-	unsigned int const rate[7][2] =
-	{
-		{	109	,	3898	},
-		{	356	,	2275	},
-		{	652	,	1521	},
-		{	1024	,	1024	},
-		{	1521	,	652	},
-		{	2275	,	356	},
-		{	3898	,	109	}
-
-	};
-
-	unsigned int const trans[5] = {0, 1, 1, 1, 2};
-
-
-	context = pCurH1[0].Selected + pCurH1[1].Selected
-			+ pCurH2[0].Selected + pCurH2[1].Selected;
-	context = trans[context] + 2;
-	float min = rate[context][0] + lambda * pCur[0].H_D1;
-	pCur[0].Selected = 0;
-	if (min > (rate[context][1] + lambda * pCur[0].V_D2))
-		pCur[0].Selected = 1;
-	for( int i = 1; i < DimX; i++ ){
-		context = pCurH1[2*i].Selected + pCurH1[2*i+1].Selected
-				+ pCurH2[2*i].Selected + pCurH2[2*i+1].Selected;
-		context = trans[context];
-		context += pCur[i - 1].Selected * 2 + 1;
-		float min = rate[context][0] + lambda * pCur[i].H_D1;
-		pCur[i].Selected = 0;
-		if (min > (rate[context][1] + lambda * pCur[i].V_D2))
-			pCur[i].Selected = 1;
-	}
-
-	for( int j = 1; j < DimY; j++){
-		pCur += DimX;
-		pCurH1 += DimXH2;
-		pCurH2 += DimXH2;
-		context = pCurH1[0].Selected + pCurH1[1].Selected
-				+ pCurH2[0].Selected + pCurH2[1].Selected;
-		context = trans[context];
-		context += pCur[-DimX].Selected + pCur[1 - DimX].Selected + 1;
-		float min = rate[context][0] + lambda * pCur[0].H_D1;
-		pCur[0].Selected = 0;
-		if (min > (rate[context][1] + lambda * pCur[0].V_D2))
-			pCur[0].Selected = 1;
-		int i = 1;
-		for( ; i < DimX - 1; i++ ){
-			context = pCurH1[2*i].Selected + pCurH1[2*i+1].Selected
-					+ pCurH2[2*i].Selected + pCurH2[2*i+1].Selected;
-			context = trans[context];
-			context += pCur[i - 1].Selected + pCur[i + 1 - DimX].Selected
-					+ pCur[i - 1 - DimX].Selected + pCur[i - DimX].Selected;
-			min = rate[context][0] + lambda * pCur[i].H_D1;
-			pCur[i].Selected = 0;
-			if (min > (rate[context][1] + lambda * pCur[i].V_D2))
-				pCur[i].Selected = 1;
-		}
-		context = pCurH1[2*i].Selected + pCurH1[2*i+1].Selected
-				+ pCurH2[2*i].Selected + pCurH2[2*i+1].Selected;
-		context = trans[context];
-		context += pCur[i - 1].Selected + pCur[i - DimX].Selected + 1;
-		min = rate[context][0] + lambda * pCur[i].H_D1;
-		pCur[i].Selected = 0;
-		if (min > (rate[context][1] + lambda * pCur[i].V_D2))
-			pCur[i].Selected = 1;
+		context = pCur[i - 1] + pCur[i - DimX] + 1;
+		pCur[i] = 0;
+		if ((rate[context] + lambda * pCurDist[i]) > 0)
+			pCur[i] = 1;
 	}
 }
 
 void CMap::SelectDir(void)
 {
-	DirValue * pCurMap = pMap;
-	unsigned int * pA = new unsigned int [DimX];
-	unsigned int * pB = new unsigned int [DimX];
 
-	// Top -> Bottom
-	for( int i = 0; i < DimX; i++) {
-		pA[i] = pCurMap[i].H_D1 << 1;
-		pB[i] = pCurMap[i].V_D2 << 1;
-	}
-	for( int j = 0; j < DimY; j++ ){
-		for( int i = 0; i < DimX ; i++){
-			pA[i] = pCurMap[i].H_D1 + (pA[i] >> 1);
-			pB[i] = pCurMap[i].V_D2 + (pB[i] >> 1);
-			pCurMap[i].Selected = pA[i];
-			pCurMap[i].Old = pB[i];
-		}
-		pCurMap += DimX;
-	}
-	pCurMap -= DimX;
-	// Bottom -> Top
-	for( int i = 0; i < DimX; i++) {
-		pA[i] = pCurMap[i].H_D1 << 1;
-		pB[i] = pCurMap[i].V_D2 << 1;
-	}
-	for( int j = 0; j < DimY; j++ ){
-		for( int i = 0; i < DimX ; i++){
-			pA[i] = pCurMap[i].H_D1 + (pA[i] >> 1);
-			pB[i] = pCurMap[i].V_D2 + (pB[i] >> 1);
-			pCurMap[i].Selected += pA[i];
-			pCurMap[i].Old += pB[i];
-		}
-		pCurMap -= DimX;
+	for( int i = 0; i < MapSize; i++){
+		pMap[i] = 0;
+		if (pDist[i] > 0)
+			pMap[i] = 1;
 	}
 
-	pCurMap = pMap;
+	return;
 
-	for( int j = 0; j < DimY; j++ ){
-		unsigned int a = pCurMap[0].Selected << 1;
-		unsigned int b = pCurMap[0].Old << 1;
-		for( int i = 0; i < DimX; i++){
-			a = pCurMap[i].Selected + (a >> 1);
-			b = pCurMap[i].Old + (b >> 1);
-			pA[i] = a;
-			pB[i] = b;
+// 	DirValue * pCurMap = pMap;
+// 	unsigned int * pA = new unsigned int [DimX];
+// 	unsigned int * pB = new unsigned int [DimX];
+//
+// 	// Top -> Bottom
+// 	for( int i = 0; i < DimX; i++) {
+// 		pA[i] = pCurMap[i].H_D1 << 1;
+// 		pB[i] = pCurMap[i].V_D2 << 1;
+// 	}
+// 	for( int j = 0; j < DimY; j++ ){
+// 		for( int i = 0; i < DimX ; i++){
+// 			pA[i] = pCurMap[i].H_D1 + (pA[i] >> 1);
+// 			pB[i] = pCurMap[i].V_D2 + (pB[i] >> 1);
+// 			pCurMap[i].Selected = pA[i];
+// 			pCurMap[i].Old = pB[i];
+// 		}
+// 		pCurMap += DimX;
+// 	}
+// 	pCurMap -= DimX;
+// 	// Bottom -> Top
+// 	for( int i = 0; i < DimX; i++) {
+// 		pA[i] = pCurMap[i].H_D1 << 1;
+// 		pB[i] = pCurMap[i].V_D2 << 1;
+// 	}
+// 	for( int j = 0; j < DimY; j++ ){
+// 		for( int i = 0; i < DimX ; i++){
+// 			pA[i] = pCurMap[i].H_D1 + (pA[i] >> 1);
+// 			pB[i] = pCurMap[i].V_D2 + (pB[i] >> 1);
+// 			pCurMap[i].Selected += pA[i];
+// 			pCurMap[i].Old += pB[i];
+// 		}
+// 		pCurMap -= DimX;
+// 	}
+//
+// 	pCurMap = pMap;
+//
+// 	for( int j = 0; j < DimY; j++ ){
+// 		unsigned int a = pCurMap[0].Selected << 1;
+// 		unsigned int b = pCurMap[0].Old << 1;
+// 		for( int i = 0; i < DimX; i++){
+// 			a = pCurMap[i].Selected + (a >> 1);
+// 			b = pCurMap[i].Old + (b >> 1);
+// 			pA[i] = a;
+// 			pB[i] = b;
+// 		}
+// 		a = pCurMap[DimX - 1].Selected << 1;
+// 		b = pCurMap[DimX - 1].Old << 1;
+// 		for( int i = DimX - 1; i >= 0 ; i--){
+// 			a = pCurMap[i].Selected + (a >> 1);
+// 			b = pCurMap[i].Old + (b >> 1);
+// 			pCurMap[i].Selected = 0;
+// 			if (b < a)
+// 				pCurMap[i].Selected = 1;
+// 		}
+// 		pCurMap += DimX;
+// 	}
+//
+// 	delete[] pA;
+// 	delete[] pB;
+}
+
+void CMap::BuidTree(float const lambda)
+{
+	int width = DimX >> 1;
+	int height = DimY >> 1;
+	short * pCurDist1 = pDist;
+	short * pCurDist2 = pDist + DimX;
+	node * pCurTree = pTree[0];
+
+	for (int j = 0; j < height; j++) {
+		for (int i = 0, k = 0; i < width; i++, k += 2) {
+			pCurTree[i].refDist = pCurDist1[k] + pCurDist1[k + 1]
+					+ pCurDist2[k] + pCurDist2[k + 1];
+			int Dist = 0;
+			if (pCurDist1[k] < 0)
+				Dist += pCurDist1[k];
+			if (pCurDist1[k + 1] < 0)
+				Dist += pCurDist1[k + 1];
+			if (pCurDist2[k] < 0)
+				Dist += pCurDist2[k];
+			if (pCurDist2[k + 1] < 0)
+				Dist += pCurDist2[k + 1];
+			pCurTree[i].dist = Dist;
+			if (pCurTree[i].refDist < 0)
+				Dist -= pCurTree[i].refDist;
+			pCurTree[i].rate = 0;
+			if ((3 + lambda * Dist) < 0)
+				pCurTree[i].rate = 3;
 		}
-		a = pCurMap[DimX - 1].Selected << 1;
-		b = pCurMap[DimX - 1].Old << 1;
-		for( int i = DimX - 1; i >= 0 ; i--){
-			a = pCurMap[i].Selected + (a >> 1);
-			b = pCurMap[i].Old + (b >> 1);
-			pCurMap[i].Selected = 0;
-			if (b < a)
-				pCurMap[i].Selected = 1;
-		}
-		pCurMap += DimX;
+		pCurDist1 += DimX * 2;
+		pCurDist2 += DimX * 2;
+		pCurTree += width;
 	}
 
-	delete[] pA;
-	delete[] pB;
+	for( int l = 1; l < TREE_DEPTH; l++){
+		node * pLowTree1 = pTree[l-1];
+		node * pLowTree2 = pLowTree1 + width;
+		pCurTree = pTree[l];
+		int stride2 = width * 2;
+		height >>= 1;
+		width >>= 1;
+
+		for( int j = 0; j < height; j++){
+			for( int i = 0, k = 0; i < width; i++, k += 2){
+				pCurTree[i].refDist = pLowTree1[k].refDist
+						+ pLowTree1[k + 1].refDist + pLowTree2[k].refDist
+						+ pLowTree2[k + 1].refDist;
+				int rate = 7 + pLowTree1[k].rate + pLowTree1[k + 1].rate
+						+ pLowTree2[k].rate + pLowTree2[k + 1].rate;
+				int Dist = 0;
+				if (pLowTree1[k].rate > 0)
+					Dist += pLowTree1[k].dist;
+				else
+					Dist += MIN(0, pLowTree1[k].refDist);
+				if (pLowTree1[k + 1].rate > 0)
+					Dist += pLowTree1[k + 1].dist;
+				else
+					Dist += MIN(0, pLowTree1[k + 1].refDist);
+				if (pLowTree2[k].rate > 0)
+					Dist += pLowTree2[k].dist;
+				else
+					Dist += MIN(0, pLowTree2[k].refDist);
+				if (pLowTree2[k + 1].rate > 0)
+					Dist += pLowTree2[k + 1].dist;
+				else
+					Dist += MIN(0, pLowTree2[k + 1].refDist);
+				pCurTree[i].dist = Dist;
+				if (pCurTree[i].refDist < 0)
+					Dist -= pCurTree[i].refDist;
+				pCurTree[i].rate = 0;
+				if ((rate + lambda * Dist) < 0)
+					pCurTree[i].rate = rate;
+			}
+			pLowTree1 += stride2;
+			pLowTree2 += stride2;
+			pCurTree += width;
+		}
+	}
+}
+
+void CMap::ApplyTree(void)
+{
+	int width = DimX >> TREE_DEPTH;
+	int height = DimY >> TREE_DEPTH;
+	node * pCurTree = pTree[TREE_DEPTH - 1];
+
+	for( int j = 0; j < height; j++){
+		for( int i = 0; i < width; i++){
+			if (pCurTree[i].rate == 0)
+				SetDir(pCurTree[i].refDist < 0 ? 0 : 1, i, j, TREE_DEPTH);
+			else
+				ApplyTree(i << 1, j << 1, TREE_DEPTH - 1);
+		}
+		pCurTree += width;
+	}
+}
+
+void CMap::ApplyTree(int x, int y, int treeDepth)
+{
+	if (treeDepth == 0){
+		pMap[x + DimX * y] = 0;
+		if (pDist[x + DimX * y] > 0)
+			pMap[x + DimX * y] = 1;
+		return;
+	}
+	node * pCurTree = pTree[treeDepth - 1];
+	int width = DimX >> treeDepth;
+	pCurTree += y * width;
+	if (pCurTree[x].rate == 0)
+		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, treeDepth);
+	else
+		ApplyTree(x << 1, y << 1, treeDepth - 1);
+	x++;
+	if (pCurTree[x].rate == 0)
+		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, treeDepth);
+	else
+		ApplyTree(x << 1, y << 1, treeDepth - 1);
+	pCurTree += width;
+	y++;
+	if (pCurTree[x].rate == 0)
+		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, treeDepth);
+	else
+		ApplyTree(x << 1, y << 1, treeDepth - 1);
+	x--;
+	if (pCurTree[x].rate == 0)
+		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, treeDepth);
+	else
+		ApplyTree(x << 1, y << 1, treeDepth - 1);
 }
 
 void CMap::GetImageDir(float * pBlock, int Stride)
 {
-	DirValue * pDir = this->pMap;
+	short * pDir = this->pDist;
 	GetDirBlock(pBlock, Stride, pDir, TOP | LEFT);
 	int i = 4;
 	pDir++;
@@ -648,7 +556,7 @@ void CMap::GetImageDir(float * pBlock, int Stride)
 
 void CMap::GetImageDirDiag(float * pBlock, int Stride)
 {
-	DirValue * pDir = this->pMap;
+	short * pDir = this->pDist;
 	GetDirBlockDiag(pBlock, Stride, pDir, TOP | LEFT);
 	int i = 4;
 	pDir++;
@@ -705,7 +613,7 @@ void CMap::GetImageDirDiag(float * pBlock, int Stride)
 	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) + ((y) - 1) * Stride]; \
 	Sum += Sqr * Sqr;
 
-void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result)
+void CMap::GetDirBlock(float * pBlock, int Stride, short * Result)
 {
 	float Sum = 0;
 	float Sqr;
@@ -719,11 +627,7 @@ void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result)
 	PXL_VAL_H(0,3);
 	PXL_VAL_H(2,3);
 
-	Result->H_D1 = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->H_D1 = 0xFFFF;
-
-	Sum = 0;
+	Sum = -Sum;
 	PXL_VAL_V(1,0);
 	PXL_VAL_V(3,0);
 	PXL_VAL_V(0,1);
@@ -733,12 +637,10 @@ void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result)
 	PXL_VAL_V(0,3);
 	PXL_VAL_V(2,3);
 
-	Result->V_D2 = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->V_D2 = 0xFFFF;
+	*Result = (short) (-Sum * 65536);
 }
 
-void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result
+void CMap::GetDirBlock(float * pBlock, int Stride, short * Result
 		, int BitField)
 {
 	float Sum = 0;
@@ -765,11 +667,7 @@ void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result
 	PXL_VAL_H(1,2);
 	PXL_VAL_H(2,3);
 
-	Result->H_D1 = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->H_D1 = 0xFFFF;
-
-	Sum = 0;
+	Sum = -Sum;
 	if (BitField & TOP){
 		PXL_VAL_V_T(1,0);
 		PXL_VAL_V_T(3,0);
@@ -791,9 +689,7 @@ void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result
 	PXL_VAL_V(1,2);
 	PXL_VAL_V(3,2);
 
-	Result->V_D2 = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->V_D2 = 0xFFFF;
+	*Result = (short) (-Sum * 65536);
 }
 
 #define PXL_D1(x,y) \
@@ -822,7 +718,7 @@ void CMap::GetDirBlock(float * pBlock, int Stride, DirValue * Result
 	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) + 1 + ((y) - 1) * Stride]; \
 	Sum += Sqr * Sqr;
 
-void CMap::GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result)
+void CMap::GetDirBlockDiag(float * pBlock, int Stride, short * Result)
 {
 	float Sum = 0;
 	float Sqr;
@@ -832,22 +728,16 @@ void CMap::GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result)
 	PXL_D1(1,3);
 	PXL_D1(3,3);
 
-	Result->H_D1 = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->H_D1 = 0xFFFF;
-
-	Sum = 0;
+	Sum = -Sum;
 	PXL_D2(1,1);
 	PXL_D2(3,1);
 	PXL_D2(1,3);
 	PXL_D2(3,3);
 
-	Result->V_D2 = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->V_D2 = 0xFFFF;
+	*Result = (short) (-Sum * 65536);
 }
 
-void CMap::GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result,
+void CMap::GetDirBlockDiag(float * pBlock, int Stride, short * Result,
 						   int BitField)
 {
 	float Sum = 0;
@@ -870,11 +760,7 @@ void CMap::GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result,
 		PXL_D1(3,3);
 	}
 
-	Result->H_D1 = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->H_D1 = 0xFFFF;
-
-	Sum = 0;
+	Sum = -Sum;
 	PXL_D2(1,1);
 	if (BitField & RIGHT) {
 		PXL_D2_TR(3,1);
@@ -896,9 +782,7 @@ void CMap::GetDirBlockDiag(float * pBlock, int Stride, DirValue * Result,
 		PXL_D2(3,3);
 	}
 
-	Result->V_D2 = (unsigned short) (Sum * 65536);
-	if (Sum > 1)
-		Result->V_D2 = 0xFFFF;
+	*Result = (short) (-Sum * 65536);
 }
 
 }

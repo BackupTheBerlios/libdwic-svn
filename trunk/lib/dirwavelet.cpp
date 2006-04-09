@@ -104,6 +104,34 @@ void DirWavelet::SetRange(CRangeCodec * RangeCodec)
 		pLow->SetRange(RangeCodec);
 }
 
+void DirWavelet::GetMap(unsigned char * pOut, int level, int Direction)
+{
+	DirWavelet * pCurWav = this;
+	while( pCurWav != 0 && pCurWav->Level != level ){
+		pCurWav = pCurWav->pLow;
+	}
+	if (pCurWav != 0) {
+		if (Direction == 0)
+			pCurWav->HVMap.GetMap(pOut);
+		else
+			pCurWav->DMap.GetMap(pOut);
+	}
+}
+
+void DirWavelet::GetDist(unsigned char * pOut, int level, int Direction)
+{
+	DirWavelet * pCurWav = this;
+	while( pCurWav != 0 && pCurWav->Level != level ){
+		pCurWav = pCurWav->pLow;
+	}
+	if (pCurWav != 0) {
+		if (Direction == 0)
+			pCurWav->HVMap.GetDist(pOut);
+		else
+			pCurWav->DMap.GetDist(pOut);
+	}
+}
+
 void DirWavelet::Stats(void)
 {
 	float Mean = 0, Var = 0;
@@ -128,25 +156,17 @@ void DirWavelet::Stats(void)
 	}
 }
 
-void DirWavelet::SetSelected(int Sel)
+void DirWavelet::SetDir(int Sel)
 {
-	HVMap.SetSelected(Sel);
-	DMap.SetSelected(Sel);
+	HVMap.SetDir(Sel);
+	DMap.SetDir(Sel);
 	if (pLow != 0)
-		pLow->SetSelected(Sel);
+		pLow->SetDir(Sel);
 }
 
 void DirWavelet::CodeMap(int Options)
 {
 	DirWavelet * pCurWav = this;
-
-	if (Options == 2){
-		while( pCurWav->pLow != 0 ){
-			pCurWav = pCurWav->pLow;
-			pCurWav->HVMap.TreeSum();
-			pCurWav->DMap.TreeSum();
-		}
-	}
 
 	while( pCurWav->pLow != 0 ){
 		pCurWav = pCurWav->pLow;
@@ -168,21 +188,13 @@ void DirWavelet::CodeMap(int Options)
 			pCurWav->DMap.Neighbor4Code();
 			pCurWav->HVMap.Neighbor4Code();
 		}
-	} else if (Options == 2) {
-		pCurWav->DMap.Neighbor4Code(1);
-		pCurWav->HVMap.Neighbor4Code(1);
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.TreeCode();
-			pCurWav->HVMap.TreeCode();
-		}
 	} else if (Options == 3) {
 		pCurWav->DMap.Neighbor4Code();
 		pCurWav->HVMap.Neighbor4Code();
 		while( pCurWav->pHigh != 0 ){
 			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.TreeCode2();
-			pCurWav->HVMap.TreeCode2();
+			pCurWav->DMap.TreeCode();
+			pCurWav->HVMap.TreeCode();
 		}
 	}
 }
@@ -210,21 +222,13 @@ void DirWavelet::DecodeMap(int Options)
 			pCurWav->DMap.Neighbor4Dec();
 			pCurWav->HVMap.Neighbor4Dec();
 		}
-	} else if (Options == 2) {
-		pCurWav->DMap.Neighbor4Dec(1);
-		pCurWav->HVMap.Neighbor4Dec(1);
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.TreeDec();
-			pCurWav->HVMap.TreeDec();
-		}
 	} else if (Options == 3) {
 		pCurWav->DMap.Neighbor4Dec();
 		pCurWav->HVMap.Neighbor4Dec();
 		while( pCurWav->pHigh != 0 ){
 			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.TreeDec2();
-			pCurWav->HVMap.TreeDec2();
+			pCurWav->DMap.TreeDec();
+			pCurWav->HVMap.TreeDec();
 		}
 	}
 }
@@ -270,14 +274,14 @@ void DirWavelet::FillHV1D(void)
 {
 	float * p1D = pTmp;
 	float * pCurPos = HVBand.pBand;
-	DirValue * pMap = pLow->HVMap.pMap;
+	char * pMap = pLow->HVMap.pMap;
 	int MapDimX = pLow->HVMap.DimX;
 
 	// horizontal direction
 	for (int j = 0; j < HVBand.DimY; j++) {
-		DirValue * pCurMap = pMap + (j >> 2) * MapDimX;
+		char * pCurMap = pMap + (j >> 2) * MapDimX;
 		for(int i = 0; i < HVBand.DimX ; i++){
-			if (pCurMap[i >> 2].Selected == 0){
+			if (pCurMap[i >> 2] == 0){
 				p1D[0] = pCurPos[i];
 				p1D++;
 			}
@@ -288,7 +292,7 @@ void DirWavelet::FillHV1D(void)
 			break;
 		pCurMap = pMap + (j >> 2) * MapDimX;
 		for(int i = HVBand.DimX - 1; i >= 0; i--){
-			if (pCurMap[i >> 2].Selected == 0){
+			if (pCurMap[i >> 2] == 0){
 				p1D[0] = pCurPos[i];
 				p1D++;
 			}
@@ -302,10 +306,10 @@ void DirWavelet::FillHV1D(void)
 
 	// vertical direction
 	for(int i = 0; i < HVBand.DimX; i++){
-		DirValue * pCurMap = pMap + (i >> 2);
+		char * pCurMap = pMap + (i >> 2);
 		int j, k = 0, l = 0;
 		for(j = i; j < HVBand.BandSize ; j += HVBand.DimXAlign, k++){
-			if (pCurMap[l].Selected == 1){
+			if (pCurMap[l] == 1){
 				p1D[0] = pCurPos[j];
 				p1D++;
 			}
@@ -319,7 +323,7 @@ void DirWavelet::FillHV1D(void)
 		k--;
 		for(; j >= 0 ; j -= HVBand.DimXAlign, k--){
 			l -= mod[k & 3];
-			if (pCurMap[l].Selected == 1){
+			if (pCurMap[l] == 1){
 				p1D[0] = pCurPos[j];
 				p1D++;
 			}
@@ -329,12 +333,12 @@ void DirWavelet::FillHV1D(void)
 
 void DirWavelet::CountHV1D(void)
 {
-	DirValue * pMap = pLow->HVMap.pMap;
+	char * pMap = pLow->HVMap.pMap;
 	int MapSize = pLow->HVMap.MapSize;
 	int Count = 0;
 
 	for( int i = 0; i < MapSize; i++){
-		if (pMap[i].Selected == 0)
+		if (pMap[i] == 0)
 			Count++;
 	}
 	Count *= 16;
@@ -349,14 +353,14 @@ void DirWavelet::FillHV1DI(void)
 {
 	float * p1D = pTmp;
 	float * pCurPos = HVBand.pBand;
-	DirValue * pMap = pLow->HVMap.pMap;
+	char * pMap = pLow->HVMap.pMap;
 	int MapDimX = pLow->HVMap.DimX;
 
 	// horizontal direction
 	for (int j = 0; j < HVBand.DimY; j++) {
-		DirValue * pCurMap = pMap + (j >> 2) * MapDimX;
+		char * pCurMap = pMap + (j >> 2) * MapDimX;
 		for(int i = 0; i < HVBand.DimX ; i++){
-			if (pCurMap[i >> 2].Selected == 0){
+			if (pCurMap[i >> 2] == 0){
 				pCurPos[i] = p1D[0];
 				p1D++;
 			}
@@ -367,7 +371,7 @@ void DirWavelet::FillHV1DI(void)
 			break;
 		pCurMap = pMap + (j >> 2) * MapDimX;
 		for(int i = HVBand.DimX - 1; i >= 0; i--){
-			if (pCurMap[i >> 2].Selected == 0){
+			if (pCurMap[i >> 2] == 0){
 				pCurPos[i] = p1D[0];
 				p1D++;
 			}
@@ -380,10 +384,10 @@ void DirWavelet::FillHV1DI(void)
 
 	// vertical direction
 	for(int i = 0; i < HVBand.DimX; i++){
-		DirValue * pCurMap = pMap + (i >> 2);
+		char * pCurMap = pMap + (i >> 2);
 		int j, k = 0, l = 0;
 		for(j = i; j < HVBand.BandSize ; j += HVBand.DimXAlign, k++){
-			if (pCurMap[l].Selected == 1){
+			if (pCurMap[l] == 1){
 				pCurPos[j] = p1D[0];
 				p1D++;
 			}
@@ -397,7 +401,7 @@ void DirWavelet::FillHV1DI(void)
 		k--;
 		for(; j >= 0 ; j -= HVBand.DimXAlign, k--){
 			l -= mod[k & 3];
-			if (pCurMap[l].Selected == 1){
+			if (pCurMap[l] == 1){
 				pCurPos[j] = p1D[0];
 				p1D++;
 			}
@@ -412,7 +416,7 @@ void DirWavelet::FillHV1DI(void)
 void DirWavelet::FillD1D(void)
 {
 	float * p1D = pTmp;
-	DirValue * pMap = DMap.pMap;
+	char * pMap = DMap.pMap;
 	int MapDimX = DMap.DimX;
 
 	int lutMap[4][2] = {{0, 0}, {0, MapDimX}, {0, 0}, {1, MapDimX + 1}};
@@ -790,38 +794,38 @@ void DirWavelet::LiftDiag2Even(float * pBlock, int Stride, float Coef,
 #undef PXL_LIFT_BL
 
 void DirWavelet::LiftBand(float * pBlock, int Stride, int DimX, int DimY,
-						  float Coef, DirValue * pDir,
+						  float Coef, char * pDir,
 						  void (**LiftEdge)(float*, int, float, int),
 						  void (**Lift)(float*, int, float))
 {
-	(*LiftEdge[pDir->Selected])(pBlock, Stride, Coef, TOP | LEFT);
+	(*LiftEdge[*pDir])(pBlock, Stride, Coef, TOP | LEFT);
 	int i = 4;
 	pDir++;
 	for( ; i < DimX - 4; i += 4, pDir++){
-		(*LiftEdge[pDir->Selected])(pBlock + i, Stride, Coef, TOP);
+		(*LiftEdge[*pDir])(pBlock + i, Stride, Coef, TOP);
 	}
-	(*LiftEdge[pDir->Selected])(pBlock + i, Stride, Coef, TOP | RIGHT);
+	(*LiftEdge[*pDir])(pBlock + i, Stride, Coef, TOP | RIGHT);
 	pBlock += Stride << 2;
 	pDir++;
 	int j = 4;
 	for( j; j < DimY - 4; j += 4){
-		(*LiftEdge[pDir->Selected])(pBlock, Stride, Coef, LEFT);
+		(*LiftEdge[*pDir])(pBlock, Stride, Coef, LEFT);
 		int i = 4;
 		pDir++;
 		for( ; i < DimX - 4; i += 4, pDir++){
-			(*Lift[pDir->Selected])(pBlock + i, Stride, Coef);
+			(*Lift[*pDir])(pBlock + i, Stride, Coef);
 		}
-		(*LiftEdge[pDir->Selected])(pBlock + i, Stride, Coef, RIGHT);
+		(*LiftEdge[*pDir])(pBlock + i, Stride, Coef, RIGHT);
 		pBlock += Stride << 2;
 		pDir++;
 	}
-	(*LiftEdge[pDir->Selected])(pBlock, Stride, Coef, BOTTOM | LEFT);
+	(*LiftEdge[*pDir])(pBlock, Stride, Coef, BOTTOM | LEFT);
 	i = 4;
 	pDir++;
 	for( ; i < DimX - 4; i += 4, pDir++){
-		(*LiftEdge[pDir->Selected])(pBlock + i, Stride, Coef, BOTTOM);
+		(*LiftEdge[*pDir])(pBlock + i, Stride, Coef, BOTTOM);
 	}
-	(*LiftEdge[pDir->Selected])(pBlock + i, Stride, Coef, BOTTOM | RIGHT);
+	(*LiftEdge[*pDir])(pBlock + i, Stride, Coef, BOTTOM | RIGHT);
 }
 
 void DirWavelet::LazyImage(float * pImage, unsigned int Stride)
@@ -952,10 +956,12 @@ void DirWavelet::Transform97(float * pImage, int Stride)
 {
 	HVMap.GetImageDir(pImage, Stride);
 	HVMap.SelectDir();
-	if (pHigh)
-		HVMap.OptimiseDirTree(4 * HVBand.Weight);
-	else
-		HVMap.OptimiseDir(8 * HVBand.Weight * HVBand.Weight);
+	if (pHigh != 0)
+		HVMap.OptimiseDir(4 * HVBand.Weight * HVBand.Weight);
+	else{
+		HVMap.BuidTree(0.01 * HVBand.Weight * HVBand.Weight);
+		HVMap.ApplyTree();
+	}
 
 	LiftBand(pImage, Stride, DimX, DimY, ALPHA, HVMap.pMap, LiftEdgeOdd,
 			 LiftInOdd);
@@ -967,10 +973,7 @@ void DirWavelet::Transform97(float * pImage, int Stride)
 			 LiftInEven);
 	DMap.GetImageDirDiag(pImage, Stride);
 	DMap.SelectDir();
-	if (pHigh)
-		DMap.OptimiseDirTree(4 * DBand.Weight);
-	else
-		DMap.OptimiseDir(4 * DBand.Weight);
+	DMap.OptimiseDir(4 * DBand.Weight);
 
 	LiftBand(pImage, Stride, DimX, DimY, ALPHA, DMap.pMap, LiftEdgeDiagOdd,
 			 LiftInDiagOdd);
@@ -1026,10 +1029,7 @@ void DirWavelet::Transform75(float * pImage, int Stride)
 {
 	HVMap.GetImageDir(pImage, Stride);
 	HVMap.SelectDir();
-	if (pHigh)
-		HVMap.OptimiseDirTree(4 * HVBand.Weight);
-	else
-		HVMap.OptimiseDir(4 * HVBand.Weight);
+	HVMap.OptimiseDir(4 * HVBand.Weight);
 
 	LiftBand(pImage, Stride, DimX, DimY, 2./25, HVMap.pMap, LiftEdgeEven,
 			 LiftInEven);
@@ -1039,10 +1039,7 @@ void DirWavelet::Transform75(float * pImage, int Stride)
 			 LiftInEven);
 	DMap.GetImageDirDiag(pImage, Stride);
 	DMap.SelectDir();
-	if (pHigh)
-		DMap.OptimiseDirTree(4 * DBand.Weight);
-	else
-		DMap.OptimiseDir(4 * DBand.Weight);
+	DMap.OptimiseDir(4 * DBand.Weight);
 
 	LiftBand(pImage, Stride, DimX, DimY, 2./25, DMap.pMap, LiftEdgeDiagEven,
 			 LiftInDiagEven);

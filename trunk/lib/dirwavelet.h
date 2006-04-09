@@ -73,7 +73,9 @@ public:
 	void Saturate(float * pImage, int stride);
 
 	void Stats(void);
-	void SetSelected(int Sel);
+	void SetDir(int Sel);
+	void GetMap(unsigned char * pOut, int level, int Direction);
+	void GetDist(unsigned char * pOut, int level, int Direction);
 
 private:
 
@@ -112,7 +114,7 @@ private:
 	void LazyImageI(float * pImage, unsigned int Stride);
 
 	static void LiftBand(float * pBlock, int Stride, int DimX, int DimY,
-							  float Coef, DirValue * pDir,
+							  float Coef, char * pDir,
 							  void (**LiftEdge)(float*, int, float, int),
 							  void (**Lift)(float*, int, float));
 

@@ -44,6 +44,15 @@ using namespace std;
 using namespace Magick;
 using namespace libdwic;
 
+template <class Pxl>
+void BW2RGB(Pxl * pIn, int stride)
+{
+	for( int i = stride - 1, j = (stride - 1) * 3; i > 0 ; i--){
+		pIn[j] = pIn[j+1] = pIn[j+2] = pIn[i];
+		j-=3;
+	}
+}
+
 void CompressImage(string & infile, string & outfile, int Quant, float Thres){
 	ofstream oFile( outfile.c_str() , ios::out );
 	oFile << "DWIC";
@@ -68,6 +77,27 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres){
  	Wavelet.Transform97(ImgPixels, img.columns());
 	Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
 
+	int MapDimX = img.columns() >> 2;
+	int MapDimY = img.rows() >> 2;
+	unsigned char * pMap = new unsigned char [MapDimX * MapDimY * 3];
+	for( int i = 5; i > 0; i--){
+		Wavelet.GetMap(pMap, i, 0);
+		BW2RGB(pMap, MapDimX * MapDimY);
+		Image map1(MapDimX, MapDimY, "RGB", CharPixel, pMap);
+		map1.type( GrayscaleType );
+		map1.normalize();
+		char tmp[8];
+		sprintf(tmp, "HV%i.png", i);
+		map1.write(outfile + tmp);
+		Wavelet.GetDist(pMap, i, 1);
+		Image map2(MapDimX, MapDimY, "B", CharPixel, pMap);
+		map2.normalize();
+		sprintf(tmp, "D%i.png", i);
+		map2.write(outfile + tmp);
+		MapDimX >>= 1;
+		MapDimY >>= 1;
+	}
+
 	RangeCodec.InitCoder(Quant, pStream);
 	Wavelet.CodeMap(3);
 	unsigned char * pEnd = RangeCodec.EndCoding() + 1;
@@ -78,6 +108,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres){
 
 	delete[] ImgPixels;
 	delete[] pStream;
+	delete[] pMap;
 }
 
 void DecompressImage(string & infile, string & outfile, float RecLevel){
@@ -112,10 +143,7 @@ void DecompressImage(string & infile, string & outfile, float RecLevel){
 	Wavelet.TSUQi(Quants[Quant], Quants[Quant] * RecLevel);
  	Wavelet.Transform97I(ImgPixels, width);
 
-	for( int i = width * heigth - 1, j = width * heigth * 3 - 3; i > 0 ; i--){
-		ImgPixels[j] = ImgPixels[j+1] = ImgPixels[j+2] = ImgPixels[i];
-		j-=3;
-	}
+	BW2RGB(ImgPixels, width * heigth);
 	Image img(width, heigth, "RGB", FloatPixel, ImgPixels);
 	img.type( GrayscaleType );
 	// img.display();
