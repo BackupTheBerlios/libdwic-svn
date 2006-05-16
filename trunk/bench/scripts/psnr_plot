@@ -13,7 +13,7 @@ for IN_IMAGE in *.png ; do
 	BENCH_FILE="${IN_IMAGE%.png}.dwic.dat"
 	echo "# Image : $IN_IMAGE" > $BENCH_FILE
 	for q in ${Q[@]} ; do
-		dwic -i $IN_IMAGE -o $OUT_FILE -q $q
+		dwic -i $IN_IMAGE -o $OUT_FILE -q $q -v 0
 		tmp=( `ls -l $OUT_FILE` )
 		file_size=${tmp[4]}
 		dwic -i $OUT_FILE -o $OUT_IMAGE

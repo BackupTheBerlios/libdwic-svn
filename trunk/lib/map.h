@@ -37,7 +37,7 @@
 
 namespace libdwic {
 
-#define TREE_DEPTH 5
+#define MAX_TREE_DEPTH 5
 
 typedef struct {
 	short rate;		// rate of this tree branch, 0 if the node is a leaf
@@ -51,13 +51,15 @@ typedef struct {
 */
 class CMap{
 public:
-	CMap(CMap * pHighMap);
+	CMap(CMap * pHighMap, int treeDepth);
 
     ~CMap();
 
 	void Init(int DimX = 0, int DimY = 0);
-	void GetImageDir(float * pBlock, int Stride);
-	void GetImageDirDiag(float * pBlock, int Stride);
+	void GetImageDist(float * pImage1, float * pImage2, int stride);
+	void GetImageDist(float * pImage1, float * pImage2,
+					  float * pBand1, float * pBand2, int stride);
+	void GetImageDistDiag(float * pImage1, float * pImage2, int stride);
 	void SetDir(int Sel);
 	void GetMap(unsigned char * pOut);
 	void GetDist(unsigned char * pOut);
@@ -77,6 +79,11 @@ public:
 	void SelectDir(void);
 // 	void TreeSum(void);
 
+	void BuidNodes(float const lambda);
+	void ApplyNodes(void);
+	void CodeNodes(void);
+	void DecodeNodes(void);
+
 	unsigned int DimX;		// Width of the map (blocks)
 	unsigned int DimY;		// Height of the map (blocks)
 	unsigned int ImageX;	// Width of the original image
@@ -85,22 +92,35 @@ public:
 	char * pMap;			// Directional map information
 	short * pDist;			// Distortion difference
 
+	float weightL;			// Low band weight
+	float weightH;			// High band weight
+
 private:
 
 	CMap * pLow, * pHigh;	// Pointers to low and high direction map
 	CBitCodec DirCodec;		// Context coder for directions
+	CBitCodec NodeCodec;	// Context coder for nodes
+	CBitCodec LeafCodec;	// Context coder for nodes direction
 
-	node * pTree[TREE_DEPTH];
+	int treeDepth;
+	node * pTree[MAX_TREE_DEPTH];
 
-	void SetDir(int Dir, int x, int y, int treeDepth);
-	void ApplyTree(int x, int y, int treeDepth);
+	node * pNodes;
 
-	static void GetDirBlock(float * pBlock, int Stride, short * Result);
-	static void GetDirBlock(float * pBlock, int Stride, short * Result
-			, int BitField);
-	static void GetDirBlockDiag(float * pBlock, int Stride, short * Result);
-	static void GetDirBlockDiag(float * pBlock, int Stride, short * Result
-			, int BitField);
+	void SetDir(int Dir, int x, int y, int depth);
+	void ApplyTree(int x, int y, int depth);
+
+	void SetDir(int Dir, int x, int y);
+	void ApplyNodes(int x, int y);
+	void CodeNodes(int x, int y, int context);
+	void DecodeNodes(int x, int y, int context);
+
+// 	static void GetDirBlock(float * pBlock, int Stride, short * Result);
+// 	static void GetDirBlock(float * pBlock, int Stride, short * Result
+// 			, int BitField);
+// 	static void GetDirBlockDiag(float * pBlock, int Stride, short * Result);
+// 	static void GetDirBlockDiag(float * pBlock, int Stride, short * Result
+// 			, int BitField);
 };
 
 }

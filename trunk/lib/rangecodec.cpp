@@ -131,14 +131,18 @@ unsigned char * CRangeCodec::EndCoding(void){
 	}
 	pStream[0] = StreamBuff | (((unsigned char)tmp) >> 1);
 	pStream[1] = (unsigned char)(tmp << 7);
-	pStream += 2;
-	pStream[0] = 0;
-	pStream[1] = 0;
+// 	FIXME enlever les 0, à ajouter au décodage
+	pStream[2] = 0;
+	pStream[3] = 0;
+	pStream += 3;
 	return pStream;
 }
 
 unsigned int CRangeCodec::GetCurrentSize(void){
-	return (unsigned int)(pStream - pInitStream);
+	unsigned int tmp = (unsigned int)(pStream - pInitStream);
+	if ((Range >> RANGE_BITS) == 0)
+		tmp++;
+	return tmp;
 }
 
 void CRangeCodec::CodeDirect(const unsigned int Value,

@@ -46,6 +46,9 @@ namespace libdwic {
 
 class DirWavelet{
 public:
+	int DimX;
+	int DimY;
+
 	DirWavelet(int x, int y, int level, int Align = ALIGN);
 
 	~DirWavelet();
@@ -75,12 +78,11 @@ public:
 	void Stats(void);
 	void SetDir(int Sel);
 	void GetMap(unsigned char * pOut, int level, int Direction);
+	void GetBand(float * pOut, int level, int Direction);
 	void GetDist(unsigned char * pOut, int level, int Direction);
 
 private:
 
-	int DimX;
-	int DimY;
 	int Level;
 	CMap HVMap;
 	CMap DMap;

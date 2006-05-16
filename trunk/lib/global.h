@@ -73,7 +73,7 @@ namespace libdwic {
 #define UNSIGN_CLIP(NbToClip,Value)	\
 	((NbToClip) > (Value) ? (Value) : (NbToClip))
 
-#define CLIP(NbToClip,ValueMin, ValueMax)	\
+#define CLIP(NbToClip,ValueMin,ValueMax)	\
 	((NbToClip) > (ValueMax) ? (ValueMax) : ((NbToClip) < (ValueMin) ? (ValueMin) : (NbToClip)))
 
 #define ABS(Number)					\

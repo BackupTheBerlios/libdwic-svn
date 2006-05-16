@@ -35,6 +35,9 @@
 
 #include <string.h>
 #include <math.h>
+#include <iostream>
+
+using namespace std;
 
 namespace libdwic {
 
@@ -242,6 +245,31 @@ void CWavelet::TSUQi(float Quant, float RecLevel)
 		TSUQi(pBand[0][j], strides[0][j], Quant / weights[0],
 			  RecLevel / weights[0]);
 	}
+}
+
+void CWavelet::Mean(void)
+{
+	for( int j = 0; j <= 1; j++){
+		for( int i = Levels; i > 0; i--){
+			Mean(pBand[i][j], strides[i][j] >> 1, weights[i]);
+		}
+		Mean(pBand[0][j], strides[0][j], weights[0]);
+		cout << endl;
+	}
+}
+
+void CWavelet::Mean(float * pIn, int stride, float Weight)
+{
+	float Sum = 0;
+	float SSum = 0;
+	for( int i = 0; i < stride; i++){
+		Sum += pIn[ i ];
+		SSum += pIn[ i ] * pIn[ i ];
+	}
+	float Mean = Sum * Weight / ( stride );
+	float Var = ( ( SSum - Sum * Sum / ( stride ) ) / ( stride ) )
+			* Weight * Weight;
+	cout << Mean << "\t" << Var << " (" << stride << ")" << endl;
 }
 
 void CWavelet::RLECode(CRLECodec * pCodec)

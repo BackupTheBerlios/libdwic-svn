@@ -85,6 +85,39 @@ void CBand::RLEDecode(CRLECodec * pCodec)
 	}
 }
 
+void CBand::RLECodeV(CRLECodec * pCodec)
+{
+	float * pCur = pBand;
+	float * pTmp = new float[DimY];
+
+	for( int j = 0; j < DimX; j++){
+		float * pCur2 = pCur;
+		for( int i = 0; i < DimY; i++){
+			pTmp[i] = *pCur2;
+			pCur2 += DimXAlign;
+		}
+		pCodec->RLECode(pTmp, DimY);
+		pCur++;
+	}
+	delete[] pTmp;
+}
+
+void CBand::RLEDecodeV(CRLECodec * pCodec)
+{
+	float * pCur = pBand;
+	float * pTmp = new float[DimY];
+
+	for( int j = 0; j < DimX; j++){
+		float * pCur2 = pCur;
+		pCodec->RLEDecode(pTmp, DimY);
+		for( int i = 0; i < DimY; i++){
+			*pCur2 = pTmp[i];
+			pCur2 += DimXAlign;
+		}
+		pCur++;
+	}
+	delete[] pTmp;
+}
 
 void CBand::ListAllPos( void )
 {
@@ -95,6 +128,11 @@ void CBand::ListAllPos( void )
 			pList[ LstLen++ ] = Pos;
 		}
 	}
+}
+
+void CBand::GetBand(float * pOut)
+{
+	memcpy(pOut, pBand, BandSize * sizeof(float));
 }
 
 void CBand::SimpleQuant( int quant )
@@ -123,8 +161,9 @@ void CBand::Mean( float & Mean, float & Var )
 			SSum += pBand[ i + J ] * pBand[ i + J ];
 		}
 	}
-	Mean = Sum / ( DimX * DimY );
-	Var = ( SSum - Sum * Sum / ( DimX * DimY ) ) / ( DimX * DimY );
+	Mean = Sum * Weight / ( DimX * DimY );
+	Var = ( ( SSum - Sum * Sum / ( DimX * DimY ) ) / ( DimX * DimY ) )
+			* Weight * Weight;
 }
 
 unsigned int CBand::Thres( float Thres )

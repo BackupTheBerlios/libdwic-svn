@@ -33,69 +33,102 @@
 
 #pragma once
 
-#include "rlecodec.h"
+#include "band.h"
+#include "map.h"
+#include "wavelet.h"
+#include "wavelet2d.h"
 
 namespace libdwic {
 
-#define MAX_WAV_LEVEL 5
+typedef enum lift {even, odd, diag_even, diag_odd};
 
-// #define ALPHA (-1.586134342)
-// #define BETA (-0.05298011854)
-// #define GAMMA (0.8829110762)
-// #define DELTA (0.4435068522)
-#define XI 1.149604398
-
-
-// http://www.ece.vt.edu/fac_support/dspcl/docs/TCASII05.pdf
-#define ALPHA (-3./2.)
-#define BETA (-1./16.)
-#define GAMMA (4./5.)
-#define DELTA (15./32.)
-// #define XI 1.13137085
+#define MOD		.125
+#define ALPHA1	(ALPHA * MOD)
+#define ALPHA2	(ALPHA * (1-MOD))
+#define BETA1	(BETA * MOD)
+#define BETA2	(BETA * (1-MOD))
+#define GAMMA1	(GAMMA * MOD)
+#define GAMMA2	(GAMMA * (1-MOD))
+#define DELTA1	(DELTA * MOD)
+#define DELTA2	(DELTA * (1-MOD))
 
 /**
 @author Nicolas Botti
 */
-class CWavelet{
+class CWaveletDir{
 public:
-    CWavelet(int stride, int Level);
 
-    ~CWavelet();
+	CWaveletDir(int x, int y, int level, int Align = ALIGN);
 
-	void Trans1D97(float * pIn);
-	void Trans1D97I(float * pOut);
+	~CWaveletDir();
 
-	void TSUQ(float Quant, float Thres);
-	void TSUQi(float Quant, float Thres);
+	void LazyTransform(float * pImage, int Stride);
+	void LazyTransformI(float * pImage, int Stride);
+	void Transform53(float * pImage, int Stride);
+	void Transform53I(float * pImage, int Stride);
+	void SetWeight53(void);
+	void Transform97(float * pImage, int stride, float lambda);
+	void Transform97I(float * pImage, int Stride);
+	void SetWeight97(void);
 
-	void SetWeight97(float baseWeight);
-	void SetDirLength(int length);
+	void SetRange(CRangeCodec * RangeCodec);
+	void CodeMap(int Options = 0);
+	void DecodeMap(int Options = 0);
+	unsigned char * CodeBand(unsigned char * pBuf);
+	unsigned char * DecodeBand(unsigned char * pBuf);
 
-	void RLECode(CRLECodec * pCodec);
-	void RLEDecode(CRLECodec * pCodec);
+	unsigned int Thres(float Thres);
+	unsigned int TSUQ(float Quant, float Thres);
+	void TSUQi(float Quant, float RecLevel);
+	void Saturate(float * pImage, int stride);
 
-	void Mean(void);
+	void Stats(void);
+	void SetDir(int Sel);
+	void GetMap(unsigned char * pOut, int level, int Direction);
+	void GetBand(float * pOut, int level, int Direction);
+	void GetDist(unsigned char * pOut, int level, int Direction);
 
-	float * pData;
+	int GetDimX(void){ return DimX;}
+	int GetDimY(void){ return DimY;}
+
 private:
 
-	float * pBand[MAX_WAV_LEVEL + 1][2];
-	int strides[MAX_WAV_LEVEL + 1][2];
-	float weights[MAX_WAV_LEVEL + 1];
-	int Levels;
-	int totalStride;
+	int DimX;
+	int DimY;
+	int Level;
 
+	CWaveletDir * pLow;
+	CWaveletDir * pHigh;
 
-	static void Lift1D(float * pBuf, int stride, float Predict, float Update);
-	static void Lift1DI(float * pBuf, int stride, float Predict, float Update);
-	static void Lazy1D(float * pIn, int stride, float * pOut);
-	static void Lazy1DI(float * pIn, int stride, float * pOut);
+	CBand DLBand;
+	CBand DHBand;
+	CBand HVBand;
+	CBand HVLBand;
+	CBand HVHBand;
+	CBand LBand;
 
-	static void TSUQ(float * pIn, int stride, float Quant, float Thres);
-	static void TSUQi(float * pIn, int stride, float Quant, float RecLevel);
+	CWavelet2D HVWav;
 
-	void Mean(float * pIn, int stride, float Weight);
+	CMap HVMap;
+	CMap DMap;
 
+	CWaveletDir(int x, int y, int level, CWaveletDir * pHigh, int Align);
+
+	void Init(int level, int Align);
+
+	void Transform97(float * pImage, int Stride, bool getDir);
+
+	void LazyImage(float * pImage, unsigned int Stride);
+	void LazyImageI(float * pImage, unsigned int Stride);
+	void LazyBand(void);
+	void LazyBandI(void);
+
+	template <lift lft_opt>
+	static void LiftBand(float * pCur, int stride, int DimX, int DimY,
+						 float Coef1, float Coef2, char * pDir1);
+
+	void GetImageDir97(float * pImage, int stride);
+	void GetImageDirDiag97(float * pImage, int stride);
 };
 
 }

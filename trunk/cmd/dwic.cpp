@@ -44,16 +44,143 @@ using namespace std;
 using namespace Magick;
 using namespace libdwic;
 
+#define BAD_MAGIC		2
+#define UNKNOW_TYPE		3
+
 template <class Pxl>
-void BW2RGB(Pxl * pIn, int stride)
+void BW2RGB(Pxl * pIn, int stride, Pxl offset = 0)
 {
 	for( int i = stride - 1, j = (stride - 1) * 3; i > 0 ; i--){
-		pIn[j] = pIn[j+1] = pIn[j+2] = pIn[i];
+		pIn[j] = pIn[j+1] = pIn[j+2] = pIn[i] + offset;
 		j-=3;
 	}
 }
 
-void CompressImage(string & infile, string & outfile, int Quant, float Thres){
+void Map2PNG(CWaveletDir & Wavelet, string & outfile)
+{
+
+	int MapDimX = Wavelet.GetDimX() >> 1;
+	int MapDimY = Wavelet.GetDimY() >> 1;
+	unsigned char * pMap = new unsigned char [MapDimX * MapDimY * 3];
+	for( int i = 5; i > 0; i--){
+		Wavelet.GetMap(pMap, i, 0);
+		BW2RGB(pMap, MapDimX * MapDimY);
+		Image map1(MapDimX, MapDimY, "RGB", CharPixel, pMap);
+		map1.type( GrayscaleType );
+		map1.normalize();
+		char tmp[8];
+		sprintf(tmp, "MapHV%i.png", i);
+		map1.write(outfile + tmp);
+		Wavelet.GetMap(pMap, i, 1);
+		BW2RGB(pMap, MapDimX * MapDimY);
+		Image map2(MapDimX, MapDimY, "RGB", CharPixel, pMap);
+		map2.type( GrayscaleType );
+		map2.normalize();
+		sprintf(tmp, "MapD%i.png", i);
+		map2.write(outfile + tmp);
+		MapDimX >>= 1;
+		MapDimY >>= 1;
+	}
+	delete[] pMap;
+}
+
+void Dist2PNG(CWaveletDir & Wavelet, string & outfile)
+{
+
+	int MapDimX = Wavelet.GetDimX() >> 1;
+	int MapDimY = Wavelet.GetDimY() >> 1;
+	unsigned char * pMap = new unsigned char [MapDimX * MapDimY * 3];
+	for( int i = 5; i > 0; i--){
+		Wavelet.GetDist(pMap, i, 0);
+		BW2RGB(pMap, MapDimX * MapDimY);
+		Image map1(MapDimX, MapDimY, "RGB", CharPixel, pMap);
+		map1.type( GrayscaleType );
+		char tmp[8];
+		sprintf(tmp, "HV%i.png", i);
+		map1.write(outfile + tmp);
+		Wavelet.GetDist(pMap, i, 1);
+		BW2RGB(pMap, MapDimX * MapDimY);
+		Image map2(MapDimX, MapDimY, "RGB", CharPixel, pMap);
+		map2.type( GrayscaleType );
+		sprintf(tmp, "D%i.png", i);
+		map2.write(outfile + tmp);
+		MapDimX >>= 1;
+		MapDimY >>= 1;
+	}
+	delete[] pMap;
+}
+
+void Band2PNG(CWaveletDir & Wavelet, string & outfile)
+{
+
+	int BandDimX = Wavelet.GetDimX() >> 1;
+	int BandDimY = Wavelet.GetDimY() >> 1;
+	float * pBand = new float [BandDimX * BandDimY * 3];
+	for( int i = 5; i > 0; i--){
+		char tmp[8];
+		{
+			Wavelet.GetBand(pBand, i, 0);
+			BW2RGB(pBand, BandDimX * BandDimY, 0.5f);
+			Image Band(BandDimX, BandDimY, "RGB", FloatPixel, pBand);
+			Band.type( GrayscaleType );
+			sprintf(tmp, "HV%i.png", i);
+			Band.write(outfile + tmp);
+		}
+		{
+			Wavelet.GetBand(pBand, i, 1);
+			BW2RGB(pBand, BandDimX * (BandDimY >> 1), 0.5f);
+			Image Band(BandDimX, BandDimY >> 1, "RGB", FloatPixel, pBand);
+			Band.type( GrayscaleType );
+			sprintf(tmp, "HVL%i.png", i);
+			Band.write(outfile + tmp);
+		}
+		{
+			Wavelet.GetBand(pBand, i, 2);
+			BW2RGB(pBand, BandDimX * (BandDimY >> 1), 0.5f);
+			Image Band(BandDimX, BandDimY >> 1, "RGB", FloatPixel, pBand);
+			Band.type( GrayscaleType );
+			sprintf(tmp, "HVH%i.png", i);
+			Band.write(outfile + tmp);
+		}
+		{
+			Wavelet.GetBand(pBand, i, 3);
+			BW2RGB(pBand, BandDimX * BandDimY, 0.5f);
+			Image Band(BandDimX, BandDimY, "RGB", FloatPixel, pBand);
+			Band.type( GrayscaleType );
+			sprintf(tmp, "DL%i.png", i);
+			Band.write(outfile + tmp);
+		}
+		{
+			Wavelet.GetBand(pBand, i, 4);
+			BW2RGB(pBand, BandDimX * BandDimY, 0.5f);
+			Image Band(BandDimX, BandDimY, "RGB", FloatPixel, pBand);
+			Band.type( GrayscaleType );
+			sprintf(tmp, "DH%i.png", i);
+			Band.write(outfile + tmp);
+		}
+
+		BandDimX >>= 1;
+		BandDimY >>= 1;
+	}
+	delete[] pBand;
+}
+
+typedef union {
+	struct  {
+		unsigned char Quant	:5;
+		unsigned char Type	:3;
+	};
+	char last;
+} Header;
+
+void CompressImage(string & infile, string & outfile, int Quant, float Thres,
+				   int Type)
+{
+
+	Header Head;
+	Head.Quant = Quant;
+	Head.Type = Type;
+
 	ofstream oFile( outfile.c_str() , ios::out );
 	oFile << "DWIC";
 
@@ -68,57 +195,57 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres){
 	oFile.write((char *)&tmp, sizeof(unsigned short));
 	tmp = img.rows();
 	oFile.write((char *)&tmp, sizeof(unsigned short));
+	unsigned char * pEnd = pStream;
 
-	DirWavelet Wavelet(img.columns(), img.rows(), 5);
-	Wavelet.SetWeight97();
- 	CRangeCodec RangeCodec(0, 0);
- 	Wavelet.SetRange(&RangeCodec);
+	if (Type == 0) {
+		CRangeCodec RangeCodec(0, 0);
+		RangeCodec.InitCoder(Head.last, pEnd);
 
- 	Wavelet.Transform97(ImgPixels, img.columns());
-	Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
+		CWaveletDir Wavelet(img.columns(), img.rows(), 5);
+		Wavelet.SetWeight97();
+		Wavelet.SetRange(&RangeCodec);
+		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant]);
 
-	int MapDimX = img.columns() >> 2;
-	int MapDimY = img.rows() >> 2;
-	unsigned char * pMap = new unsigned char [MapDimX * MapDimY * 3];
-	for( int i = 5; i > 0; i--){
-		Wavelet.GetMap(pMap, i, 0);
-		BW2RGB(pMap, MapDimX * MapDimY);
-		Image map1(MapDimX, MapDimY, "RGB", CharPixel, pMap);
-		map1.type( GrayscaleType );
-		map1.normalize();
-		char tmp[8];
-		sprintf(tmp, "HV%i.png", i);
-		map1.write(outfile + tmp);
-		Wavelet.GetDist(pMap, i, 1);
-		Image map2(MapDimX, MapDimY, "B", CharPixel, pMap);
-		map2.normalize();
-		sprintf(tmp, "D%i.png", i);
-		map2.write(outfile + tmp);
-		MapDimX >>= 1;
-		MapDimY >>= 1;
+// 		Wavelet.Stats();
+// 		Band2PNG(Wavelet, outfile);
+// 		Map2PNG(Wavelet, outfile);
+// 		Dist2PNG(Wavelet, outfile);
+
+		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
+		Wavelet.CodeMap(4);
+
+		pEnd = RangeCodec.EndCoding();
+		pEnd = Wavelet.CodeBand(pEnd);
+	} else if (Type == 1) {
+		oFile.write((char *)&Head, sizeof(Header));
+		CWavelet2D Wavelet(img.columns(), img.rows(), 5);
+		Wavelet.SetWeight97();
+		Wavelet.Transform97(ImgPixels, img.columns());
+
+// 		Wavelet.Stats();
+
+		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
+		pEnd = Wavelet.CodeBand(pEnd);
+	} else {
+		throw UNKNOW_TYPE;
 	}
 
-	RangeCodec.InitCoder(Quant, pStream);
-	Wavelet.CodeMap(3);
-	unsigned char * pEnd = RangeCodec.EndCoding() + 1;
-	pEnd = Wavelet.CodeBand(pEnd);
 	oFile.write((char *) pStream, (pEnd - pStream));
-
 	oFile.close();
 
 	delete[] ImgPixels;
 	delete[] pStream;
-	delete[] pMap;
 }
 
-void DecompressImage(string & infile, string & outfile, float RecLevel){
+void DecompressImage(string & infile, string & outfile, float RecLevel)
+{
 	ifstream iFile( infile.c_str() , ios::in );
 	char magic[4] = {0,0,0,0};
 
 	iFile.read(magic, 4);
 
 	if (magic[0] != 'D' || magic[1] != 'W' || magic[2]!= 'I' || magic[3] != 'C')
-		throw 2;
+		throw BAD_MAGIC;
 
 	unsigned short width, heigth;
 	iFile.read((char *) &width, sizeof(unsigned short));
@@ -128,20 +255,32 @@ void DecompressImage(string & infile, string & outfile, float RecLevel){
 	unsigned char * pStream = new unsigned char[width * heigth];
 
 	iFile.read((char *) pStream, width * heigth);
+	unsigned char * pEnd = pStream;
 
-	DirWavelet Wavelet(width, heigth, 5);
-	Wavelet.SetWeight97();
- 	CRangeCodec RangeCodec(0);
- 	Wavelet.SetRange(&RangeCodec);
+	Header Head;
+	Head.last = *pStream;
 
-	RangeCodec.InitDecoder(pStream);
-	int Quant = RangeCodec.GetFirstByte();
-	Wavelet.DecodeMap(3);
-	unsigned char * pEnd = pStream + RangeCodec.GetCurrentSize();
-	Wavelet.DecodeBand(pEnd);
+	if (Head.Type == 0) {
+		CRangeCodec RangeCodec(0);
+		RangeCodec.InitDecoder(pStream);
 
-	Wavelet.TSUQi(Quants[Quant], Quants[Quant] * RecLevel);
- 	Wavelet.Transform97I(ImgPixels, width);
+		CWaveletDir Wavelet(width, heigth, 5);
+		Wavelet.SetWeight97();
+		Wavelet.SetRange(&RangeCodec);
+		Wavelet.DecodeMap(4);
+		pEnd = pStream + RangeCodec.GetCurrentSize();
+		Wavelet.DecodeBand(pEnd);
+		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
+		Wavelet.Transform97I(ImgPixels, width);
+	} else if (Head.Type == 1) {
+		CWavelet2D Wavelet(width, heigth, 5);
+		Wavelet.SetWeight97();
+		Wavelet.DecodeBand(pEnd + 1);
+		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
+		Wavelet.Transform97I(ImgPixels, width);
+	} else {
+		throw UNKNOW_TYPE;
+	}
 
 	BW2RGB(ImgPixels, width * heigth);
 	Image img(width, heigth, "RGB", FloatPixel, ImgPixels);
@@ -165,8 +304,9 @@ int main( int argc, char *argv[] )
 	float ThresRatio = 0.75;
 	int Quant = 9;
 	float RecLevelRatio = 0;
+	int Type = 0;
 
-	while ((c = getopt(argc , argv, "i:o:q:r:t:")) != -1) {
+	while ((c = getopt(argc , argv, "i:o:q:r:t:v:")) != -1) {
 		switch (c) {
 			case 'i':
 				infile = optarg;
@@ -182,6 +322,9 @@ int main( int argc, char *argv[] )
 				break;
 			case 't':
 				ThresRatio = atof(optarg);
+				break;
+			case 'v':
+				Type = atoi(optarg);
 				break;
 		}
 	}
@@ -216,7 +359,7 @@ int main( int argc, char *argv[] )
 
 
 	if (mode == 0) {
-		CompressImage(infile, outfile, Quant, ThresRatio);
+		CompressImage(infile, outfile, Quant, ThresRatio, Type);
 	} else {
 		DecompressImage(infile, outfile, RecLevelRatio);
 	}

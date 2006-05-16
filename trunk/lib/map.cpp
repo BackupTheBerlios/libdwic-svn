@@ -36,18 +36,23 @@
 
 #include <math.h>
 #include <string.h>
+#include <iostream>
+
+using namespace std;
 
 namespace libdwic {
 
-CMap::CMap(CMap * pHighMap):
+CMap::CMap(CMap * pHighMap, int treeDepth):
 pMap(0),
 pDist(0),
-pLow(0)
+pLow(0),
+pNodes(0)
 {
 	pHigh = pHighMap;
 	if (pHigh != 0)
 		pHigh->pLow = this;
 	pTree[0] = 0;
+	this->treeDepth = MIN(treeDepth, MAX_TREE_DEPTH);
 	Init();
 }
 
@@ -56,6 +61,7 @@ CMap::~CMap()
 {
 	delete[] pMap;
 	delete[] pDist;
+	delete[] pNodes;
 	delete[] pTree[0];
 }
 
@@ -63,17 +69,17 @@ void CMap::Init(int DimX, int DimY)
 {
 	this->ImageX = DimX;
 	this->ImageY = DimY;
-	this->DimX = (DimX + 3) >> 2;
-	this->DimY = (DimY + 3) >> 2;
+	this->DimX = (DimX + 1) >> 1;
+	this->DimY = (DimY + 1) >> 1;
 	MapSize = this->DimX * this->DimY;
 	if (MapSize != 0){
 		pMap = new char[MapSize];
 		pDist = new short[MapSize];
-		if (MapSize > 8192) {
-			pTree[0] = new node[(MapSize - (MapSize >> (2 * TREE_DEPTH))) / 3];
-			for( int i = 1; i < TREE_DEPTH; i++)
-				pTree[i] = pTree[i-1] + (MapSize >> (2 * i));
-		}
+		pTree[0] = new node[(MapSize - (MapSize >> (2 * treeDepth))) / 3];
+		if (pHigh != 0)
+			pNodes = new node [MapSize];
+		for( int i = 1; i < treeDepth; i++)
+			pTree[i] = pTree[i-1] + (MapSize >> (2 * i));
 	}
 }
 
@@ -84,11 +90,11 @@ void CMap::SetDir(int Dir)
 	}
 }
 
-void CMap::SetDir(int Dir, int x, int y, int treeDepth)
+void CMap::SetDir(int Dir, int x, int y, int depth)
 {
 	char * pCurMap = pMap;
-	int size = 1 << treeDepth;
-	pCurMap += (x << treeDepth) + (y << treeDepth) * DimX;
+	int size = 1 << depth;
+	pCurMap += (x << depth) + (y << depth) * DimX;
 
 	for( int j = 0; j < size; j++){
 		for( int i = 0; i < size; i++){
@@ -106,11 +112,8 @@ void CMap::GetMap(unsigned char * pOut)
 void CMap::GetDist(unsigned char * pOut)
 {
 	for( int i = 0; i < MapSize; i++){
-		int Out = ((int)pDist[i]>>8) + 128;
-		if (Out > 255)
-			Out = 255;
-		if (Out < 0)
-			Out = 0;
+		int Out = ((int)pDist[i]) + 128;
+		Out = CLIP(Out, 0, 255);
 		pOut[i] = (unsigned char) Out;
 	}
 }
@@ -118,6 +121,8 @@ void CMap::GetDist(unsigned char * pOut)
 void CMap::SetRange(CRangeCodec * RangeCodec)
 {
 	DirCodec.SetRange(RangeCodec);
+	NodeCodec.SetRange(RangeCodec);
+	LeafCodec.SetRange(RangeCodec);
 }
 
 void CMap::Order0Code(void)
@@ -322,74 +327,13 @@ void CMap::OptimiseDir(float const lambda)
 
 void CMap::SelectDir(void)
 {
-
 	for( int i = 0; i < MapSize; i++){
 		pMap[i] = 0;
-		if (pDist[i] > 0)
+		if (pDist[i] >= 0)
 			pMap[i] = 1;
 	}
 
 	return;
-
-// 	DirValue * pCurMap = pMap;
-// 	unsigned int * pA = new unsigned int [DimX];
-// 	unsigned int * pB = new unsigned int [DimX];
-//
-// 	// Top -> Bottom
-// 	for( int i = 0; i < DimX; i++) {
-// 		pA[i] = pCurMap[i].H_D1 << 1;
-// 		pB[i] = pCurMap[i].V_D2 << 1;
-// 	}
-// 	for( int j = 0; j < DimY; j++ ){
-// 		for( int i = 0; i < DimX ; i++){
-// 			pA[i] = pCurMap[i].H_D1 + (pA[i] >> 1);
-// 			pB[i] = pCurMap[i].V_D2 + (pB[i] >> 1);
-// 			pCurMap[i].Selected = pA[i];
-// 			pCurMap[i].Old = pB[i];
-// 		}
-// 		pCurMap += DimX;
-// 	}
-// 	pCurMap -= DimX;
-// 	// Bottom -> Top
-// 	for( int i = 0; i < DimX; i++) {
-// 		pA[i] = pCurMap[i].H_D1 << 1;
-// 		pB[i] = pCurMap[i].V_D2 << 1;
-// 	}
-// 	for( int j = 0; j < DimY; j++ ){
-// 		for( int i = 0; i < DimX ; i++){
-// 			pA[i] = pCurMap[i].H_D1 + (pA[i] >> 1);
-// 			pB[i] = pCurMap[i].V_D2 + (pB[i] >> 1);
-// 			pCurMap[i].Selected += pA[i];
-// 			pCurMap[i].Old += pB[i];
-// 		}
-// 		pCurMap -= DimX;
-// 	}
-//
-// 	pCurMap = pMap;
-//
-// 	for( int j = 0; j < DimY; j++ ){
-// 		unsigned int a = pCurMap[0].Selected << 1;
-// 		unsigned int b = pCurMap[0].Old << 1;
-// 		for( int i = 0; i < DimX; i++){
-// 			a = pCurMap[i].Selected + (a >> 1);
-// 			b = pCurMap[i].Old + (b >> 1);
-// 			pA[i] = a;
-// 			pB[i] = b;
-// 		}
-// 		a = pCurMap[DimX - 1].Selected << 1;
-// 		b = pCurMap[DimX - 1].Old << 1;
-// 		for( int i = DimX - 1; i >= 0 ; i--){
-// 			a = pCurMap[i].Selected + (a >> 1);
-// 			b = pCurMap[i].Old + (b >> 1);
-// 			pCurMap[i].Selected = 0;
-// 			if (b < a)
-// 				pCurMap[i].Selected = 1;
-// 		}
-// 		pCurMap += DimX;
-// 	}
-//
-// 	delete[] pA;
-// 	delete[] pB;
 }
 
 void CMap::BuidTree(float const lambda)
@@ -425,7 +369,7 @@ void CMap::BuidTree(float const lambda)
 		pCurTree += width;
 	}
 
-	for( int l = 1; l < TREE_DEPTH; l++){
+	for( int l = 1; l < treeDepth; l++){
 		node * pLowTree1 = pTree[l-1];
 		node * pLowTree2 = pLowTree1 + width;
 		pCurTree = pTree[l];
@@ -473,316 +417,478 @@ void CMap::BuidTree(float const lambda)
 
 void CMap::ApplyTree(void)
 {
-	int width = DimX >> TREE_DEPTH;
-	int height = DimY >> TREE_DEPTH;
-	node * pCurTree = pTree[TREE_DEPTH - 1];
+	int width = DimX >> treeDepth;
+	int height = DimY >> treeDepth;
+	node * pCurTree = pTree[treeDepth - 1];
 
 	for( int j = 0; j < height; j++){
 		for( int i = 0; i < width; i++){
 			if (pCurTree[i].rate == 0)
-				SetDir(pCurTree[i].refDist < 0 ? 0 : 1, i, j, TREE_DEPTH);
+				SetDir(pCurTree[i].refDist < 0 ? 0 : 1, i, j, treeDepth);
 			else
-				ApplyTree(i << 1, j << 1, TREE_DEPTH - 1);
+				ApplyTree(i << 1, j << 1, treeDepth - 1);
 		}
 		pCurTree += width;
 	}
 }
 
-void CMap::ApplyTree(int x, int y, int treeDepth)
+void CMap::ApplyTree(int x, int y, int depth)
 {
-	if (treeDepth == 0){
-		pMap[x + DimX * y] = 0;
-		if (pDist[x + DimX * y] > 0)
-			pMap[x + DimX * y] = 1;
+	if (depth == 0){
+		pMap[x + DimX * y] = pDist[x + DimX * y] > 0 ? 1 : 0;
+		pMap[x + 1 + DimX * y] = pDist[x + 1 + DimX * y] > 0 ? 1 : 0;
+		pMap[x + DimX * (y + 1)] = pDist[x + DimX * (y + 1)] > 0 ? 1 : 0;
+		pMap[x + 1 + DimX * (y + 1)] = pDist[x + 1 + DimX * (y + 1)] > 0 ? 1 : 0;
 		return;
 	}
-	node * pCurTree = pTree[treeDepth - 1];
-	int width = DimX >> treeDepth;
+	node * pCurTree = pTree[depth - 1];
+	int width = DimX >> depth;
 	pCurTree += y * width;
 	if (pCurTree[x].rate == 0)
-		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, treeDepth);
+		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, depth);
 	else
-		ApplyTree(x << 1, y << 1, treeDepth - 1);
+		ApplyTree(x << 1, y << 1, depth - 1);
 	x++;
 	if (pCurTree[x].rate == 0)
-		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, treeDepth);
+		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, depth);
 	else
-		ApplyTree(x << 1, y << 1, treeDepth - 1);
+		ApplyTree(x << 1, y << 1, depth - 1);
 	pCurTree += width;
 	y++;
 	if (pCurTree[x].rate == 0)
-		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, treeDepth);
+		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, depth);
 	else
-		ApplyTree(x << 1, y << 1, treeDepth - 1);
+		ApplyTree(x << 1, y << 1, depth - 1);
 	x--;
 	if (pCurTree[x].rate == 0)
-		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, treeDepth);
+		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, depth);
 	else
-		ApplyTree(x << 1, y << 1, treeDepth - 1);
+		ApplyTree(x << 1, y << 1, depth - 1);
 }
 
-void CMap::GetImageDir(float * pBlock, int Stride)
+void CMap::BuidNodes(float const lambda)
+{
+	int width = pLow->DimX;
+	int height = pLow->DimY;
+	int stride2 = DimX * 2;
+	short * pCurDist1 = pDist;
+	short * pCurDist2 = pDist + DimX;
+	node * pCurNodes = pLow->pNodes;
+
+	for (int j = 0; j < height; j++) {
+		for (int i = 0, k = 0; i < width; i++, k += 2) {
+			pCurNodes[i].refDist = pCurDist1[k] + pCurDist1[k + 1]
+					+ pCurDist2[k] + pCurDist2[k + 1];
+			int Dist = MIN(0, pCurDist1[k]);
+			Dist += MIN(0, pCurDist1[k + 1]);
+			Dist += MIN(0, pCurDist2[k]);
+			Dist += MIN(0, pCurDist2[k + 1]);
+			pCurNodes[i].dist = Dist;
+			if (pCurNodes[i].refDist < 0)
+				Dist -= pCurNodes[i].refDist;
+			pCurNodes[i].rate = 0;
+			if ((3 + lambda * Dist) < 0)
+				pCurNodes[i].rate = 3;
+		}
+		pCurDist1 += stride2;
+		pCurDist2 += stride2;
+		pCurNodes += width;
+	}
+
+	CMap * pCurMap = pLow;
+	while( pCurMap->pLow != 0 ){
+		node * pHighNodes1 = pCurMap->pNodes;
+		node * pHighNodes2 = pHighNodes1 + width;
+		pCurDist1 = pCurMap->pDist;
+		pCurDist2 = pCurDist1 + width;
+		pCurNodes = pCurMap->pLow->pNodes;
+		stride2 = width * 2;
+		height = pCurMap->pLow->DimY;
+		width = pCurMap->pLow->DimX;
+
+		for( int j = 0; j < height; j++){
+			for( int i = 0, k = 0; i < width; i++, k += 2){
+				pCurNodes[i].refDist = pHighNodes1[k].refDist
+						+ pHighNodes1[k + 1].refDist + pHighNodes2[k].refDist
+						+ pHighNodes2[k + 1].refDist
+						+ pCurDist1[k] + pCurDist1[k + 1]
+						+ pCurDist2[k] + pCurDist2[k + 1];
+				int rate = 11 + pHighNodes1[k].rate + pHighNodes1[k + 1].rate
+						+ pHighNodes2[k].rate + pHighNodes2[k + 1].rate;
+				int Dist = MIN(0, pCurDist1[k]);
+				Dist += MIN(0, pCurDist1[k + 1]);
+				Dist += MIN(0, pCurDist2[k]);
+				Dist += MIN(0, pCurDist2[k + 1]);
+				if (pHighNodes1[k].rate > 0)
+					Dist += pHighNodes1[k].dist;
+				else
+					Dist += MIN(0, pHighNodes1[k].refDist);
+				if (pHighNodes1[k + 1].rate > 0)
+					Dist += pHighNodes1[k + 1].dist;
+				else
+					Dist += MIN(0, pHighNodes1[k + 1].refDist);
+				if (pHighNodes2[k].rate > 0)
+					Dist += pHighNodes2[k].dist;
+				else
+					Dist += MIN(0, pHighNodes2[k].refDist);
+				if (pHighNodes2[k + 1].rate > 0)
+					Dist += pHighNodes2[k + 1].dist;
+				else
+					Dist += MIN(0, pHighNodes2[k + 1].refDist);
+				pCurNodes[i].dist = Dist;
+				if (pCurNodes[i].refDist < 0)
+					Dist -= pCurNodes[i].refDist;
+				pCurNodes[i].rate = 0;
+				if ((rate + lambda * Dist) < 0)
+					pCurNodes[i].rate = rate;
+			}
+			pHighNodes1 += stride2;
+			pHighNodes2 += stride2;
+			pCurDist1 += stride2;
+			pCurDist2 += stride2;
+			pCurNodes += width;
+		}
+		pCurMap = pCurMap->pLow;
+	}
+}
+
+void CMap::ApplyNodes(void)
+{
+	CMap * pCurMap = this;
+	while( pCurMap->pLow != 0 ){
+		pCurMap = pCurMap->pLow;
+	}
+
+	int width = pCurMap->DimX;
+	int height = pCurMap->DimY;
+	node * pCurNodes = pCurMap->pNodes;
+
+	for( int j = 0; j < height; j++){
+		for( int i = 0; i < width; i++){
+			if (pCurNodes[i].rate == 0)
+				pCurMap->SetDir(pCurNodes[i].refDist < 0 ? 0 : 1, i, j);
+			else
+				pCurMap->pHigh->ApplyNodes(i << 1, j << 1);
+		}
+		pCurNodes += width;
+	}
+}
+
+void CMap::SetDir(int Dir, int x, int y)
+{
+	CMap * pCurMap = this;
+	int shift = 1;
+
+	while( pCurMap->pHigh != 0 ){
+		pCurMap = pCurMap->pHigh;
+		int stride = pCurMap->DimX;
+		char * pMap = pCurMap->pMap;
+		pMap += (x << shift) + (y << shift) * stride;
+		int size = 1 << shift;
+
+		for( int j = 0; j < size; j++){
+			for( int i = 0; i < size; i++){
+				pMap[i] = Dir;
+			}
+			pMap += stride;
+		}
+
+		shift++;
+	}
+}
+
+void CMap::ApplyNodes(int x, int y)
+{
+	pMap[x + DimX * y] = pDist[x + DimX * y] < 0 ? 0 : 1;
+	pMap[x + 1 + DimX * y] = pDist[x + 1 + DimX * y] < 0 ? 0 : 1;
+	pMap[x + DimX * (y + 1)] = pDist[x + DimX * (y + 1)] < 0 ? 0 : 1;
+	pMap[x + 1 + DimX * (y + 1)] = pDist[x + 1 + DimX * (y + 1)] < 0 ? 0 : 1;
+
+	if (pHigh == 0)
+		return;
+
+	node * pCurNodes = pNodes + y * DimX;
+	if (pCurNodes[x].rate == 0)
+		SetDir(pCurNodes[x].refDist < 0 ? 0 : 1, x, y);
+	else
+		pHigh->ApplyNodes(x << 1, y << 1);
+	x++;
+	if (pCurNodes[x].rate == 0)
+		SetDir(pCurNodes[x].refDist < 0 ? 0 : 1, x, y);
+	else
+		pHigh->ApplyNodes(x << 1, y << 1);
+	pCurNodes += DimX;
+	y++;
+	if (pCurNodes[x].rate == 0)
+		SetDir(pCurNodes[x].refDist < 0 ? 0 : 1, x, y);
+	else
+		pHigh->ApplyNodes(x << 1, y << 1);
+	x--;
+	if (pCurNodes[x].rate == 0)
+		SetDir(pCurNodes[x].refDist < 0 ? 0 : 1, x, y);
+	else
+		pHigh->ApplyNodes(x << 1, y << 1);
+}
+
+
+
+void CMap::CodeNodes(void)
+{
+	CMap * pCurMap = this;
+	while( pCurMap->pLow != 0 ){
+		pCurMap->DirCodec.InitModel();
+		pCurMap->NodeCodec.InitModel();
+		pCurMap->LeafCodec.InitModel();
+		pCurMap = pCurMap->pLow;
+	}
+	pCurMap->DirCodec.InitModel();
+	pCurMap->NodeCodec.InitModel();
+	pCurMap->LeafCodec.InitModel();
+
+	int width = pCurMap->DimX;
+	int height = pCurMap->DimY;
+	node * pCurNodes = pCurMap->pNodes;
+	char * pMap = pCurMap->pMap;
+
+	for( int j = 0; j < height; j++){
+		for( int i = 0; i < width; i++){
+			pCurMap->DirCodec.Code(pMap[i], 0);
+			if (pCurNodes[i].rate == 0){
+				pCurMap->NodeCodec.Code0(0);
+				if (pCurNodes[i].refDist < 0)
+					pCurMap->LeafCodec.Code0(pMap[i]);
+				else
+					pCurMap->LeafCodec.Code1(pMap[i]);
+			}else{
+				pCurMap->NodeCodec.Code1(0);
+				pCurMap->pHigh->CodeNodes(i << 1, j << 1, pMap[i]);
+			}
+		}
+		pCurNodes += width;
+		pMap += width;
+	}
+}
+
+void CMap::CodeNodes(int x, int y, int context)
+{
+	short * pCurDist = pDist + y * DimX + x;
+	if (pCurDist[0] < 0)
+		DirCodec.Code0(context);
+	else
+		DirCodec.Code1(context);
+	pCurDist++;
+	if (pCurDist[0] < 0)
+		DirCodec.Code0(context);
+	else
+		DirCodec.Code1(context);
+	pCurDist += DimX;
+	if (pCurDist[0] < 0)
+		DirCodec.Code0(context);
+	else
+		DirCodec.Code1(context);
+	pCurDist--;
+	if (pCurDist[0] < 0)
+		DirCodec.Code0(context);
+	else
+		DirCodec.Code1(context);
+
+	if (pHigh == 0)
+		return;
+
+	node * pCurNodes = pNodes + y * DimX;
+	pCurDist -= DimX;
+	if (pCurNodes[x].rate == 0){
+		NodeCodec.Code0(0);
+		if (pCurNodes[x].refDist < 0)
+			LeafCodec.Code0(pCurDist[0] < 0 ? 0 : 1);
+		else
+			LeafCodec.Code1(pCurDist[0] < 0 ? 0 : 1);
+	}else{
+		NodeCodec.Code1(0);
+		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
+	}
+	x++;
+	pCurDist++;
+	if (pCurNodes[x].rate == 0){
+		NodeCodec.Code0(0);
+		if (pCurNodes[x].refDist < 0)
+			LeafCodec.Code0(pCurDist[0] < 0 ? 0 : 1);
+		else
+			LeafCodec.Code1(pCurDist[0] < 0 ? 0 : 1);
+	}else{
+		NodeCodec.Code1(0);
+		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
+	}
+	pCurNodes += DimX;
+	pCurDist += DimX;
+	y++;
+	if (pCurNodes[x].rate == 0){
+		NodeCodec.Code0(0);
+		if (pCurNodes[x].refDist < 0)
+			LeafCodec.Code0(pCurDist[0] < 0 ? 0 : 1);
+		else
+			LeafCodec.Code1(pCurDist[0] < 0 ? 0 : 1);
+	}else{
+		NodeCodec.Code1(0);
+		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
+	}
+	x--;
+	pCurDist--;
+	if (pCurNodes[x].rate == 0){
+		NodeCodec.Code0(0);
+		if (pCurNodes[x].refDist < 0)
+			LeafCodec.Code0(pCurDist[0] < 0 ? 0 : 1);
+		else
+			LeafCodec.Code1(pCurDist[0] < 0 ? 0 : 1);
+	}else{
+		NodeCodec.Code1(0);
+		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
+	}
+}
+
+void CMap::DecodeNodes(void)
+{
+	CMap * pCurMap = this;
+	while( pCurMap->pLow != 0 ){
+		pCurMap->DirCodec.InitModel();
+		pCurMap->NodeCodec.InitModel();
+		pCurMap->LeafCodec.InitModel();
+		pCurMap = pCurMap->pLow;
+	}
+	pCurMap->DirCodec.InitModel();
+	pCurMap->NodeCodec.InitModel();
+	pCurMap->LeafCodec.InitModel();
+
+	int width = pCurMap->DimX;
+	int height = pCurMap->DimY;
+	char * pMap = pCurMap->pMap;
+
+	for( int j = 0; j < height; j++){
+		for( int i = 0; i < width; i++){
+			pMap[i] = pCurMap->DirCodec.Decode(0);
+			if (pCurMap->NodeCodec.Decode(0) == 0){
+				pCurMap->SetDir(pCurMap->LeafCodec.Decode(pMap[i]), i, j);
+			}else{
+				pCurMap->pHigh->DecodeNodes(i << 1, j << 1, pMap[i]);
+			}
+		}
+		pMap += width;
+	}
+}
+
+void CMap::DecodeNodes(int x, int y, int context)
+{
+	char * pCurMap = pMap + y * DimX + x;
+	pCurMap[0] = DirCodec.Decode(context);
+	pCurMap++;
+	pCurMap[0] = DirCodec.Decode(context);
+	pCurMap += DimX;
+	pCurMap[0] = DirCodec.Decode(context);
+	pCurMap--;
+	pCurMap[0] = DirCodec.Decode(context);
+
+	if (pHigh == 0)
+		return;
+
+	pCurMap -= DimX;
+
+	if (NodeCodec.Decode(0) == 0)
+		SetDir(LeafCodec.Decode(pCurMap[0]), x, y);
+	else
+		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
+	x++;
+	pCurMap++;
+	if (NodeCodec.Decode(0) == 0)
+		SetDir(LeafCodec.Decode(pCurMap[0]), x, y);
+	else
+		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
+	pCurMap += DimX;
+	y++;
+	if (NodeCodec.Decode(0) == 0)
+		SetDir(LeafCodec.Decode(pCurMap[0]), x, y);
+	else
+		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
+	x--;
+	pCurMap--;
+	if (NodeCodec.Decode(0) == 0)
+		SetDir(LeafCodec.Decode(pCurMap[0]), x, y);
+	else
+		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
+}
+
+void CMap::GetImageDist(float * pImage1, float * pImage2, int stride)
 {
 	short * pDir = this->pDist;
-	GetDirBlock(pBlock, Stride, pDir, TOP | LEFT);
-	int i = 4;
-	pDir++;
-	for( ; i < ImageX - 4; i += 4, pDir++){
-		GetDirBlock(pBlock + i, Stride, pDir, TOP);
-	}
-	GetDirBlock(pBlock + i, Stride, pDir, TOP | RIGHT);
-	pBlock += Stride << 2;
-	pDir++;
-	int j = 4;
-	for( j; j < ImageY - 4; j += 4){
-		GetDirBlock(pBlock, Stride, pDir, LEFT);
-		int i = 4;
-		pDir++;
-		for( ; i < ImageX - 4; i += 4, pDir++){
-			GetDirBlock(pBlock + i, Stride, pDir);
+	int diff = 2 * stride - ImageX;
+//  	float wl = weightL * weightL * 65536;
+	float wl = weightL * 256;
+	int end = stride * ImageY;
+
+	for( int pos1 = 1, pos2 = stride; pos1 < end; pos1 += diff, pos2 += diff){
+		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 2, pos2 += 2){
+// 			pDir[0] = (short) (sqrtf((pImage1[pos1] * pImage1[pos1] +
+// 					pImage1[pos2] * pImage1[pos2]) * wl) -
+// 					sqrtf((pImage2[pos1] * pImage2[pos1] +
+// 					pImage2[pos2] * pImage2[pos2]) * wl));
+			pDir[0] = (short) ((fabsf(pImage1[pos1]) +
+					fabsf(pImage1[pos2]) - fabsf(pImage2[pos1]) -
+					fabsf(pImage2[pos2])) * wl);
+			pDir++;
 		}
-		GetDirBlock(pBlock + i, Stride, pDir, RIGHT);
-		pBlock += Stride << 2;
-		pDir++;
 	}
-	GetDirBlock(pBlock, Stride, pDir, BOTTOM | LEFT);
-	i = 4;
-	pDir++;
-	for( ; i < ImageX - 4; i += 4, pDir++){
-		GetDirBlock(pBlock + i, Stride, pDir, BOTTOM);
-	}
-	GetDirBlock(pBlock + i, Stride, pDir, BOTTOM | RIGHT);
 }
 
-void CMap::GetImageDirDiag(float * pBlock, int Stride)
+void CMap::GetImageDist(float * pImage1, float * pImage2,
+						float * pBand1, float * pBand2, int stride)
 {
 	short * pDir = this->pDist;
-	GetDirBlockDiag(pBlock, Stride, pDir, TOP | LEFT);
-	int i = 4;
-	pDir++;
-	for( ; i < ImageX - 4; i += 4, pDir++){
-		GetDirBlockDiag(pBlock + i, Stride, pDir, TOP);
-	}
-	GetDirBlockDiag(pBlock + i, Stride, pDir, TOP | RIGHT);
-	pBlock += Stride << 2;
-	pDir++;
-	int j = 4;
-	for( j; j < ImageY - 4; j += 4){
-		GetDirBlockDiag(pBlock, Stride, pDir, LEFT);
-		int i = 4;
-		pDir++;
-		for( ; i < ImageX - 4; i += 4, pDir++){
-			GetDirBlockDiag(pBlock + i, Stride, pDir);
+	int diff = 2 * stride - ImageX;
+// 	float wl = weightL * weightL * 65536;
+// 	float wh = weightH * weightH * 65536;
+	float wl = weightL * 256;
+	float wh = weightH * 256;
+	int end = stride * ImageY;
+
+	for( int pos1 = 1, pos2 = stride; pos1 < end; pos1 += diff, pos2 += diff){
+		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 2, pos2 += 2){
+// 			pDir[0] = (short) (sqrtf((pImage1[pos1] * pImage1[pos1] +
+// 					pImage1[pos2] * pImage1[pos2]) * wl +
+// 					(pBand1[pos1] * pBand1[pos1] +
+// 					pBand1[pos2] * pBand1[pos2]) * wh) -
+// 					sqrtf((pImage2[pos1] * pImage2[pos1] +
+// 					pImage2[pos2] * pImage2[pos2]) * wl +
+// 					(pBand2[pos1] * pBand2[pos1] +
+// 					pBand2[pos2] * pBand2[pos2]) * wh));
+			pDir[0] = (short) ((fabsf(pImage1[pos1]) + fabsf(pImage1[pos2]) -
+					fabsf(pImage2[pos1]) - fabsf(pImage2[pos2])) * wl +
+					(fabsf(pBand1[pos1]) + fabsf(pBand1[pos2]) -
+					fabsf(pBand2[pos1]) - fabsf(pBand2[pos2])) * wh);
+			pDir++;
 		}
-		GetDirBlockDiag(pBlock + i, Stride, pDir, RIGHT);
-		pBlock += Stride << 2;
-		pDir++;
 	}
-	GetDirBlockDiag(pBlock, Stride, pDir, BOTTOM | LEFT);
-	i = 4;
-	pDir++;
-	for( ; i < ImageX - 4; i += 4, pDir++){
-		GetDirBlockDiag(pBlock + i, Stride, pDir, BOTTOM);
-	}
-	GetDirBlockDiag(pBlock + i, Stride, pDir, BOTTOM | RIGHT);
 }
 
-#define PXL_VAL_H(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + (y) * Stride] + \
-		pBlock[(x) - 1 + (y) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_H_L(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) + 1 + (y) * Stride]; \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_H_R(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) - 1 + (y) * Stride]; \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_V(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + ((y) + 1) * Stride] + \
-		pBlock[(x) + ((y) - 1) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_V_T(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) + ((y) + 1) * Stride]; \
-	Sum += Sqr * Sqr;
-
-#define PXL_VAL_V_B(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) + ((y) - 1) * Stride]; \
-	Sum += Sqr * Sqr;
-
-void CMap::GetDirBlock(float * pBlock, int Stride, short * Result)
+void CMap::GetImageDistDiag(float * pImage1, float * pImage2, int stride)
 {
-	float Sum = 0;
-	float Sqr;
+	short * pDir = this->pDist;
+	int diff = 2 * stride - ImageX;
+// 	float wl = weightL * weightL * 65536;
+// 	float wh = weightH * weightH * 65536;
+	float wl = weightL * 256;
+	float wh = weightH * 256;
+	int end = stride * ImageY;
 
-	PXL_VAL_H(1,0);
-	PXL_VAL_H(3,0);
-	PXL_VAL_H(0,1);
-	PXL_VAL_H(2,1);
-	PXL_VAL_H(1,2);
-	PXL_VAL_H(3,2);
-	PXL_VAL_H(0,3);
-	PXL_VAL_H(2,3);
-
-	Sum = -Sum;
-	PXL_VAL_V(1,0);
-	PXL_VAL_V(3,0);
-	PXL_VAL_V(0,1);
-	PXL_VAL_V(2,1);
-	PXL_VAL_V(1,2);
-	PXL_VAL_V(3,2);
-	PXL_VAL_V(0,3);
-	PXL_VAL_V(2,3);
-
-	*Result = (short) (-Sum * 65536);
-}
-
-void CMap::GetDirBlock(float * pBlock, int Stride, short * Result
-		, int BitField)
-{
-	float Sum = 0;
-	float Sqr;
-
-	if (BitField & LEFT){
-		PXL_VAL_H_L(0,1);
-		PXL_VAL_H_L(0,3);
-	} else {
-		PXL_VAL_H(0,1);
-		PXL_VAL_H(0,3);
-	}
-
-	if (BitField & RIGHT){
-		PXL_VAL_H_R(3,0);
-		PXL_VAL_H_R(3,2);
-	} else {
-		PXL_VAL_H(3,0);
-		PXL_VAL_H(3,2);
-	}
-
-	PXL_VAL_H(1,0);
-	PXL_VAL_H(2,1);
-	PXL_VAL_H(1,2);
-	PXL_VAL_H(2,3);
-
-	Sum = -Sum;
-	if (BitField & TOP){
-		PXL_VAL_V_T(1,0);
-		PXL_VAL_V_T(3,0);
-	} else {
-		PXL_VAL_V(1,0);
-		PXL_VAL_V(3,0);
-	}
-
-	if (BitField & BOTTOM){
-		PXL_VAL_V_B(0,3);
-		PXL_VAL_V_B(2,3);
-	} else {
-		PXL_VAL_V(0,3);
-		PXL_VAL_V(2,3);
-	}
-
-	PXL_VAL_V(0,1);
-	PXL_VAL_V(2,1);
-	PXL_VAL_V(1,2);
-	PXL_VAL_V(3,2);
-
-	*Result = (short) (-Sum * 65536);
-}
-
-#define PXL_D1(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) + 1 + ((y) + 1) * Stride] \
- 	+ pBlock[(x) - 1 + ((y) - 1) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
-
-#define PXL_D1_TL(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) + 1 + ((y) + 1) * Stride]; \
-	Sum += Sqr * Sqr;
-
-#define PXL_D1_BR(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) - 1 + ((y) - 1) * Stride]; \
-	Sum += Sqr * Sqr;
-
-#define PXL_D2(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - ((pBlock[(x) - 1 + ((y) + 1) * Stride] \
- 	+ pBlock[(x) + 1 + ((y) - 1) * Stride]) * .5); \
-	Sum += Sqr * Sqr;
-
-#define PXL_D2_BL(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) - 1 + ((y) + 1) * Stride]; \
-	Sum += Sqr * Sqr;
-
-#define PXL_D2_TR(x,y) \
-	Sqr = pBlock[(x) + (y) * Stride] - pBlock[(x) + 1 + ((y) - 1) * Stride]; \
-	Sum += Sqr * Sqr;
-
-void CMap::GetDirBlockDiag(float * pBlock, int Stride, short * Result)
-{
-	float Sum = 0;
-	float Sqr;
-
-	PXL_D1(1,1);
-	PXL_D1(3,1);
-	PXL_D1(1,3);
-	PXL_D1(3,3);
-
-	Sum = -Sum;
-	PXL_D2(1,1);
-	PXL_D2(3,1);
-	PXL_D2(1,3);
-	PXL_D2(3,3);
-
-	*Result = (short) (-Sum * 65536);
-}
-
-void CMap::GetDirBlockDiag(float * pBlock, int Stride, short * Result,
-						   int BitField)
-{
-	float Sum = 0;
-	float Sqr;
-
-	PXL_D1(1,1);
-	if (BitField & RIGHT) {
-		PXL_D1_BR(3,1);
-	} else {
-		PXL_D1(3,1);
-	}
-	if (BitField & BOTTOM) {
-		PXL_D1_BR(1,3);
-	} else {
-		PXL_D1(1,3);
-	}
-	if (BitField & (BOTTOM | RIGHT)) {
-		PXL_D1_BR(3,3);
-	} else {
-		PXL_D1(3,3);
-	}
-
-	Sum = -Sum;
-	PXL_D2(1,1);
-	if (BitField & RIGHT) {
-		PXL_D2_TR(3,1);
-	} else {
-		PXL_D2(3,1);
-	}
-	if (BitField & BOTTOM) {
-		PXL_D2_BL(1,3);
-	} else {
-		PXL_D2(1,3);
-	}
-	if (BitField & RIGHT) {
-		if (! (BitField & BOTTOM)) {
-			PXL_D2_TR(3,3);
+	for( int pos1 = stride; pos1 < end; pos1 += diff){
+		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 2){
+// 			pDir[0] = (short) (sqrtf(pImage1[pos1] * pImage1[pos1] * wh +
+// 					pImage1[pos1 + 1] * pImage1[pos1 + 1] * wl) -
+// 					sqrtf(pImage2[pos1] * pImage2[pos1] * wh +
+// 					pImage2[pos1 + 1] * pImage2[pos1 + 1] * wl));
+			pDir[0] = (short) ((fabsf(pImage1[pos1]) - fabsf(pImage2[pos1])) * wh +
+					(fabsf(pImage1[pos1 + 1]) - fabsf(pImage2[pos1 + 1])) * wl);
+			pDir++;
 		}
-	} else if (BitField & BOTTOM) {
-		PXL_D2_BL(3,3);
-	} else {
-		PXL_D2(3,3);
 	}
-
-	*Result = (short) (-Sum * 65536);
 }
 
 }

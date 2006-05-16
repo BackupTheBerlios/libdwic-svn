@@ -102,6 +102,8 @@ public:
 	// Codage
 	void RLECode(CRLECodec * pCodec);
 	void RLEDecode(CRLECodec * pCodec);
+	void RLECodeV(CRLECodec * pCodec);
+	void RLEDecodeV(CRLECodec * pCodec);
 
 	// Statistiques
 	void Mean(float & Mean, float & Var);
@@ -110,6 +112,7 @@ public:
 	// Utilitaires
 	void ListAllPos(void);
 	void Add(float val);
+	void GetBand(float * pOut);
 
 private:
 	float * pData;

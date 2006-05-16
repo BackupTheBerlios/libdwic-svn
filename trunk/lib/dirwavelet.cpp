@@ -43,10 +43,10 @@ DimX(x),
 DimY(y),
 pHigh(0),
 pLow(0),
-HVMap((CMap*)0),
-DMap((CMap*)0),
-HV1D((x * y) >> 1, level - 1),
-D1D((x * y) >> 2, level - 1)
+HVMap((CMap*)0, level),
+DMap((CMap*)0, level),
+HV1D((x * y) >> 2, level - 1),
+D1D((x * y) >> 1, level - 1)
 {
 	if (level > MAX_WAV_LEVEL)
 		level = MAX_WAV_LEVEL;
@@ -58,10 +58,10 @@ DimX(x),
 DimY(y),
 pHigh(0),
 pLow(0),
-HVMap(&pHigh->HVMap),
-DMap(&pHigh->DMap),
-HV1D((x * y) >> 1, level - 1),
-D1D((x * y) >> 2, level - 1)
+HVMap(&pHigh->HVMap, level),
+DMap(&pHigh->DMap, level),
+HV1D((x * y) >> 2, level - 1),
+D1D((x * y) >> 1, level - 1)
 {
 	this->pHigh = pHigh;
 // 	pHigh->DBand.pParent = &DBand;
@@ -115,6 +115,20 @@ void DirWavelet::GetMap(unsigned char * pOut, int level, int Direction)
 			pCurWav->HVMap.GetMap(pOut);
 		else
 			pCurWav->DMap.GetMap(pOut);
+	}
+}
+
+void DirWavelet::GetBand(float * pOut, int level, int Direction)
+{
+	DirWavelet * pCurWav = this;
+	while( pCurWav != 0 && pCurWav->Level != level ){
+		pCurWav = pCurWav->pLow;
+	}
+	if (pCurWav != 0) {
+		if (Direction == 0)
+			pCurWav->HVBand.GetBand(pOut);
+		else
+			pCurWav->DBand.GetBand(pOut);
 	}
 }
 
@@ -240,7 +254,7 @@ unsigned char * DirWavelet::CodeBand(unsigned char * pBuf)
 	DirWavelet * pCurWav = this;
 	while( pCurWav->pLow != 0 ){
 		pCurWav->DBand.RLECode(&Codec);
-		pCurWav->HV1D.RLECode(&Codec);
+		pCurWav->HVBand.RLECode(&Codec);
 		pCurWav = pCurWav->pLow;
 	}
 	pCurWav->DBand.RLECode(&Codec);
@@ -256,8 +270,7 @@ unsigned char * DirWavelet::DecodeBand(unsigned char * pBuf)
 	DirWavelet * pCurWav = this;
 	while( pCurWav->pLow != 0 ){
 		pCurWav->DBand.RLEDecode(&Codec);
-		pCurWav->CountHV1D();
-		pCurWav->HV1D.RLEDecode(&Codec);
+		pCurWav->HVBand.RLEDecode(&Codec);
 		pCurWav = pCurWav->pLow;
 	}
 	pCurWav->DBand.RLEDecode(&Codec);
@@ -903,16 +916,37 @@ void DirWavelet::LazyTransformI(float * pImage, int Stride)
 void DirWavelet::Transform53(float * pImage, int Stride)
 {
 	HVMap.GetImageDir(pImage, Stride);
+	HVMap.SelectDir();
+	if (pHigh != 0)
+		HVMap.OptimiseDir(4 * HVBand.Weight * HVBand.Weight);
+	else{
+		HVMap.BuidTree(0.04 * HVBand.Weight * HVBand.Weight);
+		HVMap.ApplyTree();
+	}
 	LiftBand(pImage, Stride, DimX, DimY, -1./2., HVMap.pMap, LiftEdgeOdd,
 			 LiftInOdd);
 	LiftBand(pImage, Stride, DimX, DimY, 1./4., HVMap.pMap, LiftEdgeEven,
 			 LiftInEven);
+
+
 	DMap.GetImageDirDiag(pImage, Stride);
+	DMap.SelectDir();
+	DMap.OptimiseDir(4 * DBand.Weight);
 	LiftBand(pImage, Stride, DimX, DimY, -1./2., DMap.pMap, LiftEdgeDiagOdd,
 			 LiftInDiagOdd);
 	LiftBand(pImage, Stride, DimX, DimY, 1./4., DMap.pMap, LiftEdgeDiagEven,
 			 LiftInDiagEven);
 	LazyImage(pImage, Stride);
+
+// 	float Mean, Var;
+// 	DBand.Mean(Mean, Var);
+// 	cout << "DBand : \t" << Var << endl;
+// 	HVBand.Mean(Mean, Var);
+// 	cout << "HVBand : \t" << Var << endl;
+// 	if (pLow == 0){
+// 		LBand.Mean(Mean, Var);
+// 		cout << "LBand : \t" << Var << endl;
+// 	}
 
  	if (pLow != 0)
 		pLow->Transform53(pImage, Stride);
@@ -957,9 +991,9 @@ void DirWavelet::Transform97(float * pImage, int Stride)
 	HVMap.GetImageDir(pImage, Stride);
 	HVMap.SelectDir();
 	if (pHigh != 0)
-		HVMap.OptimiseDir(4 * HVBand.Weight * HVBand.Weight);
+		HVMap.OptimiseDir(64 * HVBand.Weight * HVBand.Weight);
 	else{
-		HVMap.BuidTree(0.01 * HVBand.Weight * HVBand.Weight);
+		HVMap.BuidTree(0.1 * HVBand.Weight * HVBand.Weight);
 		HVMap.ApplyTree();
 	}
 
@@ -971,9 +1005,11 @@ void DirWavelet::Transform97(float * pImage, int Stride)
 			 LiftInOdd);
 	LiftBand(pImage, Stride, DimX, DimY, DELTA, HVMap.pMap, LiftEdgeEven,
 			 LiftInEven);
+
+
 	DMap.GetImageDirDiag(pImage, Stride);
 	DMap.SelectDir();
-	DMap.OptimiseDir(4 * DBand.Weight);
+	DMap.OptimiseDir(64 * DBand.Weight);
 
 	LiftBand(pImage, Stride, DimX, DimY, ALPHA, DMap.pMap, LiftEdgeDiagOdd,
 			 LiftInDiagOdd);
@@ -985,10 +1021,25 @@ void DirWavelet::Transform97(float * pImage, int Stride)
 			 LiftInDiagEven);
 	LazyImage(pImage, Stride);
 
-	if (pHigh != 0){
-		pHigh->FillHV1D();
-		pHigh->HV1D.Trans1D97(pHigh->pTmp);
-	}
+// 	if (pHigh != 0){
+// 		float Mean, Var;
+// 		DBand.Mean(Mean, Var);
+// 		cout << "DBand : \t" << Var << endl;
+// 		HVBand.Mean(Mean, Var);
+// 		cout << "HVBand : \t" << Var << endl;
+// 		if (pLow == 0){
+// 			LBand.Mean(Mean, Var);
+// 			cout << "LBand : \t" << Var << endl;
+// 		}
+// 		pHigh->FillHV1D();
+// 		pHigh->HV1D.Trans1D97(pHigh->pTmp);
+// 		if (Level == 4)
+// 			for( int i = 0; i < pHigh->HVBand.DimX * pHigh->HVBand.DimY; i++){
+// 				cerr << pHigh->HV1D.pData[i] << endl;
+// 			}
+//  		pHigh->HV1D.Mean();
+//  		cout << endl;
+// 	}
 
 	if (pLow != 0){
 		pLow->Transform97(pImage, Stride);
@@ -1000,8 +1051,8 @@ void DirWavelet::Transform97I(float * pImage, int Stride)
 	if (pLow != 0) {
 		pLow->Transform97I(pImage, Stride);
 
-		HV1D.Trans1D97I(pTmp);
-		FillHV1DI();
+// 		HV1D.Trans1D97I(pTmp);
+// 		FillHV1DI();
 	}
 	LazyImageI(pImage, Stride);
 	LiftBand(pImage, Stride, DimX, DimY, -DELTA, DMap.pMap, LiftEdgeDiagEven,
@@ -1121,8 +1172,8 @@ unsigned int DirWavelet::TSUQ(float Quant, float Thres)
 	Count += DBand.TSUQ(Quant, Thres);
 
 	if (pLow != 0) {
-		HV1D.TSUQ(Quant, Thres);
-// 		Count += HVBand.TSUQ(Quant, Thres);
+// 		HV1D.TSUQ(Quant, Thres);
+		Count += HVBand.TSUQ(Quant, Thres);
 		Count += pLow->TSUQ(Quant, Thres);
 	} else {
 		Count += HVBand.TSUQ(Quant, Thres);
@@ -1136,8 +1187,8 @@ void DirWavelet::TSUQi(float Quant, float RecLevel)
 	DBand.TSUQi(Quant, RecLevel);
 
 	if (pLow != 0){
-		HV1D.TSUQi(Quant, RecLevel);
-// 		HVBand.TSUQi(Quant, RecLevel);
+// 		HV1D.TSUQi(Quant, RecLevel);
+		HVBand.TSUQi(Quant, RecLevel);
 		pLow->TSUQi(Quant, RecLevel);
 	} else {
 		HVBand.TSUQi(Quant, RecLevel);
