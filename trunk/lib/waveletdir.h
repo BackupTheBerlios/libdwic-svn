@@ -58,15 +58,16 @@ typedef enum lift {even, odd, diag_even, diag_odd};
 class CWaveletDir{
 public:
 
-	CWaveletDir(int x, int y, int level, int Align = ALIGN);
+	CWaveletDir(int x, int y, int level, int Align = ALIGN,
+				CWaveletDir * pHigh = 0);
 
 	~CWaveletDir();
 
 	void LazyTransform(float * pImage, int Stride);
 	void LazyTransformI(float * pImage, int Stride);
-	void Transform53(float * pImage, int Stride);
-	void Transform53I(float * pImage, int Stride);
-	void SetWeight53(void);
+// 	void Transform53(float * pImage, int Stride);
+// 	void Transform53I(float * pImage, int Stride);
+// 	void SetWeight53(void);
 	void Transform97(float * pImage, int stride, float lambda);
 	void Transform97I(float * pImage, int Stride);
 	void SetWeight97(void);
@@ -77,10 +78,9 @@ public:
 	unsigned char * CodeBand(unsigned char * pBuf);
 	unsigned char * DecodeBand(unsigned char * pBuf);
 
-	unsigned int Thres(float Thres);
+// 	unsigned int Thres(float Thres);
 	unsigned int TSUQ(float Quant, float Thres);
 	void TSUQi(float Quant, float RecLevel);
-	void Saturate(float * pImage, int stride);
 
 	void Stats(void);
 	void SetDir(int Sel);
@@ -111,8 +111,7 @@ private:
 
 	CMap HVMap;
 	CMap DMap;
-
-	CWaveletDir(int x, int y, int level, CWaveletDir * pHigh, int Align);
+	CMap LMap;
 
 	void Init(int level, int Align);
 
@@ -128,6 +127,7 @@ private:
 						 float Coef1, float Coef2, char * pDir1);
 
 	void GetImageDir97(float * pImage, int stride);
+	void GetBandDir97(void);
 	void GetImageDirDiag97(float * pImage, int stride);
 };
 

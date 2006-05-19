@@ -40,30 +40,19 @@ using namespace std;
 
 namespace libdwic {
 
-CWaveletDir::CWaveletDir(int x, int y, int level, int Align):
+CWaveletDir::CWaveletDir(int x, int y, int level, int Align,
+						 CWaveletDir * pHigh):
 		DimX(x),
 		DimY(y),
 		pHigh(0),
 		pLow(0),
-		HVMap((CMap*)0, level + 2),
-		DMap((CMap*)0, level + 2),
+		HVMap(pHigh == 0 ? (CMap*)0 : &pHigh->HVMap, level + 2),
+		DMap(pHigh == 0 ? (CMap*)0 : &pHigh->DMap, level + 2),
+		LMap(level > 1 ? (CMap*)0 : &HVMap, level + 2),
 		HVWav(x >> 1, y >> 1, 1)
 {
 	if (level > MAX_WAV_LEVEL)
 		level = MAX_WAV_LEVEL;
-	Init(level, Align);
-}
-
-CWaveletDir::CWaveletDir(int x, int y, int level, CWaveletDir * pHigh,
-int Align):
-		DimX(x),
-		DimY(y),
-		pHigh(0),
-		pLow(0),
-		HVMap(&pHigh->HVMap, level + 2),
-		DMap(&pHigh->DMap, level + 2),
-		HVWav(x >> 1, y >> 1, 1)
-{
 	this->pHigh = pHigh;
 	Init(level, Align);
 }
@@ -85,9 +74,10 @@ void CWaveletDir::Init(int level, int Align)
 	Level = level;
 
 	if (level > 1){
-		pLow = new CWaveletDir(DimX >> 1, DimY >> 1, level - 1, this, Align);
+		pLow = new CWaveletDir(DimX >> 1, DimY >> 1, level - 1, Align, this);
 	}else{
 		LBand.Init(DimX >> 1, DimY >> 1, Align);
+		LMap.Init(DimX >> 1, DimY >> 1);
 	}
 }
 
@@ -98,6 +88,8 @@ void CWaveletDir::SetRange(CRangeCodec * RangeCodec)
 
 	if (pLow != 0)
 		pLow->SetRange(RangeCodec);
+	else
+		LMap.SetRange(RangeCodec);
 }
 
 void CWaveletDir::GetMap(unsigned char * pOut, int level, int Direction)
@@ -288,7 +280,9 @@ unsigned char * CWaveletDir::CodeBand(unsigned char * pBuf)
 	}
 	pCurWav->DHBand.RLECode(&Codec);
 	pCurWav->DLBand.RLECode(&Codec);
-	pCurWav->HVBand.RLECode(&Codec);
+// 	pCurWav->HVBand.RLECode(&Codec);
+	pCurWav->HVHBand.RLECode(&Codec);
+	pCurWav->HVLBand.RLECode(&Codec);
 // 	pCurWav->HVWav.CodeBand(Codec);
 	pCurWav->LBand.RLECode(&Codec);
 	return Codec.EndCoding();
@@ -310,7 +304,9 @@ unsigned char * CWaveletDir::DecodeBand(unsigned char * pBuf)
 	}
 	pCurWav->DHBand.RLEDecode(&Codec);
 	pCurWav->DLBand.RLEDecode(&Codec);
-	pCurWav->HVBand.RLEDecode(&Codec);
+// 	pCurWav->HVBand.RLEDecode(&Codec);
+	pCurWav->HVHBand.RLEDecode(&Codec);
+	pCurWav->HVLBand.RLEDecode(&Codec);
 // 	pCurWav->HVWav.DecodeBand(Codec);
 	pCurWav->LBand.RLEDecode(&Codec);
 	return Codec.EndDecoding();
@@ -557,8 +553,7 @@ void CWaveletDir::Transform97(float * pImage, int stride, bool getDir)
 {
 	if (getDir)
 		GetImageDir97(pImage, stride);
-
-	if (pHigh != 0) {
+	else if (pHigh != 0) {
 		float * pBand = pHigh->HVBand.pBand;
 		int DimX = pHigh->HVBand.DimX, DimY = pHigh->HVBand.DimY;
 		int stride = pHigh->HVBand.DimXAlign;
@@ -589,6 +584,20 @@ void CWaveletDir::Transform97(float * pImage, int stride, bool getDir)
 
 	if (pLow != 0){
 		pLow->Transform97(pImage, stride, getDir);
+	} else {
+		if (getDir)
+			GetBandDir97();
+		else {
+			float * pBand = HVBand.pBand;
+			int DimX = HVBand.DimX, DimY = HVBand.DimY;
+			int stride = HVBand.DimXAlign;
+			LiftBand<odd>(pBand, stride, DimX, DimY, ALPHA1, ALPHA2, LMap.pMap);
+			LiftBand<even>(pBand, stride, DimX, DimY, BETA1, BETA2, LMap.pMap);
+			LiftBand<odd>(pBand, stride, DimX, DimY, GAMMA1, GAMMA2, LMap.pMap);
+			LiftBand<even>(pBand, stride, DimX, DimY, DELTA1, DELTA2, LMap.pMap);
+
+			LazyBand();
+		}
 	}
 }
 
@@ -596,6 +605,17 @@ void CWaveletDir::Transform97I(float * pImage, int stride)
 {
 	if (pLow != 0)
 		pLow->Transform97I(pImage, stride);
+	else {
+		LazyBandI();
+
+		float * pBand = HVBand.pBand;
+		int DimX = HVBand.DimX, DimY = HVBand.DimY;
+		int stride = HVBand.DimXAlign;
+		LiftBand<even>(pBand, stride, DimX, DimY, -DELTA1, -DELTA2, LMap.pMap);
+		LiftBand<odd>(pBand, stride, DimX, DimY, -GAMMA1, -GAMMA2, LMap.pMap);
+		LiftBand<even>(pBand, stride, DimX, DimY, -BETA1, -BETA2, LMap.pMap);
+		LiftBand<odd>(pBand, stride, DimX, DimY, -ALPHA1, -ALPHA2, LMap.pMap);
+	}
 
 // 	HVWav.Transform97I(HVBand.pBand, HVBand.DimXAlign);
 
@@ -622,10 +642,6 @@ void CWaveletDir::Transform97I(float * pImage, int stride)
 		LiftBand<even>(pBand, stride, DimX, DimY, -BETA1, -BETA2, HVMap.pMap);
 		LiftBand<odd>(pBand, stride, DimX, DimY, -ALPHA1, -ALPHA2, HVMap.pMap);
 	}
-
-	// FIXME enlever la saturation d'ici, à mettre hors de cette fonction
-	if (pHigh == 0)
-		Saturate(pImage, stride);
 }
 
 void CWaveletDir::SetWeight97(void)
@@ -661,6 +677,10 @@ void CWaveletDir::SetWeight97(void)
 	}
 	if (pLow != 0)
 		pLow->SetWeight97();
+	else {
+		LMap.weightH = HVMap.weightL;
+		LMap.weightL = LMap.weightH * XI * XI;
+	}
 }
 
 void CWaveletDir::GetImageDir97(float * pImage, int stride)
@@ -689,7 +709,7 @@ void CWaveletDir::GetImageDir97(float * pImage, int stride)
 		for( int i = 0; i < DimY; i++){
 			memcpy(pCur1, pCur, DimX * sizeof(float));
 			memcpy(pCur2, pCur, DimX * sizeof(float));
-			pCur += HVBand.DimXAlign;
+			pCur += pHigh->HVBand.DimXAlign;
 			pCur1 += DimX;
 			pCur2 += DimX;
 		}
@@ -728,6 +748,46 @@ void CWaveletDir::GetImageDir97(float * pImage, int stride)
 	// desallocation de la mémoire
 	delete[] pImage1;
 	delete[] pImage2;
+	delete[] pBand1;
+	delete[] pBand2;
+}
+
+void CWaveletDir::GetBandDir97(void)
+{
+	float * pBand1 = new float [HVBand.BandSize];
+	float * pBand2 = new float [HVBand.BandSize];
+	float * pCur = HVBand.pBand, * pCur1 = pBand1, * pCur2 = pBand2;
+	int stride = HVBand.DimXAlign;
+	int DimX = HVBand.DimX;
+	int DimY = HVBand.DimY;
+
+	// copie de la bande HV
+	for( int i = 0; i < HVBand.DimY; i++){
+		memcpy(pCur1, pCur, HVBand.DimX * sizeof(float));
+		memcpy(pCur2, pCur, HVBand.DimX * sizeof(float));
+		pCur += stride;
+		pCur1 += stride;
+		pCur2 += stride;
+	}
+
+	// lifting partiel 1
+	LMap.SetDir(0);
+	LiftBand<odd>(pBand1, stride, DimX, DimY, ALPHA1, ALPHA2, LMap.pMap);
+	LiftBand<even>(pBand1, stride, DimX, DimY, BETA1, BETA2, LMap.pMap);
+	LiftBand<odd>(pBand1, stride, DimX, DimY, GAMMA1, GAMMA2, LMap.pMap);
+
+	// lifting partiel 2
+	LMap.SetDir(1);
+	LiftBand<odd>(pBand2, stride, DimX, DimY, ALPHA1, ALPHA2, LMap.pMap);
+	LiftBand<even>(pBand2, stride, DimX, DimY, BETA1, BETA2, LMap.pMap);
+	LiftBand<odd>(pBand2, stride, DimX, DimY, GAMMA1, GAMMA2, LMap.pMap);
+
+	// calcul des distortions
+	LMap.GetImageDist(pBand1, pBand2, stride);
+
+	LMap.SelectDir();
+
+	// desallocation de la mémoire
 	delete[] pBand1;
 	delete[] pBand2;
 }
@@ -781,7 +841,9 @@ unsigned int CWaveletDir::TSUQ(float Quant, float Thres)
 // 		HVWav.TSUQ(Quant, Thres, 1);
 	} else {
 		Count += LBand.TSUQ(Quant, Quant * .5);
-		Count += HVBand.TSUQ(Quant, Thres);
+		Count += HVHBand.TSUQ(Quant, Thres);
+		Count += HVLBand.TSUQ(Quant, Thres);
+// 		Count += HVBand.TSUQ(Quant, Thres);
 // 		HVWav.TSUQ(Quant, Thres, 1);
 	}
 	return Count;
@@ -799,19 +861,10 @@ void CWaveletDir::TSUQi(float Quant, float RecLevel)
 // 		HVWav.TSUQi(Quant, RecLevel, 1);
 	} else {
 		LBand.TSUQi(Quant, 0);
-		HVBand.TSUQi(Quant, RecLevel);
+		HVHBand.TSUQi(Quant, RecLevel);
+		HVLBand.TSUQi(Quant, RecLevel);
+// 		HVBand.TSUQi(Quant, RecLevel);
 // 		HVWav.TSUQi(Quant, RecLevel, 1);
-	}
-}
-
-void CWaveletDir::Saturate(float * pImage, int stride)
-{
-	float * pCurPos = pImage;
-	for( int j = 0; j < DimY; j++){
-		for (int i = 0; i < DimX; i++){
-			pCurPos[i] = CLIP(pCurPos[i], 0., 1.);
-		}
-		pCurPos += stride;
 	}
 }
 
