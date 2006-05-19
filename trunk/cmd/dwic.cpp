@@ -201,10 +201,17 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		CRangeCodec RangeCodec(0, 0);
 		RangeCodec.InitCoder(Head.last, pEnd);
 
+<<<<<<< .mine
+		CWaveletDir Wavelet(img.columns(), img.rows(), 5);
+		Wavelet.SetWeight97();
+		Wavelet.SetRange(&RangeCodec);
+		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant] * .75f);
+=======
 		CWaveletDir Wavelet(img.columns(), img.rows(), 5);
 		Wavelet.SetWeight97();
 		Wavelet.SetRange(&RangeCodec);
 		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant]);
+>>>>>>> .r31
 
 // 		Wavelet.Stats();
 // 		Band2PNG(Wavelet, outfile);
