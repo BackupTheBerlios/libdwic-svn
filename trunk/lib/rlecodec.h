@@ -44,30 +44,57 @@ public:
 
     ~CRLECodec();
 
-	void Init(unsigned char * pBuf){
-		pStream = pBuf;
-		nbBits = 0;
-		count = 0;
-	}
+	void Init(unsigned char * pBuf);
 
 	void RLECode(float * pBuffer, int stride);
 	void RLEDecode(float * pBuffer, int stride);
 	unsigned char * EndCoding(void);
 	unsigned char * EndDecoding(void);
 
+	void golombCode(unsigned int nb, unsigned int k);
+	void golombCode(unsigned int nb);
+	unsigned int golombDecode(unsigned int k);
+	unsigned int golombDecode(void);
+
+	void fiboCode(unsigned int nb);
+	unsigned int fiboDecode(void);
+
+	void enum16Code(unsigned int bits, const unsigned int k);
+	unsigned int enum16Decode(unsigned int k);
+
+
+
+	void inline bitsCode(unsigned int bits, unsigned int length)
+	{
+		if (nbBits + length > 32)
+			EmptyBuffer();
+		buffer = (buffer << length) | bits;
+		nbBits += length;
+	}
+
+	unsigned int inline bitsDecode(unsigned int length)
+	{
+		if (nbBits < length)
+			FillBuffer();
+		nbBits -= length;
+		return (buffer >> nbBits) & ((1 << length) - 1);
+	}
+
 private:
 	unsigned char * pStream;
 	unsigned int nbBits;
 	unsigned int buffer;
 	unsigned int count;
-
-	void fiboCode(unsigned int nb);
-	unsigned int fiboDecode(void);
+	unsigned int Cn;
+	unsigned int Kn;
 
 	void EmptyBuffer(void);
 	void FillBuffer(void);
 
 	static const unsigned int nbFibo[32];
+	static const unsigned int Cnk[16][16];
+	static const unsigned int enumLenth[];
+	static const unsigned int enumLost[];
 };
 
 }

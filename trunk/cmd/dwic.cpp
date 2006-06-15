@@ -188,6 +188,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 	img.type( GrayscaleType );
 	float * ImgPixels = new float [img.columns() * img.rows()];
 	unsigned char * pStream = new unsigned char[img.columns() * img.rows()];
+	unsigned char * pStream2 = pStream + (img.columns() * img.rows() >> 1);
 
 	img.write(0, 0, img.columns(), img.rows(), "R", FloatPixel, ImgPixels);
 
@@ -195,23 +196,17 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 	oFile.write((char *)&tmp, sizeof(unsigned short));
 	tmp = img.rows();
 	oFile.write((char *)&tmp, sizeof(unsigned short));
+	oFile.write((char *)&Head, sizeof(Header));
 	unsigned char * pEnd = pStream;
 
 	if (Type == 0) {
 		CRangeCodec RangeCodec(0, 0);
-		RangeCodec.InitCoder(Head.last, pEnd);
+		RangeCodec.InitCoder(0, pEnd + 2);
 
-<<<<<<< .mine
 		CWaveletDir Wavelet(img.columns(), img.rows(), 5);
 		Wavelet.SetWeight97();
 		Wavelet.SetRange(&RangeCodec);
 		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant] * .75f);
-=======
-		CWaveletDir Wavelet(img.columns(), img.rows(), 5);
-		Wavelet.SetWeight97();
-		Wavelet.SetRange(&RangeCodec);
-		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant]);
->>>>>>> .r31
 
 // 		Wavelet.Stats();
 // 		Band2PNG(Wavelet, outfile);
@@ -221,10 +216,15 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
 		Wavelet.CodeMap(4);
 
+		unsigned char * pEnd2 = Wavelet.CodeBand(pStream2, &RangeCodec, 3);
+
 		pEnd = RangeCodec.EndCoding();
-		pEnd = Wavelet.CodeBand(pEnd);
+		memcpy(pEnd, pStream2, pEnd2 - pStream2);
+		pStream[0] = (pEnd - pStream) >> 16;
+		pStream[1] = ((pEnd - pStream) >> 8) & 0xFF;
+		pStream[2] = (pEnd - pStream) & 0xFF;
+		pEnd += pEnd2 - pStream2;
 	} else if (Type == 1) {
-		oFile.write((char *)&Head, sizeof(Header));
 		CWavelet2D Wavelet(img.columns(), img.rows(), 5);
 		Wavelet.SetWeight97();
 		Wavelet.Transform97(ImgPixels, img.columns());
@@ -262,27 +262,27 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 	unsigned char * pStream = new unsigned char[width * heigth];
 
 	iFile.read((char *) pStream, width * heigth);
-	unsigned char * pEnd = pStream;
 
 	Header Head;
 	Head.last = *pStream;
 
+	unsigned char * pEnd = pStream + 1;
+
 	if (Head.Type == 0) {
 		CRangeCodec RangeCodec(0);
-		RangeCodec.InitDecoder(pStream);
-
+		RangeCodec.InitDecoder(pEnd + 2);
+		unsigned int size = (unsigned int)pEnd[0] << 16 | pEnd[1] << 8 | pEnd[2];
 		CWaveletDir Wavelet(width, heigth, 5);
 		Wavelet.SetWeight97();
 		Wavelet.SetRange(&RangeCodec);
 		Wavelet.DecodeMap(4);
-		pEnd = pStream + RangeCodec.GetCurrentSize();
-		Wavelet.DecodeBand(pEnd);
+		Wavelet.DecodeBand(pEnd + size, &RangeCodec, 3);
 		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
 		Wavelet.Transform97I(ImgPixels, width);
 	} else if (Head.Type == 1) {
 		CWavelet2D Wavelet(width, heigth, 5);
 		Wavelet.SetWeight97();
-		Wavelet.DecodeBand(pEnd + 1);
+		Wavelet.DecodeBand(pEnd);
 		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
 		Wavelet.Transform97I(ImgPixels, width);
 	} else {

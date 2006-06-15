@@ -75,8 +75,10 @@ public:
 	void SetRange(CRangeCodec * RangeCodec);
 	void CodeMap(int Options = 0);
 	void DecodeMap(int Options = 0);
-	unsigned char * CodeBand(unsigned char * pBuf);
-	unsigned char * DecodeBand(unsigned char * pBuf);
+	unsigned char * CodeBand(unsigned char * pBuf, CRangeCodec * pRange,
+							 int method = 1);
+	unsigned char * DecodeBand(unsigned char * pBuf, CRangeCodec * pRange,
+							   int method = 1);
 
 // 	unsigned int Thres(float Thres);
 	unsigned int TSUQ(float Quant, float Thres);

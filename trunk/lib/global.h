@@ -37,6 +37,8 @@
 
 namespace libdwic {
 
+typedef enum cmode {code, decode};
+
 #ifndef ASSERT
 #ifdef _DEBUG
 #define ASSERT(condition)	\

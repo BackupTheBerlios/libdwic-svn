@@ -107,6 +107,17 @@ public:
 			Normalize();
 	}
 
+	void inline Code(const unsigned int Freq){
+		{
+			const register unsigned int tmp = Range >> FREQ_POWER;
+			const register unsigned int LowFreq = Freq & 0xFFFF;
+			LowRange += tmp * LowFreq;
+			Range = tmp * ((Freq >> 16) - LowFreq);
+		}
+		if (Range <= MIN_RANGE)
+			Normalize();
+	}
+
 	void inline Code0(const unsigned int TopFreq){
 		Range = (Range >> FREQ_POWER) * TopFreq;
 		if (Range <= MIN_RANGE)
@@ -133,15 +144,17 @@ public:
 			Normalize();
 	}
 
-	void inline Code(const unsigned int Freq){
-		{
-			const register unsigned int tmp = Range >> FREQ_POWER;
-			const register unsigned int LowFreq = Freq & 0xFFFF;
-			LowRange += tmp * LowFreq;
-			Range = tmp * ((Freq >> 16) - LowFreq);
-		}
-		if (Range <= MIN_RANGE)
-			Normalize();
+	unsigned int inline Decode(unsigned short * pFreqs)
+	{
+		NORMALIZE;
+		unsigned short freq = (LowRange/(Range >> FREQ_POWER))&(FREQ_COUNT-1);
+		unsigned int i = 1;
+		for( ; freq >= pFreqs[i]; i++){}
+		i -= 1;
+		const register unsigned int tmp = Range >> FREQ_POWER;
+		LowRange -= tmp * pFreqs[i];
+		Range = tmp * (pFreqs[i+1] - pFreqs[i]);
+		return i;
 	}
 
 	unsigned int inline GetFreq(void){

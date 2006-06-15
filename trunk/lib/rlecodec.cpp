@@ -39,6 +39,11 @@ using namespace std;
 
 namespace libdwic {
 
+#define TAU	7
+#define RES	8
+#define CN_MIN	(11585 << (TAU + RES - 15))
+#define CN_MAX	(11585 << (TAU + RES - 14))
+
 CRLECodec::CRLECodec(unsigned char * pBuf)
 {
 	Init(pBuf);
@@ -48,15 +53,23 @@ CRLECodec::~CRLECodec()
 {
 }
 
+void CRLECodec::Init(unsigned char * pBuf){
+	pStream = pBuf;
+	nbBits = 0;
+	count = 0;
+	Kn = 0;
+	Cn = 1 << (TAU + RES - 1 - Kn);
+}
+
 void CRLECodec::RLECode(float * pBuffer, int stride)
 {
 	for( int i = 0; i < stride; i++){
 		if (pBuffer[i] == 0.) {
 			count++;
 		} else {
+			if (nbBits >= 31)
+				EmptyBuffer();
 			if (count != 0) {
-				if (nbBits >= 32)
-					EmptyBuffer();
 				buffer <<= 1;
 				nbBits++;
 				fiboCode(count);
@@ -72,8 +85,6 @@ void CRLECodec::RLECode(float * pBuffer, int stride)
 				fiboCode(Value);
 				count = 0;
 			} else {
-				if (nbBits >= 31)
-					EmptyBuffer();
 				int Value = (int) pBuffer[i];
 				buffer = (buffer << 2) | 2;
 				if (Value < 0){
@@ -171,7 +182,6 @@ const unsigned int CRLECodec::nbFibo[32] =
 	3524578
 };
 
-
 void CRLECodec::fiboCode(unsigned int nb)
 {
 	if ( nbBits >= 8 )
@@ -227,6 +237,143 @@ unsigned int CRLECodec::fiboDecode(void)
 		}
 	}
 	return nb;
+}
+
+const unsigned int CRLECodec::Cnk[16][16] =
+{
+	{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+	{0, 0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91, 105},
+	{0, 0, 0, 1, 4, 10, 20, 35, 56, 84, 120, 165, 220, 286, 364, 455},
+	{0, 0, 0, 0, 1, 5, 15, 35, 70, 126, 210, 330, 495, 715, 1001, 1365},
+	{0, 0, 0, 0, 0, 1, 6, 21, 56, 126, 252, 462, 792, 1287, 2002, 3003},
+	{0, 0, 0, 0, 0, 0, 1, 7, 28, 84, 210, 462, 924, 1716, 3003, 5005},
+	{0, 0, 0, 0, 0, 0, 0, 1, 8, 36, 120, 330, 792, 1716, 3432, 6435},
+	{0, 0, 0, 0, 0, 0, 0, 0, 1, 9, 45, 165, 495, 1287, 3003, 6435},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 10, 55, 220, 715, 2002, 5005},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 11, 66, 286, 1001, 3003},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 12, 78, 364, 1365},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 13, 91, 455},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 14, 105},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 15},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+};
+
+const unsigned int CRLECodec::enumLenth[] =
+{0, 4, 7, 10, 11, 13, 13, 14, 14, 14, 13, 13, 11, 10, 7, 4, 0};
+
+const unsigned int CRLECodec::enumLost[] =
+{0, 0, 8, 464, 228, 3824, 184, 4944, 3514, 4944, 184, 3824, 228, 464, 8, 0, 0};
+
+/**
+ * Attention : il n'est pas possible de coder 0
+ * @param bits
+ */
+void CRLECodec::enum16Code(unsigned int bits, const unsigned int k)
+{
+	unsigned int code = 0;
+	const unsigned int * C = Cnk[0];
+	unsigned int n = 0;
+	do {
+		if (bits & 1) {
+			code += C[n];
+			C += 16;
+		}
+		n++;
+		bits >>= 1;
+	} while(bits != 0);
+
+	if (code < enumLost[k])
+		bitsCode(code, enumLenth[k]-1);
+	else
+		bitsCode(code + enumLost[k], enumLenth[k]);
+}
+
+/**
+ * Attention : il n'est pas possible de décoder k = 0 ou k = 16
+ * @param k
+ * @return
+ */
+unsigned int CRLECodec::enum16Decode(unsigned int k)
+{
+	unsigned int n = 15;
+	unsigned int code = bitsDecode(enumLenth[k] - 1);
+	const unsigned int * C = Cnk[k-1];
+	unsigned int bits = 0;
+
+	if (code >= enumLost[k])
+		code = ((code << 1) | bitsDecode(1)) - enumLost[k];
+
+	do {
+		if (code >= C[n]) {
+			bits |= 1 << n;
+			code -= C[n];
+			C -= 16;
+			k--;
+		}
+		n--;
+	} while(k > 0);
+
+	return bits;
+}
+
+void CRLECodec::golombCode(unsigned int nb, unsigned int k)
+{
+	unsigned int l = (nb >> k) + 1;
+	nb &= (1 << k) - 1;
+
+	while (l > (32 - nbBits)){
+		buffer <<= 32 - nbBits;
+		l -= 32 - nbBits;
+		nbBits = 32;
+		EmptyBuffer();
+	}
+
+	buffer <<= l;
+	buffer |= 1;
+	nbBits += l;
+
+	bitsCode(nb, k);
+}
+
+unsigned int CRLECodec::golombDecode(unsigned int k)
+{
+	unsigned int l = 0;
+
+	while (buffer & ((1 << nbBits) - 1) == 0){
+		l += nbBits;
+		nbBits = 0;
+		FillBuffer();
+	}
+
+	while( (buffer & (1 << --nbBits)) == 0 )
+		l++;
+
+	return (l << k) | bitsDecode(k);
+}
+
+void CRLECodec::golombCode(unsigned int nb)
+{
+	golombCode(nb, Kn);
+	Cn -= (Cn >> TAU);
+	if (nb == 0)
+		Cn += 1 << RES;
+	if (Cn < (CN_MIN >> Kn))
+		Kn++;
+	else if (Kn > 0 && Cn > (CN_MAX >> Kn))
+		Kn--;
+}
+
+unsigned int CRLECodec::golombDecode(void)
+{
+	unsigned int nb = golombDecode(Kn);
+	Cn -= (Cn >> TAU);
+	if (nb == 0)
+		Cn += 1 << RES;
+	if (Cn < (CN_MIN >> Kn))
+		Kn++;
+	else if (Kn > 0 && Cn > (CN_MAX >> Kn))
+		Kn--;
 }
 
 void CRLECodec::EmptyBuffer(void)

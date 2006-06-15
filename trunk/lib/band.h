@@ -34,6 +34,7 @@
 #pragma once
 
 #include "rlecodec.h"
+#include "rangecodec.h"
 
 namespace libdwic {
 
@@ -72,9 +73,6 @@ public:
 	unsigned int Count;		// Count of non-zero coeffs
 	float Weight;			// Weighting of the band distortion
 							// (used for Quant calc and PSNR calc)
-	unsigned int DeadZone;	// Scaling of the dead zone
-	unsigned int Round;		// Rounding of the coeffs
-	unsigned int QScale;	// Scaling of the Quantizer (used for Quant calc)
 
 	CBand *pParent;			// Parent Band
 	CBand *pChild;			// Child Band
@@ -91,7 +89,8 @@ public:
 // 	CBitCodec Tree;			// Tree codec
 // 	CSymbolCodec Symbol;	// Quantized band coeff codec
 
-	void Init(unsigned int x = 0, unsigned int y = 0, int Align = ALIGN);
+	void Init(unsigned int x = 0, unsigned int y = 0, int Align = ALIGN,
+			  bool useTree = false);
 
 	// Quantification
 	unsigned int Thres(float Thres);
@@ -100,10 +99,14 @@ public:
 	void SimpleQuant(int quant);
 
 	// Codage
-	void RLECode(CRLECodec * pCodec);
-	void RLEDecode(CRLECodec * pCodec);
+	template <cmode mode>
+			void RLE(CRLECodec * pCodec);
 	void RLECodeV(CRLECodec * pCodec);
 	void RLEDecodeV(CRLECodec * pCodec);
+	void TreeCode(CRLECodec * pCodec);
+	void TreeDecode(CRLECodec * pCodec);
+	template <cmode mode>
+			void enu(CRLECodec * pCodec, CRangeCodec * pRange);
 
 	// Statistiques
 	void Mean(float & Mean, float & Var);
@@ -113,9 +116,28 @@ public:
 	void ListAllPos(void);
 	void Add(float val);
 	void GetBand(float * pOut);
+	void Clear(bool recurse = false);
+	template <bool useHighTree>
+			void BuildTree(void);
 
 private:
-	float * pData;
+	char * pData;
+
+	// Codage
+	void TreeCode(int i, int j, CRLECodec * pCodec);
+	void CoefCode(int i, int j, CRLECodec * pCodec);
+	void TreeDecode(int i, int j, CRLECodec * pCodec);
+	void CoefDecode(int i, int j, CRLECodec * pCodec);
+
+	template <bool directK>
+	/*static*/ unsigned int enuCode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
+								float * pCur, int stride, unsigned int kPred);
+	template <bool directK>
+	/*static*/ unsigned int enuDecode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
+								float * pCur, int stride, unsigned int kPred);
+
+	static unsigned short cumProba[33][18];
+	static unsigned short * pcumProba[33];
 };
 
 }
