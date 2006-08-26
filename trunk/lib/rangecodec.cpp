@@ -47,18 +47,15 @@ void CRangeCodec::InitCoder(unsigned char FirstByte = 0,
 							unsigned char *pOutStream = 0){
 	LowRange = 0;
 	Range = MAX_RANGE;
-	Carry = 0;
 	if (pOutStream != 0){
 		pStream = pOutStream;
 		pInitStream = pOutStream + 1;
 		CarryBuff = FirstByte << 1;
-		StreamBuff = FirstByte & 0x80;
 	}
 }
 
 void CRangeCodec::InitDecoder(unsigned char *pInStream){
 	if (pInStream){
-		StreamBuff = *pInStream;
 		pInitStream = pInStream + 1;
 		pStream = pInStream + 1;
 		Range = 0x80;							// 1<<7
@@ -69,33 +66,20 @@ void CRangeCodec::InitDecoder(unsigned char *pInStream){
 
 void CRangeCodec::Normalize(void){
 	do{
-		if (LowRange < 0x7F800000){
-			*pStream = StreamBuff | (CarryBuff >> 1);
-			StreamBuff = CarryBuff << 7;
-			pStream++;
-			while(Carry){
-				Carry--;
-				*pStream = StreamBuff | 0x7F;
-				StreamBuff = 0x80;
-				pStream++;
-			}
-			CarryBuff = (unsigned char)(LowRange >> RANGE_BITS);
+		CarryBuff = (CarryBuff << 8) + (LowRange >> RANGE_BITS);
+		*pStream = (unsigned char) (CarryBuff >> 9);
+		if (CarryBuff & 0x20000){
+			int i = -1;
+			unsigned int tmp = 1;
+			do {
+				tmp += pStream[i];
+				pStream[i] = (unsigned char) tmp;
+				tmp >>= 8;
+				i--;
+			} while (tmp != 0);
 		}
-		else if (LowRange & MAX_RANGE){
-			*pStream = StreamBuff | ((CarryBuff + 1) >> 1);
-			StreamBuff = (CarryBuff + 1) << 7;
-			pStream++;
-			while (Carry){
-				Carry--;
-				*pStream = StreamBuff;
-				StreamBuff = 0x00;
-				pStream++;
-			}
-			CarryBuff = (unsigned char)(LowRange >> RANGE_BITS);
-		}
-		else
-			Carry++;
-
+		CarryBuff &= 0x1FF;
+		pStream++;
 		Range <<= 8;
 		LowRange = (LowRange << 8) & NO_CARRY;
 	} while (Range <= MIN_RANGE);
@@ -105,33 +89,23 @@ unsigned char * CRangeCodec::EndCoding(void){
 	if (Range <= MIN_RANGE)
 		Normalize();
 
-	unsigned int tmp = (LowRange >> RANGE_BITS) + 1;
+	CarryBuff = (CarryBuff << 8) + (LowRange >> RANGE_BITS) + 1;
+	*pStream = (unsigned char) (CarryBuff >> 9);
+	if (CarryBuff & 0x20000){
+		int i = -1;
+		unsigned int tmp = 1;
+		do {
+			tmp += pStream[i];
+			pStream[i] = (unsigned char) tmp;
+			tmp >>= 8;
+			i--;
+		} while (tmp != 0);
+	}
+	pStream++;
 
-	if (tmp > 0xff){
-		*pStream = StreamBuff | ((CarryBuff + 1) >> 1);
-		StreamBuff = (CarryBuff + 1) << 7;
-		pStream++;
-		while (Carry){
-			Carry--;
-			*pStream = StreamBuff;
-			StreamBuff = 0x00;
-			pStream++;
-		}
-	}
-	else{
-		*pStream = StreamBuff | (CarryBuff >> 1);
-		StreamBuff = CarryBuff << 7;
-		pStream++;
-		while(Carry){
-			Carry--;
-			*pStream = StreamBuff | 0x7F;
-			StreamBuff = 0x80;
-			pStream++;
-		}
-	}
-	pStream[0] = StreamBuff | (((unsigned char)tmp) >> 1);
-	pStream[1] = (unsigned char)(tmp << 7);
-// 	FIXME enlever les 0, à ajouter au décodage
+	// 	FIXME enlever les 0, à ajouter au décodage
+	pStream[0] = (unsigned char) (CarryBuff >> 1);
+	pStream[1] = (unsigned char) (CarryBuff << 7);
 	pStream[2] = 0;
 	pStream[3] = 0;
 	pStream += 3;

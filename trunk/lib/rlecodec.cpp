@@ -33,6 +33,7 @@
 
 #include <iostream>
 #include <cstdlib>
+#include "global.h"
 #include "rlecodec.h"
 
 using namespace std;
@@ -317,15 +318,17 @@ unsigned int CRLECodec::enum16Decode(unsigned int k)
 	return bits;
 }
 
-void CRLECodec::golombCode(unsigned int nb, unsigned int k)
+void CRLECodec::golombCode(unsigned int nb, const unsigned int k)
 {
 	unsigned int l = (nb >> k) + 1;
 	nb &= (1 << k) - 1;
 
-	while (l > (32 - nbBits)){
-		buffer <<= 32 - nbBits;
-		l -= 32 - nbBits;
-		nbBits = 32;
+	while ((int)l > (31 - (int)nbBits)){
+		if (31 - (int)nbBits >= 0) {
+			buffer <<= 31 - nbBits;
+			l -= 31 - nbBits;
+			nbBits = 31;
+		}
 		EmptyBuffer();
 	}
 
@@ -336,11 +339,13 @@ void CRLECodec::golombCode(unsigned int nb, unsigned int k)
 	bitsCode(nb, k);
 }
 
-unsigned int CRLECodec::golombDecode(unsigned int k)
+unsigned int CRLECodec::golombDecode(const unsigned int k)
 {
 	unsigned int l = 0;
 
-	while (buffer & ((1 << nbBits) - 1) == 0){
+	while(0 == (buffer & ((1 << nbBits) - 1))) {
+		if (nbBits == 32 && buffer != 0)
+			break;
 		l += nbBits;
 		nbBits = 0;
 		FillBuffer();
@@ -349,7 +354,8 @@ unsigned int CRLECodec::golombDecode(unsigned int k)
 	while( (buffer & (1 << --nbBits)) == 0 )
 		l++;
 
-	return (l << k) | bitsDecode(k);
+	unsigned int nb = (l << k) | bitsDecode(k);
+	return nb;
 }
 
 void CRLECodec::golombCode(unsigned int nb)

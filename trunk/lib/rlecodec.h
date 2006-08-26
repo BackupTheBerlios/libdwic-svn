@@ -51,9 +51,9 @@ public:
 	unsigned char * EndCoding(void);
 	unsigned char * EndDecoding(void);
 
-	void golombCode(unsigned int nb, unsigned int k);
+	void golombCode(unsigned int nb, const unsigned int k);
 	void golombCode(unsigned int nb);
-	unsigned int golombDecode(unsigned int k);
+	unsigned int golombDecode(const unsigned int k);
 	unsigned int golombDecode(void);
 
 	void fiboCode(unsigned int nb);

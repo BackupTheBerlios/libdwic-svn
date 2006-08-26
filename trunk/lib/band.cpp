@@ -259,10 +259,10 @@ unsigned int CBand::enuCode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
 			pCodec->enum16Code(signif, k);
 		for( int i = 0; i < k; i++){
 			if (tmp[i] < 0) {
-				pCodec->fiboCode((unsigned int) -tmp[i]);
+				pCodec->golombCode((unsigned int)(-tmp[i]-1), 2);
 				pCodec->bitsCode(1,1);
 			} else {
-				pCodec->fiboCode((unsigned int) tmp[i]);
+				pCodec->golombCode((unsigned int)(tmp[i]-1), 2);
 				pCodec->bitsCode(0,1);
 			}
 		}
@@ -292,7 +292,7 @@ unsigned int CBand::enuDecode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
 	for( int j = 0; j < 4; j++){
 		for( float * pEnd = pCur + 4; pCur < pEnd; pCur++){
 			if (signif & (1 << 15)) {
-				pCur[0] = pCodec->fiboDecode();
+				pCur[0] = pCodec->golombDecode(2) + 1;
 				if (pCodec->bitsDecode(1))
 					pCur[0] = -pCur[0];
 			}

@@ -37,32 +37,16 @@ namespace libdwic {
 
 typedef enum CodingMode {EncodeMode, DecodeMode};
 
-#define FREQ_POWER	12			// total freq count = 2^FREQ_POWER
-#define INTERVAL_POWER	4		// FREQ_POWER - 8
-#define FREQ_COUNT	4096		// total freq count = FREQ_COUNT = 2^FREQ_POWER
-#define HALF_FREQ_COUNT	2048	// FREQ_COUNT / 2
+#define FREQ_POWER	12
+#define FREQ_COUNT	(1 << FREQ_POWER)
+#define HALF_FREQ_COUNT	(1 << (FREQ_POWER - 1))	// FREQ_COUNT / 2
 
-#define MIN_RANGE	0x00800000
+#define MIN_RANGE		0x00800000
 #define HALF_MIN_RANGE	0x00400000
-#define MAX_RANGE	0x80000000
-#define NO_CARRY	0x7FFFFFFF	// MAX_RANGE - 1
-#define RANGE_BITS	23
-#define END_BITS 9				// 32 - RANGE_BITS
-
-#define HOR_MV_INIT_DEC			HALF_FREQ_COUNT
-#define VER_MV_INIT_DEC			HALF_FREQ_COUNT
-#define WAV_INIT_DEC			HALF_FREQ_COUNT
-#define MEAN_MIN_DEC			64
-
-#define WAV_MIN_DEC				32
-
-#define M_SIGN_MIN_DEC			16
-#define H_SIGN_MIN_DEC			16
-#define H_SIGNIF_MIN_DEC		16
-#define L_SIGNIF_MIN_DEC		16
-
-#define SIGN_MIN_DEC			1
-#define SIGNIF_MIN_DEC			1
+#define MAX_RANGE		0x80000000
+#define NO_CARRY		0x7FFFFFFF	// MAX_RANGE - 1
+#define RANGE_BITS		23
+#define END_BITS 		9			// 32 - RANGE_BITS
 
 #define NORMALIZE \
 	while (Range <= MIN_RANGE){ \
@@ -76,13 +60,11 @@ typedef enum CodingMode {EncodeMode, DecodeMode};
 */
 class CRangeCodec{
 private:
-	unsigned int Carry;
 	unsigned int Range;
 	unsigned int LowRange;
 	unsigned char *pStream;
 	unsigned char *pInitStream;
-	unsigned char CarryBuff;
-	unsigned char StreamBuff;
+	unsigned int CarryBuff;
 
 	void Normalize(void);
 
@@ -102,17 +84,6 @@ public:
 			const register unsigned int tmp = Range >> FREQ_POWER;
 			LowRange += tmp * LowFreq;
 			Range = tmp * (TopFreq - LowFreq);
-		}
-		if (Range <= MIN_RANGE)
-			Normalize();
-	}
-
-	void inline Code(const unsigned int Freq){
-		{
-			const register unsigned int tmp = Range >> FREQ_POWER;
-			const register unsigned int LowFreq = Freq & 0xFFFF;
-			LowRange += tmp * LowFreq;
-			Range = tmp * ((Freq >> 16) - LowFreq);
 		}
 		if (Range <= MIN_RANGE)
 			Normalize();
@@ -168,13 +139,6 @@ public:
 		Range = tmp * (TopFreq - LowFreq);
 	}
 
-	void inline Update(const unsigned int Freq){
-		const register unsigned int tmp = Range >> FREQ_POWER;
-		const register unsigned int LowFreq = Freq & 0xFFFF;
-		LowRange -= tmp * LowFreq;
-		Range = tmp * ((Freq >> 16) - LowFreq);
-	}
-
 	unsigned int inline GetBit(const unsigned int Freq){
 		NORMALIZE;
 		const register unsigned int tmp = (Range >> FREQ_POWER) * Freq;
@@ -182,10 +146,6 @@ public:
 		LowRange -= tmp & tst;
 		Range = tmp + ((Range - 2*tmp) & tst);
 		return -tst;
-	}
-
-	unsigned char GetFirstByte(void){
-		return StreamBuff;
 	}
 };
 
