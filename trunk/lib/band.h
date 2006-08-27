@@ -107,6 +107,8 @@ public:
 	void TreeDecode(CRLECodec * pCodec);
 	template <cmode mode>
 			void enu(CRLECodec * pCodec, CRangeCodec * pRange);
+	template <cmode mode>
+			void bit(CRLECodec * pCodec);
 
 	// Statistiques
 	void Mean(float & Mean, float & Var);
@@ -136,8 +138,9 @@ private:
 	/*static*/ unsigned int enuDecode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
 								float * pCur, int stride, unsigned int kPred);
 
-	static unsigned short cumProba[33][18];
-	static unsigned short * pcumProba[33];
+	static const unsigned short cumProba[33][18];
+	static const unsigned short * pcumProba[33];
+	static const int golombK[17];
 };
 
 }

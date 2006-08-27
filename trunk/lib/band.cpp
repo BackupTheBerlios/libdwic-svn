@@ -95,7 +95,38 @@ void CBand::RLE(CRLECodec * pCodec)
 template void CBand::RLE<code>(CRLECodec *);
 template void CBand::RLE<decode>(CRLECodec *);
 
-unsigned short CBand::cumProba[33][18] =
+template <cmode mode>
+void CBand::bit(CRLECodec * pCodec)
+{
+	int max = Max;
+	unsigned int bits = 0;
+
+	if (mode == code) {
+		while( max > 0 ){
+			bits++;
+			max >>= 1;
+		}
+		pCodec->fiboCode(bits);
+	} else
+		bits = pCodec->fiboDecode();
+
+	float * pCur = pBand;
+
+	for( int j = 0; j < DimY; j++){
+		for( int i = 0; i < DimX; i++){
+			if (mode == code)
+				pCodec->bitsCode((unsigned int)pCur[i], bits);
+			else
+				pCur[i] = pCodec->bitsDecode(bits);
+		}
+		pCur += DimXAlign;
+	}
+}
+
+template void CBand::bit<code>(CRLECodec *);
+template void CBand::bit<decode>(CRLECodec *);
+
+const unsigned short CBand::cumProba[33][18] =
 {
 	{ 0, 4055, 4081, 4082, 4083, 4084, 4085, 4086, 4087, 4088, 4089, 4090, 4091, 4092, 4093, 4094, 4095, 4096},
 	{ 0, 2456, 3724, 4031, 4078, 4084, 4085, 4086, 4087, 4088, 4089, 4090, 4091, 4092, 4093, 4094, 4095, 4096},
@@ -132,7 +163,7 @@ unsigned short CBand::cumProba[33][18] =
 	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 41, 4096}
 };
 
-unsigned short * CBand::pcumProba[33] =
+const unsigned short * CBand::pcumProba[33] =
 {
 	cumProba[0], cumProba[1], cumProba[2], cumProba[3], cumProba[4],
 	cumProba[5], cumProba[6], cumProba[7], cumProba[8], cumProba[9],
@@ -230,6 +261,9 @@ void CBand::enu(CRLECodec * pCodec, CRangeCodec * pRange)
 template void CBand::enu<code>(CRLECodec *, CRangeCodec * );
 template void CBand::enu<decode>(CRLECodec *, CRangeCodec * );
 
+
+const int CBand::golombK[17] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 3};
+
 template <bool directK>
 unsigned int CBand::enuCode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
 							   float * pCur, int stride, unsigned int kPred)
@@ -237,6 +271,7 @@ unsigned int CBand::enuCode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
 	float tmp[16];
 	unsigned int signif = 0;
 	unsigned int k = 0;
+
 	for( int j = 0; j < 4; j++){
 		for( float * pEnd = pCur + 4; pCur < pEnd; pCur++){
 			signif <<= 1;
@@ -259,10 +294,10 @@ unsigned int CBand::enuCode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
 			pCodec->enum16Code(signif, k);
 		for( int i = 0; i < k; i++){
 			if (tmp[i] < 0) {
-				pCodec->golombCode((unsigned int)(-tmp[i]-1), 2);
+				pCodec->golombCode((unsigned int)(-tmp[i]-1), golombK[k]);
 				pCodec->bitsCode(1,1);
 			} else {
-				pCodec->golombCode((unsigned int)(tmp[i]-1), 2);
+				pCodec->golombCode((unsigned int)(tmp[i]-1), golombK[k]);
 				pCodec->bitsCode(0,1);
 			}
 		}
@@ -292,7 +327,7 @@ unsigned int CBand::enuDecode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
 	for( int j = 0; j < 4; j++){
 		for( float * pEnd = pCur + 4; pCur < pEnd; pCur++){
 			if (signif & (1 << 15)) {
-				pCur[0] = pCodec->golombDecode(2) + 1;
+				pCur[0] = pCodec->golombDecode(golombK[k]) + 1;
 				if (pCodec->bitsDecode(1))
 					pCur[0] = -pCur[0];
 			}

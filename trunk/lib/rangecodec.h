@@ -115,7 +115,7 @@ public:
 			Normalize();
 	}
 
-	unsigned int inline Decode(unsigned short * pFreqs)
+	unsigned int inline Decode(const unsigned short * pFreqs)
 	{
 		NORMALIZE;
 		unsigned short freq = (LowRange/(Range >> FREQ_POWER))&(FREQ_COUNT-1);

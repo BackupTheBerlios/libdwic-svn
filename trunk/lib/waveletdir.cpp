@@ -312,7 +312,7 @@ unsigned char * CWaveletDir::CodeBand(unsigned char * pBuf,
 				pCurWav->HVLBand.enu<code>(&Codec, pRange);
 				pCurWav->HVHBand.enu<code>(&Codec, pRange);
 				if (pCurWav->pLow == 0){
-					pCurWav->LBand.enu<code>(&Codec, pRange);
+					pCurWav->LBand.bit<code>(&Codec);
 				}
 				pCurWav = pCurWav->pLow;
 			}
@@ -359,7 +359,7 @@ unsigned char * CWaveletDir::DecodeBand(unsigned char * pBuf,
 				pCurWav->HVLBand.enu<decode>(&Codec, pRange);
 				pCurWav->HVHBand.enu<decode>(&Codec, pRange);
 				if (pCurWav->pLow == 0){
-					pCurWav->LBand.enu<decode>(&Codec, pRange);
+					pCurWav->LBand.bit<decode>(&Codec);
 				}
 				pCurWav = pCurWav->pLow;
 			}
