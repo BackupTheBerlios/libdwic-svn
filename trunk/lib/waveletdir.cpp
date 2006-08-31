@@ -91,7 +91,7 @@ void CWaveletDir::Init(int level, int Align)
 	}
 }
 
-void CWaveletDir::SetRange(CRangeCodec * RangeCodec)
+void CWaveletDir::SetRange(CMuxCodec * RangeCodec)
 {
 	HVMap.SetRange(RangeCodec);
 	DMap.SetRange(RangeCodec);
@@ -275,7 +275,7 @@ void CWaveletDir::SetDir(int Sel)
 }
 
 unsigned char * CWaveletDir::CodeBand(unsigned char * pBuf,
-									  CRangeCodec * pRange, int method)
+									  CMuxCodec * pRange, int method)
 {
 	CRLECodec Codec(pBuf);
 	CWaveletDir * pCurWav = this;
@@ -322,7 +322,7 @@ unsigned char * CWaveletDir::CodeBand(unsigned char * pBuf,
 }
 
 unsigned char * CWaveletDir::DecodeBand(unsigned char * pBuf,
-										CRangeCodec * pRange, int method)
+										CMuxCodec * pRange, int method)
 {
 	CRLECodec Codec(pBuf);
 	CWaveletDir * pCurWav = this;

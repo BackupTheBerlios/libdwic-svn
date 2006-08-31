@@ -64,7 +64,7 @@ public:
 	void GetMap(unsigned char * pOut);
 	void GetDist(unsigned char * pOut);
 
-	void SetRange(CRangeCodec * RangeCodec);
+	void SetRange(CMuxCodec * RangeCodec);
 	void Order0Code(void);
 	void Order0Dec(void);
 	void Neighbor4Code(void);

@@ -118,7 +118,7 @@ void CMap::GetDist(unsigned char * pOut)
 	}
 }
 
-void CMap::SetRange(CRangeCodec * RangeCodec)
+void CMap::SetRange(CMuxCodec * RangeCodec)
 {
 	DirCodec.SetRange(RangeCodec);
 	NodeCodec.SetRange(RangeCodec);

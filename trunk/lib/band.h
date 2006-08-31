@@ -34,7 +34,7 @@
 #pragma once
 
 #include "rlecodec.h"
-#include "rangecodec.h"
+#include "muxcodec.h"
 
 namespace libdwic {
 
@@ -106,7 +106,7 @@ public:
 	void TreeCode(CRLECodec * pCodec);
 	void TreeDecode(CRLECodec * pCodec);
 	template <cmode mode>
-			void enu(CRLECodec * pCodec, CRangeCodec * pRange);
+			void enu(CRLECodec * pCodec, CMuxCodec * pRange);
 	template <cmode mode>
 			void bit(CRLECodec * pCodec);
 
@@ -132,10 +132,10 @@ private:
 	void CoefDecode(int i, int j, CRLECodec * pCodec);
 
 	template <bool directK>
-	/*static*/ unsigned int enuCode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
+	/*static*/ unsigned int enuCode4x4(CRLECodec * pCodec, CMuxCodec * pRange,
 								float * pCur, int stride, unsigned int kPred);
 	template <bool directK>
-	/*static*/ unsigned int enuDecode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
+	/*static*/ unsigned int enuDecode4x4(CRLECodec * pCodec, CMuxCodec * pRange,
 								float * pCur, int stride, unsigned int kPred);
 
 	static const unsigned short cumProba[33][18];

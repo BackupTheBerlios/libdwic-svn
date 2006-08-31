@@ -200,7 +200,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 	unsigned char * pEnd = pStream;
 
 	if (Type == 0) {
-		CRangeCodec RangeCodec(0, 0);
+		CMuxCodec RangeCodec(0, 0);
 		RangeCodec.InitCoder(0, pEnd + 2);
 
 		CWaveletDir Wavelet(img.columns(), img.rows(), 5);
@@ -269,7 +269,7 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 	unsigned char * pEnd = pStream + 1;
 
 	if (Head.Type == 0) {
-		CRangeCodec RangeCodec(0);
+		CMuxCodec RangeCodec(0);
 		RangeCodec.InitDecoder(pEnd + 2);
 		unsigned int size = (unsigned int)pEnd[0] << 16 | pEnd[1] << 8 | pEnd[2];
 		CWaveletDir Wavelet(width, heigth, 5);

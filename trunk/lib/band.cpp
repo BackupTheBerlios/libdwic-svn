@@ -175,7 +175,7 @@ const unsigned short * CBand::pcumProba[33] =
 };
 
 template <cmode mode>
-void CBand::enu(CRLECodec * pCodec, CRangeCodec * pRange)
+void CBand::enu(CRLECodec * pCodec, CMuxCodec * pRange)
 {
 	if (mode == code)
 		if (Count <= 2){
@@ -258,14 +258,14 @@ void CBand::enu(CRLECodec * pCodec, CRangeCodec * pRange)
 	delete[] pTop;
 }
 
-template void CBand::enu<code>(CRLECodec *, CRangeCodec * );
-template void CBand::enu<decode>(CRLECodec *, CRangeCodec * );
+template void CBand::enu<code>(CRLECodec *, CMuxCodec * );
+template void CBand::enu<decode>(CRLECodec *, CMuxCodec * );
 
 
 const int CBand::golombK[17] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 3};
 
 template <bool directK>
-unsigned int CBand::enuCode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
+unsigned int CBand::enuCode4x4(CRLECodec * pCodec, CMuxCodec * pRange,
 							   float * pCur, int stride, unsigned int kPred)
 {
 	float tmp[16];
@@ -307,7 +307,7 @@ unsigned int CBand::enuCode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
 }
 
 template <bool directK>
-unsigned int CBand::enuDecode4x4(CRLECodec * pCodec, CRangeCodec * pRange,
+unsigned int CBand::enuDecode4x4(CRLECodec * pCodec, CMuxCodec * pRange,
 								 float * pCur, int stride, unsigned int kPred)
 {
 	unsigned int k;

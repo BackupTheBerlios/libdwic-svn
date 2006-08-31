@@ -33,7 +33,7 @@
 
 #pragma once
 
-#include "rangecodec.h"
+#include "muxcodec.h"
 
 namespace libdwic {
 
@@ -77,12 +77,12 @@ public:
 		return ret;
 	}
 
-	void SetRange(CRangeCodec * RangeCodec){ pRange = RangeCodec;}
-	CRangeCodec * GetRange(void){ return pRange;}
+	void SetRange(CMuxCodec * RangeCodec){ pRange = RangeCodec;}
+	CMuxCodec * GetRange(void){ return pRange;}
 
 private:
 	unsigned int Freq[BIT_CONTEXT_NB];
-	CRangeCodec *pRange;
+	CMuxCodec *pRange;
 };
 
 }

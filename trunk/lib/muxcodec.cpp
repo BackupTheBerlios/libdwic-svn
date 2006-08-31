@@ -31,107 +31,85 @@
  * knowledge of the CeCILL v2 license and that you accept its terms.       *
  ***************************************************************************/
 
-#pragma once
-
-#include "band.h"
-#include "map.h"
-#include "wavelet.h"
-#include "wavelet2d.h"
+#include "muxcodec.h"
 
 namespace libdwic {
 
-typedef enum lift {even, odd, diag_even, diag_odd};
-
-#define MOD		.125
-#define ALPHA1	(ALPHA * MOD)
-#define ALPHA2	(ALPHA * (1-MOD))
-#define BETA1	(BETA * MOD)
-#define BETA2	(BETA * (1-MOD))
-#define GAMMA1	(GAMMA * MOD)
-#define GAMMA2	(GAMMA * (1-MOD))
-#define DELTA1	(DELTA * MOD)
-#define DELTA2	(DELTA * (1-MOD))
-
-/**
-@author Nicolas Botti
-*/
-class CWaveletDir{
-public:
-
-	CWaveletDir(int x, int y, int level, int Align = ALIGN,
-				CWaveletDir * pHigh = 0);
-
-	~CWaveletDir();
-
-	void LazyTransform(float * pImage, int Stride);
-	void LazyTransformI(float * pImage, int Stride);
-// 	void Transform53(float * pImage, int Stride);
-// 	void Transform53I(float * pImage, int Stride);
-// 	void SetWeight53(void);
-	void Transform97(float * pImage, int stride, float lambda);
-	void Transform97I(float * pImage, int Stride);
-	void SetWeight97(void);
-
-	void SetRange(CMuxCodec * RangeCodec);
-	void CodeMap(int Options = 0);
-	void DecodeMap(int Options = 0);
-	unsigned char * CodeBand(unsigned char * pBuf, CMuxCodec * pRange,
-							 int method = 1);
-	unsigned char * DecodeBand(unsigned char * pBuf, CMuxCodec * pRange,
-							   int method = 1);
-
-// 	unsigned int Thres(float Thres);
-	unsigned int TSUQ(float Quant, float Thres);
-	void TSUQi(float Quant, float RecLevel);
-
-	void Stats(void);
-	void SetDir(int Sel);
-	void GetMap(unsigned char * pOut, int level, int Direction);
-	void GetBand(float * pOut, int level, int Direction);
-	void GetDist(unsigned char * pOut, int level, int Direction);
-
-	int GetDimX(void){ return DimX;}
-	int GetDimY(void){ return DimY;}
-
-private:
-
-	int DimX;
-	int DimY;
-	int Level;
-
-	CWaveletDir * pLow;
-	CWaveletDir * pHigh;
-
-	CBand DLBand;
-	CBand DHBand;
-	CBand HVBand;
-	CBand HVLBand;
-	CBand HVHBand;
-	CBand LBand;
-
-	CWavelet2D HVWav;
-
-	CMap HVMap;
-	CMap DMap;
-	CMap LMap;
-
-	void Init(int level, int Align);
-
-	void Transform97(float * pImage, int Stride, bool getDir);
-
-	void LazyImage(float * pImage, unsigned int Stride);
-	void LazyImageI(float * pImage, unsigned int Stride);
-	void LazyBand(void);
-	void LazyBandI(void);
-
-	template <lift lft_opt>
-	static void LiftBand(float * pCur, int stride, int DimX, int DimY,
-						 float Coef1, float Coef2, char * pDir1);
-
-	void GetImageDir97(float * pImage, int stride);
-	void GetBandDir97(void);
-	void GetImageDirDiag97(float * pImage, int stride);
-};
-
+CMuxCodec::CMuxCodec(unsigned char *pStream, unsigned char FirstByte){
+	InitCoder(FirstByte, pStream);
 }
 
+CMuxCodec::CMuxCodec(unsigned char *pStream){
+	InitDecoder(pStream);
+}
+
+void CMuxCodec::InitCoder(unsigned char FirstByte = 0,
+						  unsigned char *pOutStream = 0){
+	LowRange = 0;
+	Range = MAX_RANGE;
+	if (pOutStream != 0){
+		pStream = pOutStream;
+		pInitStream = pOutStream + 1;
+		CarryBuff = FirstByte << 1;
+	}
+}
+
+void CMuxCodec::InitDecoder(unsigned char *pInStream){
+	if (pInStream){
+		pInitStream = pInStream + 1;
+		pStream = pInStream + 1;
+		Range = 0x80;
+		LowRange = *pStream;
+		pStream++;
+	}
+}
+
+void CMuxCodec::Normalize(void){
+	do{
+		CarryBuff = (CarryBuff << 8) + (LowRange >> RANGE_BITS);
+		*pStream = (unsigned char) (CarryBuff >> 9);
+		if (CarryBuff & 0x20000){
+			int i = -1;
+			unsigned int tmp = 1;
+			do {
+				tmp += pStream[i];
+				pStream[i] = (unsigned char) tmp;
+				tmp >>= 8;
+				i--;
+			} while (tmp != 0);
+		}
+		CarryBuff &= 0x1FF;
+		pStream++;
+		Range <<= 8;
+		LowRange = (LowRange << 8) & NO_CARRY;
+	} while (Range <= MIN_RANGE);
+}
+
+unsigned char * CMuxCodec::EndCoding(void){
+	if (Range <= MIN_RANGE)
+		Normalize();
+
+	CarryBuff = (CarryBuff << 8) + (LowRange >> RANGE_BITS) + 1;
+	*pStream = (unsigned char) (CarryBuff >> 9);
+	if (CarryBuff & 0x20000){
+		int i = -1;
+		unsigned int tmp = 1;
+		do {
+			tmp += pStream[i];
+			pStream[i] = (unsigned char) tmp;
+			tmp >>= 8;
+			i--;
+		} while (tmp != 0);
+	}
+	pStream++;
+
+	// 	FIXME enlever les 0, à ajouter au décodage
+	pStream[0] = (unsigned char) (CarryBuff >> 1);
+	pStream[1] = (unsigned char) (CarryBuff << 7);
+	pStream[2] = 0;
+	pStream[3] = 0;
+	pStream += 3;
+	return pStream;
+}
+
+}
