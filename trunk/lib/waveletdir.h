@@ -72,13 +72,11 @@ public:
 	void Transform97I(float * pImage, int Stride);
 	void SetWeight97(void);
 
-	void SetRange(CMuxCodec * RangeCodec);
+	void SetCodec(CMuxCodec * Codec);
 	void CodeMap(int Options = 0);
 	void DecodeMap(int Options = 0);
-	unsigned char * CodeBand(unsigned char * pBuf, CMuxCodec * pRange,
-							 int method = 1);
-	unsigned char * DecodeBand(unsigned char * pBuf, CMuxCodec * pRange,
-							   int method = 1);
+	void CodeBand(CMuxCodec * pCodec, int method = 1);
+	void DecodeBand(CMuxCodec * pCodec, int method = 1);
 
 // 	unsigned int Thres(float Thres);
 	unsigned int TSUQ(float Quant, float Thres);

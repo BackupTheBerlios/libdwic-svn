@@ -56,29 +56,29 @@ public:
 	virtual ~CBitCodec();
 	void InitModel(void);
 
-	void inline Code0(const unsigned int Context = 0){
-		pRange->Code0(Freq[Context] >> FREQ_POWER);
+	void inline code0(const unsigned int Context = 0){
+		pRange->code0(Freq[Context] >> FREQ_POWER);
 		Freq[Context] += mod[Freq[Context] >> (2*FREQ_POWER-6)][0];
 	}
 
-	void inline Code1(const unsigned int Context = 0){
-		pRange->Code1(Freq[Context] >> FREQ_POWER);
+	void inline code1(const unsigned int Context = 0){
+		pRange->code1(Freq[Context] >> FREQ_POWER);
 		Freq[Context] += mod[Freq[Context] >> (2*FREQ_POWER-6)][1];
 	}
 
-	void inline Code(const unsigned short Symbol, const unsigned int Context = 0){
-		pRange->CodeBin(Freq[Context] >> FREQ_POWER, Symbol);
+	void inline code(const unsigned short Symbol, const unsigned int Context = 0){
+		pRange->codeBin(Freq[Context] >> FREQ_POWER, Symbol);
 		Freq[Context] += mod[Freq[Context] >> (2*FREQ_POWER-6)][Symbol];
 	}
 
-	unsigned int inline Decode(const unsigned int Context = 0){
-		const register unsigned int ret = pRange->GetBit(Freq[Context] >> FREQ_POWER);
+	unsigned int inline decode(const unsigned int Context = 0){
+		const register unsigned int ret = pRange->getBit(Freq[Context] >> FREQ_POWER);
 		Freq[Context] += mod[Freq[Context] >> (2*FREQ_POWER-6)][ret];
 		return ret;
 	}
 
-	void SetRange(CMuxCodec * RangeCodec){ pRange = RangeCodec;}
-	CMuxCodec * GetRange(void){ return pRange;}
+	void setRange(CMuxCodec * RangeCodec){ pRange = RangeCodec;}
+	CMuxCodec * getRange(void){ return pRange;}
 
 private:
 	unsigned int Freq[BIT_CONTEXT_NB];

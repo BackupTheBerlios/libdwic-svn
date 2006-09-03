@@ -80,23 +80,7 @@ void CBand::Init( unsigned int x, unsigned int y, int Align, bool useTree )
 }
 
 template <cmode mode>
-void CBand::RLE(CRLECodec * pCodec)
-{
-	float * pCur = pBand;
-	for( int j = 0; j < DimY; j++){
-		if (mode == code)
-			pCodec->RLECode(pCur, DimX);
-		else
-			pCodec->RLEDecode(pCur, DimX);
-		pCur += DimXAlign;
-	}
-}
-
-template void CBand::RLE<code>(CRLECodec *);
-template void CBand::RLE<decode>(CRLECodec *);
-
-template <cmode mode>
-void CBand::bit(CRLECodec * pCodec)
+void CBand::bit(CMuxCodec * pCodec)
 {
 	int max = Max;
 	unsigned int bits = 0;
@@ -123,8 +107,8 @@ void CBand::bit(CRLECodec * pCodec)
 	}
 }
 
-template void CBand::bit<code>(CRLECodec *);
-template void CBand::bit<decode>(CRLECodec *);
+template void CBand::bit<code>(CMuxCodec *);
+template void CBand::bit<decode>(CMuxCodec *);
 
 const unsigned short CBand::cumProba[33][18] =
 {
@@ -175,7 +159,7 @@ const unsigned short * CBand::pcumProba[33] =
 };
 
 template <cmode mode>
-void CBand::enu(CRLECodec * pCodec, CMuxCodec * pRange)
+		void CBand::enu(CMuxCodec * pCodec)
 {
 	if (mode == code)
 		if (Count <= 2){
@@ -195,20 +179,20 @@ void CBand::enu(CRLECodec * pCodec, CMuxCodec * pRange)
 
 	int l = 0;
 	if (mode == code)
-		pOld[l] = enuCode4x4<true>(pCodec, pRange, pCur, DimXAlign, 0);
+		pOld[l] = enuCode4x4<true>(pCodec, pCur, DimXAlign, 0);
 	else
-		pOld[l] = enuDecode4x4<true>(pCodec, pRange, pCur, DimXAlign, 0);
+		pOld[l] = enuDecode4x4<true>(pCodec, pCur, DimXAlign, 0);
 
 	pLeft[l] = pOld[l] << 1;
 
 	for( int i = 4; i < DimX; i += 4){
 		l++;
 		if (mode == code)
-			pOld[l] = enuCode4x4<false>(pCodec, pRange, pCur + i, DimXAlign,
+			pOld[l] = enuCode4x4<false>(pCodec, pCur + i, DimXAlign,
 										pLeft[l-1]);
 		else
-			pOld[l] = enuDecode4x4<false>(pCodec, pRange, pCur + i,
-										  DimXAlign, pLeft[l-1]);
+			pOld[l] = enuDecode4x4<false>(pCodec, pCur + i, DimXAlign,
+										  pLeft[l-1]);
 		pLeft[l] = pOld[l] + (pLeft[l-1] >> 1);
 	}
 
@@ -226,20 +210,20 @@ void CBand::enu(CRLECodec * pCodec, CMuxCodec * pRange)
 	for( int j = 4; j < DimY; j += 4){
 		l = 0;
 		if (mode == code)
-			pOld[l] = enuCode4x4<false>(pCodec, pRange, pCur, DimXAlign, pTop[l] / 3);
+			pOld[l] = enuCode4x4<false>(pCodec, pCur, DimXAlign, pTop[l] / 3);
 		else
-			pOld[l] = enuDecode4x4<false>(pCodec, pRange, pCur, DimXAlign, pTop[l] / 3);
+			pOld[l] = enuDecode4x4<false>(pCodec, pCur, DimXAlign, pTop[l] / 3);
 
 		pLeft[l] = pOld[l] << 1;
 
 		for( int i = 4; i < DimX; i += 4){
 			l++;
 			if (mode == code)
-				pOld[l] = enuCode4x4<false>(pCodec, pRange, pCur + i, DimXAlign,
+				pOld[l] = enuCode4x4<false>(pCodec, pCur + i, DimXAlign,
 											(pLeft[l-1] + pTop[l] + 2) >> 2);
 			else
-				pOld[l] = enuDecode4x4<false>(pCodec, pRange, pCur + i,
-									DimXAlign, (pLeft[l-1] + pTop[l] + 2) >> 2);
+				pOld[l] = enuDecode4x4<false>(pCodec, pCur + i, DimXAlign,
+											  (pLeft[l-1] + pTop[l] + 2) >> 2);
 			pLeft[l] = pOld[l] + (pLeft[l-1] >> 1);
 		}
 
@@ -258,15 +242,15 @@ void CBand::enu(CRLECodec * pCodec, CMuxCodec * pRange)
 	delete[] pTop;
 }
 
-template void CBand::enu<code>(CRLECodec *, CMuxCodec * );
-template void CBand::enu<decode>(CRLECodec *, CMuxCodec * );
+template void CBand::enu<code>(CMuxCodec * );
+template void CBand::enu<decode>(CMuxCodec * );
 
 
 const int CBand::golombK[17] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 3};
 
 template <bool directK>
-unsigned int CBand::enuCode4x4(CRLECodec * pCodec, CMuxCodec * pRange,
-							   float * pCur, int stride, unsigned int kPred)
+		unsigned int CBand::enuCode4x4(CMuxCodec * pCodec, float * pCur,
+									   int stride, unsigned int kPred)
 {
 	float tmp[16];
 	unsigned int signif = 0;
@@ -287,7 +271,7 @@ unsigned int CBand::enuCode4x4(CRLECodec * pCodec, CMuxCodec * pRange,
 	if (directK)
 		pCodec->bitsCode(k ,5);
 	else
-		pRange->Code(pcumProba[kPred][k], pcumProba[kPred][k+1]);
+		pCodec->code(pcumProba[kPred][k], pcumProba[kPred][k+1]);
 
 	if (k != 0) {
 		if (k != 16)
@@ -307,14 +291,14 @@ unsigned int CBand::enuCode4x4(CRLECodec * pCodec, CMuxCodec * pRange,
 }
 
 template <bool directK>
-unsigned int CBand::enuDecode4x4(CRLECodec * pCodec, CMuxCodec * pRange,
-								 float * pCur, int stride, unsigned int kPred)
+		unsigned int CBand::enuDecode4x4(CMuxCodec * pCodec, float * pCur,
+										 int stride, unsigned int kPred)
 {
 	unsigned int k;
 	if (directK)
 		k = pCodec->bitsDecode(5);
 	else
-		k = pRange->Decode(pcumProba[kPred]);
+		k = pCodec->decode(pcumProba[kPred]);
 
 	if (k == 0)
 		return k;
@@ -339,74 +323,37 @@ unsigned int CBand::enuDecode4x4(CRLECodec * pCodec, CMuxCodec * pRange,
 	return k;
 }
 
-void CBand::RLECodeV(CRLECodec * pCodec)
-{
-	float * pCur = pBand;
-	float * pTmp = new float[DimY];
-
-	for( int j = 0; j < DimX; j++){
-		float * pCur2 = pCur;
-		for( int i = 0; i < DimY; i++){
-			pTmp[i] = *pCur2;
-			pCur2 += DimXAlign;
-		}
-		pCodec->RLECode(pTmp, DimY);
-		pCur++;
-	}
-	delete[] pTmp;
-}
-
-void CBand::RLEDecodeV(CRLECodec * pCodec)
-{
-	float * pCur = pBand;
-	float * pTmp = new float[DimY];
-
-	for( int j = 0; j < DimX; j++){
-		float * pCur2 = pCur;
-		pCodec->RLEDecode(pTmp, DimY);
-		for( int i = 0; i < DimY; i++){
-			*pCur2 = pTmp[i];
-			pCur2 += DimXAlign;
-		}
-		pCur++;
-	}
-	delete[] pTmp;
-}
-
-void CBand::TreeCode(CRLECodec * pCodec)
+template <cmode mode>
+void CBand::Tree(CMuxCodec * pCodec)
 {
 	unsigned char * pCurTree = pTree;
 	for( int j = 0; j < DimY; j += 2){
 		for( int i = 0; i < DimX; i += 2){
-			pCodec->bitsCode(pCurTree[0] & 1, 1);
-			if (pCurTree[0]) {
-				pCodec->bitsCode(pCurTree[0] >> 1, 1);
-				CoefCode(i, j, pCodec);
-				if (pCurTree[0] & 2)
-					pChild->TreeCode(i, j, pCodec);
+			if (mode == code) {
+				pCodec->bitsCode(pCurTree[0] & 1, 1);
+				if (pCurTree[0]) {
+					pCodec->bitsCode(pCurTree[0] >> 1, 1);
+					CoefCode(i, j, pCodec);
+					if (pCurTree[0] & 2)
+						pChild->TreeCode(i, j, pCodec);
+				}
+			} else {
+				if (pCodec->bitsDecode(1)) {
+					unsigned int tmp = pCodec->bitsDecode(1);
+					CoefDecode(i, j, pCodec);
+					if (tmp)
+						pChild->TreeDecode(i, j, pCodec);
+				}
 			}
 			pCurTree++;
 		}
 	}
 }
 
-void CBand::TreeDecode(CRLECodec * pCodec)
-{
-	unsigned char * pCurTree = pTree;
-	for( int j = 0; j < DimY; j += 2){
-		for( int i = 0; i < DimX; i += 2){
-			if (pCodec->bitsDecode(1)) {
-				unsigned int tmp = pCodec->bitsDecode(1);
-				CoefDecode(i, j, pCodec);
-				if (tmp)
-					pChild->TreeDecode(i, j, pCodec);
-			}
-			pCurTree++;
-		}
-	}
-}
+template void CBand::Tree<code>(CMuxCodec * );
+template void CBand::Tree<decode>(CMuxCodec * );
 
-void CBand::TreeCode(int i, int j, CRLECodec * pCodec)
+void CBand::TreeCode(int i, int j, CMuxCodec * pCodec)
 {
 	int stride = DimX >> 1;
 	unsigned char * pCurTree = pTree + i + j * stride;
@@ -451,7 +398,7 @@ void CBand::TreeCode(int i, int j, CRLECodec * pCodec)
 	}
 }
 
-void CBand::TreeDecode(int i, int j, CRLECodec * pCodec)
+void CBand::TreeDecode(int i, int j, CMuxCodec * pCodec)
 {
 	unsigned int tmp = pCodec->bitsDecode(4);
 	i <<= 1;
@@ -486,7 +433,7 @@ void CBand::TreeDecode(int i, int j, CRLECodec * pCodec)
 	}
 }
 
-void CBand::CoefCode(int i, int j, CRLECodec * pCodec)
+void CBand::CoefCode(int i, int j, CMuxCodec * pCodec)
 {
 	float * pCur = pBand + i + j * DimXAlign;
 	unsigned int signif = 0, sign = 0, count = 0;
@@ -545,7 +492,7 @@ void CBand::CoefCode(int i, int j, CRLECodec * pCodec)
 	}
 }
 
-void CBand::CoefDecode(int i, int j, CRLECodec * pCodec)
+void CBand::CoefDecode(int i, int j, CMuxCodec * pCodec)
 {
 	float * pCur = pBand + i + (j+1) * DimXAlign;
 	unsigned int tmp[4];

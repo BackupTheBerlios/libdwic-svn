@@ -33,7 +33,6 @@
 
 #pragma once
 
-#include "rlecodec.h"
 #include "muxcodec.h"
 
 namespace libdwic {
@@ -100,15 +99,11 @@ public:
 
 	// Codage
 	template <cmode mode>
-			void RLE(CRLECodec * pCodec);
-	void RLECodeV(CRLECodec * pCodec);
-	void RLEDecodeV(CRLECodec * pCodec);
-	void TreeCode(CRLECodec * pCodec);
-	void TreeDecode(CRLECodec * pCodec);
+			void enu(CMuxCodec * pCodec);
 	template <cmode mode>
-			void enu(CRLECodec * pCodec, CMuxCodec * pRange);
+			void bit(CMuxCodec * pCodec);
 	template <cmode mode>
-			void bit(CRLECodec * pCodec);
+			void Tree(CMuxCodec * pCodec);
 
 	// Statistiques
 	void Mean(float & Mean, float & Var);
@@ -126,17 +121,17 @@ private:
 	char * pData;
 
 	// Codage
-	void TreeCode(int i, int j, CRLECodec * pCodec);
-	void CoefCode(int i, int j, CRLECodec * pCodec);
-	void TreeDecode(int i, int j, CRLECodec * pCodec);
-	void CoefDecode(int i, int j, CRLECodec * pCodec);
+	void TreeCode(int i, int j, CMuxCodec * pCodec);
+	void TreeDecode(int i, int j, CMuxCodec * pCodec);
+	void CoefCode(int i, int j, CMuxCodec * pCodec);
+	void CoefDecode(int i, int j, CMuxCodec * pCodec);
 
 	template <bool directK>
-	/*static*/ unsigned int enuCode4x4(CRLECodec * pCodec, CMuxCodec * pRange,
-								float * pCur, int stride, unsigned int kPred);
+	static unsigned int enuCode4x4(CMuxCodec * pCodec, float * pCur,
+									   int stride, unsigned int kPred);
 	template <bool directK>
-	/*static*/ unsigned int enuDecode4x4(CRLECodec * pCodec, CMuxCodec * pRange,
-								float * pCur, int stride, unsigned int kPred);
+	static unsigned int enuDecode4x4(CMuxCodec * pCodec, float * pCur,
+										 int stride, unsigned int kPred);
 
 	static const unsigned short cumProba[33][18];
 	static const unsigned short * pcumProba[33];

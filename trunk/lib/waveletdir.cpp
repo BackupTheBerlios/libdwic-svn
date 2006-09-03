@@ -91,15 +91,15 @@ void CWaveletDir::Init(int level, int Align)
 	}
 }
 
-void CWaveletDir::SetRange(CMuxCodec * RangeCodec)
+void CWaveletDir::SetCodec(CMuxCodec * Codec)
 {
-	HVMap.SetRange(RangeCodec);
-	DMap.SetRange(RangeCodec);
+	HVMap.SetCodec(Codec);
+	DMap.SetCodec(Codec);
 
 	if (pLow != 0)
-		pLow->SetRange(RangeCodec);
+		pLow->SetCodec(Codec);
 	else
-		LMap.SetRange(RangeCodec);
+		LMap.SetCodec(Codec);
 }
 
 void CWaveletDir::GetMap(unsigned char * pOut, int level, int Direction)
@@ -274,24 +274,12 @@ void CWaveletDir::SetDir(int Sel)
 		pLow->SetDir(Sel);
 }
 
-unsigned char * CWaveletDir::CodeBand(unsigned char * pBuf,
-									  CMuxCodec * pRange, int method)
+void CWaveletDir::CodeBand(CMuxCodec * pCodec, int method)
 {
-	CRLECodec Codec(pBuf);
 	CWaveletDir * pCurWav = this;
 
 	switch( method ){
 		case 1 :
-			while( pCurWav != 0 ){
-				pCurWav->DHBand.RLE<code>(&Codec);
-				pCurWav->DLBand.RLE<code>(&Codec);
-				pCurWav->HVHBand.RLE<code>(&Codec);
-				pCurWav->HVLBand.RLE<code>(&Codec);
-				if (pCurWav->pLow == 0)
-					pCurWav->LBand.RLE<code>(&Codec);
-				pCurWav = pCurWav->pLow;
-			}
-			break;
 		case 2 :
 			HVLBand.BuildTree<false>();
 			HVHBand.BuildTree<false>();
@@ -299,46 +287,32 @@ unsigned char * CWaveletDir::CodeBand(unsigned char * pBuf,
 			DHBand.BuildTree<false>();
 			while( pCurWav->pLow != 0 )
 				pCurWav = pCurWav->pLow;
-			pCurWav->LBand.RLE<code>(&Codec);
-			pCurWav->HVLBand.TreeCode(&Codec);
-			pCurWav->HVHBand.TreeCode(&Codec);
-			pCurWav->DLBand.TreeCode(&Codec);
-			pCurWav->DHBand.TreeCode(&Codec);
+			pCurWav->LBand.bit<code>(pCodec);
+			pCurWav->HVLBand.Tree<code>(pCodec);
+			pCurWav->HVHBand.Tree<code>(pCodec);
+			pCurWav->DLBand.Tree<code>(pCodec);
+			pCurWav->DHBand.Tree<code>(pCodec);
 			break;
 		case 3 :
 			while( pCurWav != 0 ){
-				pCurWav->DLBand.enu<code>(&Codec, pRange);
-				pCurWav->DHBand.enu<code>(&Codec, pRange);
-				pCurWav->HVLBand.enu<code>(&Codec, pRange);
-				pCurWav->HVHBand.enu<code>(&Codec, pRange);
+				pCurWav->DLBand.enu<code>(pCodec);
+				pCurWav->DHBand.enu<code>(pCodec);
+				pCurWav->HVLBand.enu<code>(pCodec);
+				pCurWav->HVHBand.enu<code>(pCodec);
 				if (pCurWav->pLow == 0){
-					pCurWav->LBand.bit<code>(&Codec);
+					pCurWav->LBand.bit<code>(pCodec);
 				}
 				pCurWav = pCurWav->pLow;
 			}
 	}
-
-	return Codec.EndCoding();
 }
 
-unsigned char * CWaveletDir::DecodeBand(unsigned char * pBuf,
-										CMuxCodec * pRange, int method)
+void CWaveletDir::DecodeBand(CMuxCodec * pCodec, int method)
 {
-	CRLECodec Codec(pBuf);
 	CWaveletDir * pCurWav = this;
 
 	switch( method ){
 		case 1 :
-			while( pCurWav != 0 ){
-				pCurWav->DHBand.RLE<decode>(&Codec);
-				pCurWav->DLBand.RLE<decode>(&Codec);
-				pCurWav->HVHBand.RLE<decode>(&Codec);
-				pCurWav->HVLBand.RLE<decode>(&Codec);
-				if (pCurWav->pLow == 0)
-					pCurWav->LBand.RLE<decode>(&Codec);
-				pCurWav = pCurWav->pLow;
-			}
-			break;
 		case 2 :
 			HVLBand.Clear(true);
 			HVHBand.Clear(true);
@@ -346,26 +320,23 @@ unsigned char * CWaveletDir::DecodeBand(unsigned char * pBuf,
 			DHBand.Clear(true);
 			while( pCurWav->pLow != 0 )
 				pCurWav = pCurWav->pLow;
-			pCurWav->LBand.RLE<decode>(&Codec);
-			pCurWav->HVLBand.TreeDecode(&Codec);
-			pCurWav->HVHBand.TreeDecode(&Codec);
-			pCurWav->DLBand.TreeDecode(&Codec);
-			pCurWav->DHBand.TreeDecode(&Codec);
+			pCurWav->LBand.bit<decode>(pCodec);
+			pCurWav->HVLBand.Tree<decode>(pCodec);
+			pCurWav->HVHBand.Tree<decode>(pCodec);
+			pCurWav->DLBand.Tree<decode>(pCodec);
+			pCurWav->DHBand.Tree<decode>(pCodec);
 			break;
 		case 3 :
 			while( pCurWav != 0 ){
-				pCurWav->DLBand.enu<decode>(&Codec, pRange);
-				pCurWav->DHBand.enu<decode>(&Codec, pRange);
-				pCurWav->HVLBand.enu<decode>(&Codec, pRange);
-				pCurWav->HVHBand.enu<decode>(&Codec, pRange);
-				if (pCurWav->pLow == 0){
-					pCurWav->LBand.bit<decode>(&Codec);
-				}
+				pCurWav->DLBand.enu<decode>(pCodec);
+				pCurWav->DHBand.enu<decode>(pCodec);
+				pCurWav->HVLBand.enu<decode>(pCodec);
+				pCurWav->HVHBand.enu<decode>(pCodec);
+				if (pCurWav->pLow == 0)
+					pCurWav->LBand.bit<decode>(pCodec);
 				pCurWav = pCurWav->pLow;
 			}
 	}
-
-	return Codec.EndDecoding();
 }
 
 void CWaveletDir::LazyImage(float * pImage, unsigned int stride)

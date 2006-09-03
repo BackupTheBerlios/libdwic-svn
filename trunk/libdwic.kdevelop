@@ -14,11 +14,11 @@
     <ignoreparts/>
     <projectdirectory>.</projectdirectory>
     <absoluteprojectpath>false</absoluteprojectpath>
-    <description/>
+    <description></description>
   </general>
   <kdevautoproject>
     <general>
-      <activetarget>cmd/dwic</activetarget>
+      <activetarget>lib/libdwic.a</activetarget>
       <useconfiguration>debug</useconfiguration>
     </general>
     <run>
@@ -164,7 +164,7 @@
       <headerCompletionDelay>250</headerCompletionDelay>
     </codecompletion>
     <creategettersetter>
-      <prefixGet/>
+      <prefixGet></prefixGet>
       <prefixSet>set</prefixSet>
       <prefixVariable>m_,_</prefixVariable>
       <parameterName>theValue</parameterName>
@@ -180,12 +180,12 @@
   </cppsupportpart>
   <kdevdebugger>
     <general>
-      <programargs>-q 8 -i ~/Documents/Images/Images\ test/lena.png -o ~/Documents/Images/Images\ test/tst.dwi -v 0</programargs>
-      <gdbpath/>
+      <programargs>-q 8 -i ~/Documents/Images/Images\ test/tst.dwi -o ~/Documents/Images/Images\ test/tst.dwi.png -v 0</programargs>
+      <gdbpath></gdbpath>
       <dbgshell>libtool</dbgshell>
-      <configGdbScript/>
-      <runShellScript/>
-      <runGdbScript/>
+      <configGdbScript></configGdbScript>
+      <runShellScript></runShellScript>
+      <runGdbScript></runGdbScript>
       <breakonloadinglibs>true</breakonloadinglibs>
       <separatetty>false</separatetty>
       <floatingtoolbar>false</floatingtoolbar>

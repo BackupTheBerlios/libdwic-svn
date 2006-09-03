@@ -188,7 +188,6 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 	img.type( GrayscaleType );
 	float * ImgPixels = new float [img.columns() * img.rows()];
 	unsigned char * pStream = new unsigned char[img.columns() * img.rows()];
-	unsigned char * pStream2 = pStream + (img.columns() * img.rows() >> 1);
 
 	img.write(0, 0, img.columns(), img.rows(), "R", FloatPixel, ImgPixels);
 
@@ -200,12 +199,11 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 	unsigned char * pEnd = pStream;
 
 	if (Type == 0) {
-		CMuxCodec RangeCodec(0, 0);
-		RangeCodec.InitCoder(0, pEnd + 2);
+		CMuxCodec Codec(pEnd, 0);
 
 		CWaveletDir Wavelet(img.columns(), img.rows(), 5);
 		Wavelet.SetWeight97();
-		Wavelet.SetRange(&RangeCodec);
+		Wavelet.SetCodec(&Codec);
 		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant] * .75f);
 
 // 		Wavelet.Stats();
@@ -216,14 +214,9 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
 		Wavelet.CodeMap(4);
 
-		unsigned char * pEnd2 = Wavelet.CodeBand(pStream2, &RangeCodec, 3);
+		Wavelet.CodeBand(&Codec, 3);
 
-		pEnd = RangeCodec.EndCoding();
-		memcpy(pEnd, pStream2, pEnd2 - pStream2);
-		pStream[0] = (pEnd - pStream) >> 16;
-		pStream[1] = ((pEnd - pStream) >> 8) & 0xFF;
-		pStream[2] = (pEnd - pStream) & 0xFF;
-		pEnd += pEnd2 - pStream2;
+		pEnd = Codec.endCoding();
 	} else if (Type == 1) {
 		CWavelet2D Wavelet(img.columns(), img.rows(), 5);
 		Wavelet.SetWeight97();
@@ -232,12 +225,12 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 // 		Wavelet.Stats();
 
 		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
-		pEnd = Wavelet.CodeBand(pEnd);
+// 		pEnd = Wavelet.CodeBand(pEnd);
 	} else {
 		throw UNKNOW_TYPE;
 	}
 
-	oFile.write((char *) pStream, (pEnd - pStream));
+	oFile.write((char *) pStream + 1, (pEnd - pStream - 1));
 	oFile.close();
 
 	delete[] ImgPixels;
@@ -266,23 +259,21 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 	Header Head;
 	Head.last = *pStream;
 
-	unsigned char * pEnd = pStream + 1;
+	unsigned char * pEnd = pStream;
 
 	if (Head.Type == 0) {
-		CMuxCodec RangeCodec(0);
-		RangeCodec.InitDecoder(pEnd + 2);
-		unsigned int size = (unsigned int)pEnd[0] << 16 | pEnd[1] << 8 | pEnd[2];
+		CMuxCodec Codec(pEnd);
 		CWaveletDir Wavelet(width, heigth, 5);
 		Wavelet.SetWeight97();
-		Wavelet.SetRange(&RangeCodec);
+		Wavelet.SetCodec(&Codec);
 		Wavelet.DecodeMap(4);
-		Wavelet.DecodeBand(pEnd + size, &RangeCodec, 3);
+		Wavelet.DecodeBand(&Codec, 3);
 		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
 		Wavelet.Transform97I(ImgPixels, width);
 	} else if (Head.Type == 1) {
 		CWavelet2D Wavelet(width, heigth, 5);
 		Wavelet.SetWeight97();
-		Wavelet.DecodeBand(pEnd);
+// 		Wavelet.DecodeBand(pEnd);
 		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
 		Wavelet.Transform97I(ImgPixels, width);
 	} else {

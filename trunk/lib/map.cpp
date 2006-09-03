@@ -118,11 +118,11 @@ void CMap::GetDist(unsigned char * pOut)
 	}
 }
 
-void CMap::SetRange(CMuxCodec * RangeCodec)
+void CMap::SetCodec(CMuxCodec * pCodec)
 {
-	DirCodec.SetRange(RangeCodec);
-	NodeCodec.SetRange(RangeCodec);
-	LeafCodec.SetRange(RangeCodec);
+	DirCodec.setRange(pCodec);
+	NodeCodec.setRange(pCodec);
+	LeafCodec.setRange(pCodec);
 }
 
 void CMap::Order0Code(void)
@@ -131,7 +131,7 @@ void CMap::Order0Code(void)
 	for( int j = 0; j < DimY; j++){
 		char * pCur = pMap + j * DimX;
 		for( int i = 0; i < DimX; i++ ){
-			DirCodec.Code(pCur[i], 0);
+			DirCodec.code(pCur[i], 0);
 		}
 	}
 }
@@ -142,7 +142,7 @@ void CMap::Order0Dec(void)
 	for( int j = 0; j < DimY; j++){
 		char * pCur = pMap + j * DimX;
 		for( int i = 0; i < DimX; i++ ){
-			pCur[i] = DirCodec.Decode(0);
+			pCur[i] = DirCodec.decode(0);
 		}
 	}
 }
@@ -153,24 +153,24 @@ void CMap::Neighbor4Code(void)
 	unsigned int context;
 	DirCodec.InitModel();
 
-	DirCodec.Code(pCur[0], 2);
+	DirCodec.code(pCur[0], 2);
 	for( int i = 1; i < DimX; i++ ){
 		context = pCur[i - 1] * 2 + 1;
-		DirCodec.Code(pCur[i], context);
+		DirCodec.code(pCur[i], context);
 	}
 
 	for( int j = 1; j < DimY; j++){
 		pCur += DimX;
 		context = pCur[-DimX] + pCur[1 - DimX] + 1;
-		DirCodec.Code(pCur[0], context);
+		DirCodec.code(pCur[0], context);
 		int i = 1;
 		for( ; i < DimX - 1; i++ ){
 			context = pCur[i - 1] + pCur[i - 1 - DimX] + pCur[i - DimX]
 					+ pCur[i + 1 - DimX];
-			DirCodec.Code(pCur[i], context);
+			DirCodec.code(pCur[i], context);
 		}
 		context = pCur[i - 1] + pCur[i - DimX] + 1;
-		DirCodec.Code(pCur[i], context);
+		DirCodec.code(pCur[i], context);
 	}
 }
 
@@ -180,24 +180,24 @@ void CMap::Neighbor4Dec(void)
 	unsigned int context;
 	DirCodec.InitModel();
 
-	pCur[0] = DirCodec.Decode(2);
+	pCur[0] = DirCodec.decode(2);
 	for( int i = 1; i < DimX; i++ ){
 		context = pCur[i - 1] * 2 + 1;
-		pCur[i] = DirCodec.Decode(context);
+		pCur[i] = DirCodec.decode(context);
 	}
 
 	for( int j = 1; j < DimY; j++){
 		pCur += DimX;
 		context = pCur[-DimX] + pCur[1 - DimX] + 1;
-		pCur[0] = DirCodec.Decode(context);
+		pCur[0] = DirCodec.decode(context);
 		int i = 1;
 		for( ; i < DimX - 1; i++ ){
 			context = pCur[i - 1] + pCur[i - 1 - DimX]
 					+ pCur[i - DimX] + pCur[i + 1 - DimX];
-			pCur[i] = DirCodec.Decode(context);
+			pCur[i] = DirCodec.decode(context);
 		}
 		context = pCur[i - 1] + pCur[i - DimX] + 1;
-		pCur[i] = DirCodec.Decode(context);
+		pCur[i] = DirCodec.decode(context);
 	}
 }
 
@@ -211,11 +211,11 @@ void CMap::TreeCode(void)
 
 	int k = 0;
 	int i = 0;
-	DirCodec.Code(pCur[i], 4 | pCurLow[k]);
+	DirCodec.code(pCur[i], 4 | pCurLow[k]);
 	for( i = 1; i < DimX; i++ ){
 		context = pCur[i - 1] * 2 + 1;
 		context = (context << 1) | pCurLow[k];
-		DirCodec.Code(pCur[i], context);
+		DirCodec.code(pCur[i], context);
 		k += i & 1;
 	}
 
@@ -226,17 +226,17 @@ void CMap::TreeCode(void)
 		i = 0;
 		context = pCur[-DimX] + pCur[1 - DimX] + 1;
 		context = (context << 1) | pCurLow[k];
-		DirCodec.Code(pCur[i], context);
+		DirCodec.code(pCur[i], context);
 		for( i = 1; i < DimX - 1; i++ ){
 			context = pCur[i - 1] + pCur[i - 1 - DimX]
 					+ pCur[i - DimX] + pCur[i + 1 - DimX];
 			context = (context << 1) | pCurLow[k];
-			DirCodec.Code(pCur[i], context);
+			DirCodec.code(pCur[i], context);
 			k += i & 1;
 		}
 		context = pCur[i - 1] + pCur[i - DimX] + 1;
 		context = (context << 1) | pCurLow[k];
-		DirCodec.Code(pCur[i], context);
+		DirCodec.code(pCur[i], context);
 	}
 }
 
@@ -250,11 +250,11 @@ void CMap::TreeDec(void)
 
 	int k = 0;
 	int i = 0;
-	pCur[i] = DirCodec.Decode(4 | pCurLow[k]);
+	pCur[i] = DirCodec.decode(4 | pCurLow[k]);
 	for( i = 1; i < DimX; i++ ){
 		context = pCur[i - 1] * 2 + 1;
 		context = (context << 1) | pCurLow[k];
-		pCur[i] = DirCodec.Decode(context);
+		pCur[i] = DirCodec.decode(context);
 		k += i & 1;
 	}
 
@@ -265,17 +265,17 @@ void CMap::TreeDec(void)
 		i = 0;
 		context = pCur[-DimX] + pCur[1 - DimX] + 1;
 		context = (context << 1) | pCurLow[k];
-		pCur[i] = DirCodec.Decode(context);
+		pCur[i] = DirCodec.decode(context);
 		for( i = 1; i < DimX - 1; i++ ){
 			context = pCur[i - 1] + pCur[i - 1 - DimX]
 					+ pCur[i - DimX] + pCur[i + 1 - DimX];
 			context = (context << 1) | pCurLow[k];
-			pCur[i] = DirCodec.Decode(context);
+			pCur[i] = DirCodec.decode(context);
 			k += i & 1;
 		}
 		context = pCur[i - 1] + pCur[i - DimX] + 1;
 		context = (context << 1) | pCurLow[k];
-		pCur[i] = DirCodec.Decode(context);
+		pCur[i] = DirCodec.decode(context);
 	}
 }
 
@@ -652,15 +652,15 @@ void CMap::CodeNodes(void)
 
 	for( int j = 0; j < height; j++){
 		for( int i = 0; i < width; i++){
-			pCurMap->DirCodec.Code(pMap[i], 0);
+			pCurMap->DirCodec.code(pMap[i], 0);
 			if (pCurNodes[i].rate == 0){
-				pCurMap->NodeCodec.Code0(0);
+				pCurMap->NodeCodec.code0(0);
 				if (pCurNodes[i].refDist < 0)
-					pCurMap->LeafCodec.Code0(pMap[i]);
+					pCurMap->LeafCodec.code0(pMap[i]);
 				else
-					pCurMap->LeafCodec.Code1(pMap[i]);
+					pCurMap->LeafCodec.code1(pMap[i]);
 			}else{
-				pCurMap->NodeCodec.Code1(0);
+				pCurMap->NodeCodec.code1(0);
 				pCurMap->pHigh->CodeNodes(i << 1, j << 1, pMap[i]);
 			}
 		}
@@ -673,24 +673,24 @@ void CMap::CodeNodes(int x, int y, int context)
 {
 	short * pCurDist = pDist + y * DimX + x;
 	if (pCurDist[0] < 0)
-		DirCodec.Code0(context);
+		DirCodec.code0(context);
 	else
-		DirCodec.Code1(context);
+		DirCodec.code1(context);
 	pCurDist++;
 	if (pCurDist[0] < 0)
-		DirCodec.Code0(context);
+		DirCodec.code0(context);
 	else
-		DirCodec.Code1(context);
+		DirCodec.code1(context);
 	pCurDist += DimX;
 	if (pCurDist[0] < 0)
-		DirCodec.Code0(context);
+		DirCodec.code0(context);
 	else
-		DirCodec.Code1(context);
+		DirCodec.code1(context);
 	pCurDist--;
 	if (pCurDist[0] < 0)
-		DirCodec.Code0(context);
+		DirCodec.code0(context);
 	else
-		DirCodec.Code1(context);
+		DirCodec.code1(context);
 
 	if (pHigh == 0)
 		return;
@@ -698,50 +698,50 @@ void CMap::CodeNodes(int x, int y, int context)
 	node * pCurNodes = pNodes + y * DimX;
 	pCurDist -= DimX;
 	if (pCurNodes[x].rate == 0){
-		NodeCodec.Code0(0);
+		NodeCodec.code0(0);
 		if (pCurNodes[x].refDist < 0)
-			LeafCodec.Code0(pCurDist[0] < 0 ? 0 : 1);
+			LeafCodec.code0(pCurDist[0] < 0 ? 0 : 1);
 		else
-			LeafCodec.Code1(pCurDist[0] < 0 ? 0 : 1);
+			LeafCodec.code1(pCurDist[0] < 0 ? 0 : 1);
 	}else{
-		NodeCodec.Code1(0);
+		NodeCodec.code1(0);
 		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
 	}
 	x++;
 	pCurDist++;
 	if (pCurNodes[x].rate == 0){
-		NodeCodec.Code0(0);
+		NodeCodec.code0(0);
 		if (pCurNodes[x].refDist < 0)
-			LeafCodec.Code0(pCurDist[0] < 0 ? 0 : 1);
+			LeafCodec.code0(pCurDist[0] < 0 ? 0 : 1);
 		else
-			LeafCodec.Code1(pCurDist[0] < 0 ? 0 : 1);
+			LeafCodec.code1(pCurDist[0] < 0 ? 0 : 1);
 	}else{
-		NodeCodec.Code1(0);
+		NodeCodec.code1(0);
 		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
 	}
 	pCurNodes += DimX;
 	pCurDist += DimX;
 	y++;
 	if (pCurNodes[x].rate == 0){
-		NodeCodec.Code0(0);
+		NodeCodec.code0(0);
 		if (pCurNodes[x].refDist < 0)
-			LeafCodec.Code0(pCurDist[0] < 0 ? 0 : 1);
+			LeafCodec.code0(pCurDist[0] < 0 ? 0 : 1);
 		else
-			LeafCodec.Code1(pCurDist[0] < 0 ? 0 : 1);
+			LeafCodec.code1(pCurDist[0] < 0 ? 0 : 1);
 	}else{
-		NodeCodec.Code1(0);
+		NodeCodec.code1(0);
 		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
 	}
 	x--;
 	pCurDist--;
 	if (pCurNodes[x].rate == 0){
-		NodeCodec.Code0(0);
+		NodeCodec.code0(0);
 		if (pCurNodes[x].refDist < 0)
-			LeafCodec.Code0(pCurDist[0] < 0 ? 0 : 1);
+			LeafCodec.code0(pCurDist[0] < 0 ? 0 : 1);
 		else
-			LeafCodec.Code1(pCurDist[0] < 0 ? 0 : 1);
+			LeafCodec.code1(pCurDist[0] < 0 ? 0 : 1);
 	}else{
-		NodeCodec.Code1(0);
+		NodeCodec.code1(0);
 		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
 	}
 }
@@ -765,9 +765,9 @@ void CMap::DecodeNodes(void)
 
 	for( int j = 0; j < height; j++){
 		for( int i = 0; i < width; i++){
-			pMap[i] = pCurMap->DirCodec.Decode(0);
-			if (pCurMap->NodeCodec.Decode(0) == 0){
-				pCurMap->SetDir(pCurMap->LeafCodec.Decode(pMap[i]), i, j);
+			pMap[i] = pCurMap->DirCodec.decode(0);
+			if (pCurMap->NodeCodec.decode(0) == 0){
+				pCurMap->SetDir(pCurMap->LeafCodec.decode(pMap[i]), i, j);
 			}else{
 				pCurMap->pHigh->DecodeNodes(i << 1, j << 1, pMap[i]);
 			}
@@ -779,39 +779,39 @@ void CMap::DecodeNodes(void)
 void CMap::DecodeNodes(int x, int y, int context)
 {
 	char * pCurMap = pMap + y * DimX + x;
-	pCurMap[0] = DirCodec.Decode(context);
+	pCurMap[0] = DirCodec.decode(context);
 	pCurMap++;
-	pCurMap[0] = DirCodec.Decode(context);
+	pCurMap[0] = DirCodec.decode(context);
 	pCurMap += DimX;
-	pCurMap[0] = DirCodec.Decode(context);
+	pCurMap[0] = DirCodec.decode(context);
 	pCurMap--;
-	pCurMap[0] = DirCodec.Decode(context);
+	pCurMap[0] = DirCodec.decode(context);
 
 	if (pHigh == 0)
 		return;
 
 	pCurMap -= DimX;
 
-	if (NodeCodec.Decode(0) == 0)
-		SetDir(LeafCodec.Decode(pCurMap[0]), x, y);
+	if (NodeCodec.decode(0) == 0)
+		SetDir(LeafCodec.decode(pCurMap[0]), x, y);
 	else
 		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
 	x++;
 	pCurMap++;
-	if (NodeCodec.Decode(0) == 0)
-		SetDir(LeafCodec.Decode(pCurMap[0]), x, y);
+	if (NodeCodec.decode(0) == 0)
+		SetDir(LeafCodec.decode(pCurMap[0]), x, y);
 	else
 		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
 	pCurMap += DimX;
 	y++;
-	if (NodeCodec.Decode(0) == 0)
-		SetDir(LeafCodec.Decode(pCurMap[0]), x, y);
+	if (NodeCodec.decode(0) == 0)
+		SetDir(LeafCodec.decode(pCurMap[0]), x, y);
 	else
 		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
 	x--;
 	pCurMap--;
-	if (NodeCodec.Decode(0) == 0)
-		SetDir(LeafCodec.Decode(pCurMap[0]), x, y);
+	if (NodeCodec.decode(0) == 0)
+		SetDir(LeafCodec.decode(pCurMap[0]), x, y);
 	else
 		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
 }
