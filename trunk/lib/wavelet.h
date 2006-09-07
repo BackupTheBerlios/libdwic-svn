@@ -33,8 +33,6 @@
 
 #pragma once
 
-#include "rlecodec.h"
-
 namespace libdwic {
 
 #define MAX_WAV_LEVEL 5
@@ -70,9 +68,6 @@ public:
 
 	void SetWeight97(float baseWeight);
 	void SetDirLength(int length);
-
-	void RLECode(CRLECodec * pCodec);
-	void RLEDecode(CRLECodec * pCodec);
 
 	void Mean(void);
 

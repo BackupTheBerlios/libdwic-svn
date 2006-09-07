@@ -272,24 +272,4 @@ void CWavelet::Mean(float * pIn, int stride, float Weight)
 	cout << Mean << "\t" << Var << " (" << stride << ")" << endl;
 }
 
-void CWavelet::RLECode(CRLECodec * pCodec)
-{
-	for( int j = Levels; j > 0; j--){
-		pCodec->RLECode(pBand[j][0], strides[j][0] >> 1);
-		pCodec->RLECode(pBand[j][1], strides[j][1] >> 1);
-	}
-	pCodec->RLECode(pBand[0][0], strides[0][0]);
-	pCodec->RLECode(pBand[0][1], strides[0][1]);
-}
-
-void CWavelet::RLEDecode(CRLECodec * pCodec)
-{
-	for( int j = Levels; j > 0; j--){
-		pCodec->RLEDecode(pBand[j][0], strides[j][0] >> 1);
-		pCodec->RLEDecode(pBand[j][1], strides[j][1] >> 1);
-	}
-	pCodec->RLEDecode(pBand[0][0], strides[0][0]);
-	pCodec->RLEDecode(pBand[0][1], strides[0][1]);
-}
-
 }

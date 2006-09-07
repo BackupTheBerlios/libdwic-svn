@@ -180,7 +180,7 @@
   </cppsupportpart>
   <kdevdebugger>
     <general>
-      <programargs>-q 8 -i ~/Documents/Images/Images\ test/tst.dwi -o ~/Documents/Images/Images\ test/tst.dwi.png -v 0</programargs>
+      <programargs>-q 8 -i ~/Documents/Images/Images\ test/lena.png -o ~/Documents/Images/Images\ test/tst.dwi -v 0</programargs>
       <gdbpath></gdbpath>
       <dbgshell>libtool</dbgshell>
       <configGdbScript></configGdbScript>

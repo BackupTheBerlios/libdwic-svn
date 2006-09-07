@@ -34,6 +34,7 @@
 #include <fstream>
 #include <iostream>
 #include <cstdlib>
+#include <math.h>
 
 #include <unistd.h>
 #include <Magick++.h>
@@ -53,6 +54,15 @@ void BW2RGB(Pxl * pIn, int stride, Pxl offset = 0)
 	for( int i = stride - 1, j = (stride - 1) * 3; i > 0 ; i--){
 		pIn[j] = pIn[j+1] = pIn[j+2] = pIn[i] + offset;
 		j-=3;
+	}
+}
+
+void FLOAT2CHAR(float * pIn, int size)
+{
+	unsigned char * pOut = (unsigned char *) pIn;
+	for( int i = 0; i < size ; i++){
+		pIn[i] = rint(pIn[i] * 255);
+		pOut[i] = (unsigned char) CLIP(pIn[i], 0, 255);
 	}
 }
 
@@ -173,6 +183,8 @@ typedef union {
 	char last;
 } Header;
 
+#define WAV_LEVELS 5
+
 void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 				   int Type)
 {
@@ -201,7 +213,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 	if (Type == 0) {
 		CMuxCodec Codec(pEnd, 0);
 
-		CWaveletDir Wavelet(img.columns(), img.rows(), 5);
+		CWaveletDir Wavelet(img.columns(), img.rows(), WAV_LEVELS);
 		Wavelet.SetWeight97();
 		Wavelet.SetCodec(&Codec);
 		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant] * .75f);
@@ -218,7 +230,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 
 		pEnd = Codec.endCoding();
 	} else if (Type == 1) {
-		CWavelet2D Wavelet(img.columns(), img.rows(), 5);
+		CWavelet2D Wavelet(img.columns(), img.rows(), WAV_LEVELS);
 		Wavelet.SetWeight97();
 		Wavelet.Transform97(ImgPixels, img.columns());
 
@@ -263,7 +275,7 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 
 	if (Head.Type == 0) {
 		CMuxCodec Codec(pEnd);
-		CWaveletDir Wavelet(width, heigth, 5);
+		CWaveletDir Wavelet(width, heigth, WAV_LEVELS);
 		Wavelet.SetWeight97();
 		Wavelet.SetCodec(&Codec);
 		Wavelet.DecodeMap(4);
@@ -271,7 +283,7 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
 		Wavelet.Transform97I(ImgPixels, width);
 	} else if (Head.Type == 1) {
-		CWavelet2D Wavelet(width, heigth, 5);
+		CWavelet2D Wavelet(width, heigth, WAV_LEVELS);
 		Wavelet.SetWeight97();
 // 		Wavelet.DecodeBand(pEnd);
 		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
@@ -280,9 +292,11 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 		throw UNKNOW_TYPE;
 	}
 
-	BW2RGB(ImgPixels, width * heigth);
-	Image img(width, heigth, "RGB", FloatPixel, ImgPixels);
+	FLOAT2CHAR(ImgPixels, width * heigth);
+	BW2RGB((unsigned char *)ImgPixels, width * heigth);
+	Image img(width, heigth, "RGB", CharPixel, ImgPixels);
 	img.type( GrayscaleType );
+	img.depth(8);
 	// img.display();
 
 	img.write(outfile);

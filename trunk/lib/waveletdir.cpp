@@ -434,10 +434,10 @@ void CWaveletDir::LazyBandI(void)
 	(pCur[1+2*stride] + pCur[1]) * Coef2;
 
 #define PXL_LIFT_EVEN_EDGE(Coef1,Coef2,BitField) \
-	pCur[0] += (BitField&LEFT?pCur[1] * 2:pCur[1] + pCur[-1]) * Coef1 + \
+ pCur[0] += (BitField&LEFT?pCur[1] * 2:pCur[1] + pCur[-1]) * Coef1 + \
 	(BitField&TOP?pCur[stride] * 2:pCur[stride] + pCur[-stride]) * Coef2; \
 	pCur[1+stride] += \
-	(BitField&RIGHT?2*pCur[stride]:pCur[2+stride] + pCur[stride]) * Coef1 + \
+ (BitField&RIGHT?2*pCur[stride]:pCur[2+stride] + pCur[stride]) * Coef1 + \
 	(BitField&BOTTOM?2*pCur[1]:pCur[1+2*stride] + pCur[1]) * Coef2;
 
 #define PXL_LIFT_ODD(Coef1,Coef2) \
