@@ -428,54 +428,54 @@ void CWaveletDir::LazyBandI(void)
 }
 
 #define PXL_LIFT_EVEN(Coef1,Coef2) \
-	pCur[0] += (pCur[1] + pCur[-1]) * Coef1 + \
-	(pCur[stride] + pCur[-stride]) * Coef2; \
-	pCur[1+stride] += (pCur[2+stride] + pCur[stride]) * Coef1 + \
-	(pCur[1+2*stride] + pCur[1]) * Coef2;
+	pCur[0] += (pCur[1] + pCur[-1]) * (Coef1) + \
+	(pCur[stride] + pCur[-stride]) * (Coef2); \
+	pCur[1+stride] += (pCur[2+stride] + pCur[stride]) * (Coef1) + \
+	(pCur[1+2*stride] + pCur[1]) * (Coef2);
 
 #define PXL_LIFT_EVEN_EDGE(Coef1,Coef2,BitField) \
- pCur[0] += (BitField&LEFT?pCur[1] * 2:pCur[1] + pCur[-1]) * Coef1 + \
-	(BitField&TOP?pCur[stride] * 2:pCur[stride] + pCur[-stride]) * Coef2; \
+ pCur[0] += ((BitField)&LEFT?pCur[1] * 2:pCur[1] + pCur[-1]) * (Coef1) + \
+	((BitField)&TOP?pCur[stride] * 2:pCur[stride] + pCur[-stride]) * (Coef2); \
 	pCur[1+stride] += \
- (BitField&RIGHT?2*pCur[stride]:pCur[2+stride] + pCur[stride]) * Coef1 + \
-	(BitField&BOTTOM?2*pCur[1]:pCur[1+2*stride] + pCur[1]) * Coef2;
+ ((BitField)&RIGHT?2*pCur[stride]:pCur[2+stride] + pCur[stride]) * (Coef1) + \
+	((BitField)&BOTTOM?2*pCur[1]:pCur[1+2*stride] + pCur[1]) * (Coef2);
 
 #define PXL_LIFT_ODD(Coef1,Coef2) \
-	pCur[1] += (pCur[2] + pCur[0]) * Coef1 + \
-	(pCur[1+stride] + pCur[1-stride]) * Coef2; \
-	pCur[stride] += (pCur[1+stride] + pCur[stride-1]) * Coef1 + \
-	(pCur[2*stride] + pCur[0]) * Coef2;
+	pCur[1] += (pCur[2] + pCur[0]) * (Coef1) + \
+	(pCur[1+stride] + pCur[1-stride]) * (Coef2); \
+	pCur[stride] += (pCur[1+stride] + pCur[stride-1]) * (Coef1) + \
+	(pCur[2*stride] + pCur[0]) * (Coef2);
 
 #define PXL_LIFT_ODD_EDGE(Coef1,Coef2,BitField) \
-	pCur[1] += (BitField&RIGHT?pCur[0] * 2:pCur[2] + pCur[0]) * Coef1 + \
-	(BitField&TOP?pCur[1+stride] * 2:pCur[1+stride] + pCur[1-stride]) * Coef2; \
+	pCur[1] += ((BitField)&RIGHT?pCur[0] * 2:pCur[2] + pCur[0]) * (Coef1) + \
+	((BitField)&TOP?pCur[1+stride] * 2:pCur[1+stride] + pCur[1-stride]) * (Coef2); \
 	pCur[stride] += \
-	(BitField&LEFT?2*pCur[1+stride]:pCur[1+stride] + pCur[stride-1]) * Coef1 + \
-	(BitField&BOTTOM?2*pCur[0]:pCur[2*stride] + pCur[0]) * Coef2;
+	((BitField)&LEFT?2*pCur[1+stride]:pCur[1+stride] + pCur[stride-1]) * (Coef1) + \
+	((BitField)&BOTTOM?2*pCur[0]:pCur[2*stride] + pCur[0]) * (Coef2);
 
 #define PXL_LIFT_EVEN_DIAG(Coef1,Coef2) \
-	pCur[0] += (pCur[1+stride] + pCur[-1-stride]) * Coef1 + \
-	(pCur[-1+stride] + pCur[1-stride]) * Coef2; \
-	pCur[1] += (pCur[2+stride] + pCur[-stride]) * Coef1 + \
-	(pCur[stride] + pCur[2-stride]) * Coef2;
+	pCur[0] += (pCur[1+stride] + pCur[-1-stride]) * (Coef1) + \
+	(pCur[-1+stride] + pCur[1-stride]) * (Coef2); \
+	pCur[1] += (pCur[2+stride] + pCur[-stride]) * (Coef1) + \
+	(pCur[stride] + pCur[2-stride]) * (Coef2);
 
 #define PXL_LIFT_EVEN_EDGE_DIAG(Coef1,Coef2,BitField) \
-	pCur[0] += (BitField&(TOP|LEFT)?2*pCur[1+stride]:pCur[1+stride] + pCur[-1-stride]) * Coef1 + \
-	(BitField&TOP?BitField&LEFT?2*pCur[1+stride]:pCur[-1+stride]*2:BitField&LEFT?2*pCur[1-stride]:pCur[-1+stride] + pCur[1-stride]) * Coef2; \
-	pCur[1] += (BitField&TOP?BitField&RIGHT?2*pCur[stride]:2*pCur[2+stride]:BitField&RIGHT?2*pCur[-stride]:pCur[2+stride] + pCur[-stride]) * Coef1 + \
-	(BitField&(TOP|RIGHT)?2*pCur[stride]:pCur[stride] + pCur[2-stride]) * Coef2;
+	pCur[0] += ((BitField)&(TOP|LEFT)?2*pCur[1+stride]:pCur[1+stride] + pCur[-1-stride]) * (Coef1) + \
+	((BitField)&TOP?(BitField)&LEFT?2*pCur[1+stride]:pCur[-1+stride]*2:(BitField)&LEFT?2*pCur[1-stride]:pCur[-1+stride] + pCur[1-stride]) * (Coef2); \
+	pCur[1] += ((BitField)&TOP?(BitField)&RIGHT?2*pCur[stride]:2*pCur[2+stride]:(BitField)&RIGHT?2*pCur[-stride]:pCur[2+stride] + pCur[-stride]) * (Coef1) + \
+	((BitField)&(TOP|RIGHT)?2*pCur[stride]:pCur[stride] + pCur[2-stride]) * (Coef2);
 
 #define PXL_LIFT_ODD_DIAG(Coef1,Coef2) \
-	pCur[stride] += (pCur[1+2*stride] + pCur[-1]) * Coef1 + \
-	(pCur[-1+2*stride] + pCur[1]) * Coef2; \
-	pCur[1+stride] += (pCur[2+2*stride] + pCur[0]) * Coef1 + \
-	(pCur[2*stride] + pCur[2]) * Coef2;
+	pCur[stride] += (pCur[1+2*stride] + pCur[-1]) * (Coef1) + \
+	(pCur[-1+2*stride] + pCur[1]) * (Coef2); \
+	pCur[1+stride] += (pCur[2+2*stride] + pCur[0]) * (Coef1) + \
+	(pCur[2*stride] + pCur[2]) * (Coef2);
 
 #define PXL_LIFT_ODD_EDGE_DIAG(Coef1,Coef2,BitField) \
-	pCur[stride] += (BitField&BOTTOM?BitField&LEFT?2*pCur[1]:2*pCur[-1]:BitField&LEFT?2*pCur[1+2*stride]:pCur[1+2*stride] + pCur[-1]) * Coef1 + \
-	(BitField&(BOTTOM|LEFT)?2*pCur[1]:pCur[-1+2*stride] + pCur[1]) * Coef2; \
-	pCur[1+stride] += (BitField&(BOTTOM|RIGHT)?2*pCur[0]:pCur[2+2*stride] + pCur[0]) * Coef1 + \
-	(BitField&BOTTOM?BitField&RIGHT?2*pCur[0]:2*pCur[2]:BitField&RIGHT?2*pCur[2*stride]:pCur[2*stride] + pCur[2]) * Coef2;
+	pCur[stride] += ((BitField)&BOTTOM?(BitField)&LEFT?2*pCur[1]:2*pCur[-1]:(BitField)&LEFT?2*pCur[1+2*stride]:pCur[1+2*stride] + pCur[-1]) * (Coef1) + \
+	((BitField)&(BOTTOM|LEFT)?2*pCur[1]:pCur[-1+2*stride] + pCur[1]) * (Coef2); \
+	pCur[1+stride] += ((BitField)&(BOTTOM|RIGHT)?2*pCur[0]:pCur[2+2*stride] + pCur[0]) * (Coef1) + \
+	((BitField)&BOTTOM?(BitField)&RIGHT?2*pCur[0]:2*pCur[2]:(BitField)&RIGHT?2*pCur[2*stride]:pCur[2*stride] + pCur[2]) * (Coef2);
 
 #define PXL_LIFT(Coef1,Coef2) \
 	switch( lft_opt ){ \
