@@ -245,8 +245,10 @@ template <cmode mode>
 template void CBand::enu<code>(CMuxCodec * );
 template void CBand::enu<decode>(CMuxCodec * );
 
-
-const int CBand::golombK[17] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 3};
+// k ~ [ln2(nBloc/(16-nBloc))]
+// see Resilient Parameterized Tree Codes for Fast Adaptive Coding
+const int CBand::golombK[17] =
+	{0, -3, -2, -2, -1, -1, -1, 0, 0, 0, 0, 0, 1, 1, 1, 2, 3};
 
 template <bool directK>
 		unsigned int CBand::enuCode4x4(CMuxCodec * pCodec, float * pCur,

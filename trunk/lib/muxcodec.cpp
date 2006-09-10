@@ -298,42 +298,55 @@ unsigned int CMuxCodec::enum16Decode(unsigned int k)
 	return bits;
 }
 
-void CMuxCodec::golombCode(unsigned int nb, const unsigned int k)
+void CMuxCodec::golombCode(unsigned int nb, const int k)
 {
-	unsigned int l = (nb >> k) + 1;
-	nb &= (1 << k) - 1;
+	if (k < 0) {
+		for( ; nb > 0; nb--)
+			codeSkew1(1 - k);
+		codeSkew0(1 - k);
+	} else {
+		unsigned int l = (nb >> k) + 1;
+		nb &= (1 << k) - 1;
 
-	while ((int)l > (31 - (int)nbBits)){
-		if (31 - (int)nbBits >= 0) {
-			buffer <<= 31 - nbBits;
-			l -= 31 - nbBits;
-			nbBits = 31;
+		while ((int)l > (31 - (int)nbBits)){
+			if (31 - (int)nbBits >= 0) {
+				buffer <<= 31 - nbBits;
+				l -= 31 - nbBits;
+				nbBits = 31;
+			}
+			emptyBuffer();
 		}
-		emptyBuffer();
+
+		buffer <<= l;
+		buffer |= 1;
+		nbBits += l;
+
+		bitsCode(nb, k);
 	}
-
-	buffer <<= l;
-	buffer |= 1;
-	nbBits += l;
-
-	bitsCode(nb, k);
 }
 
-unsigned int CMuxCodec::golombDecode(const unsigned int k)
+unsigned int CMuxCodec::golombDecode(const int k)
 {
-	unsigned int l = 0;
+	if (k < 0) {
+		unsigned int nb = 0;
+		while (decSkew(1 - k))
+			nb++;
+		return nb;
+	} else {
+		unsigned int l = 0;
 
-	while(0 == (buffer & ((1 << nbBits) - 1))) {
-		l += nbBits;
-		nbBits = 0;
-		fillBuffer(1);
+		while(0 == (buffer & ((1 << nbBits) - 1))) {
+			l += nbBits;
+			nbBits = 0;
+			fillBuffer(1);
+		}
+
+		while( (buffer & (1 << --nbBits)) == 0 )
+			l++;
+
+		unsigned int nb = (l << k) | bitsDecode(k);
+		return nb;
 	}
-
-	while( (buffer & (1 << --nbBits)) == 0 )
-		l++;
-
-	unsigned int nb = (l << k) | bitsDecode(k);
-	return nb;
 }
 
 void CMuxCodec::emptyBuffer(void)

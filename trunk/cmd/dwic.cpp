@@ -219,11 +219,13 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant] * .75f);
 
 // 		Wavelet.Stats();
-// 		Band2PNG(Wavelet, outfile);
 // 		Map2PNG(Wavelet, outfile);
 // 		Dist2PNG(Wavelet, outfile);
 
 		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
+
+// 		Band2PNG(Wavelet, outfile);
+
 		Wavelet.CodeMap(4);
 
 		Wavelet.CodeBand(&Codec, 3);

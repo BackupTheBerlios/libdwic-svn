@@ -94,8 +94,8 @@ class CMuxCodec{
 		void initDecoder(unsigned char *pStream);
 		unsigned char * endCoding(void);
 
-		void golombCode(unsigned int nb, const unsigned int k);
-		unsigned int golombDecode(const unsigned int k);
+		void golombCode(unsigned int nb, const int k);
+		unsigned int golombDecode(const int k);
 		void fiboCode(unsigned int nb);
 		unsigned int fiboDecode(void);
 		void enum16Code(unsigned int bits, const unsigned int k);
@@ -131,8 +131,43 @@ class CMuxCodec{
 			if (range <= MIN_RANGE)
 				normalize();
 			const register unsigned int tmp = (range >> FREQ_POWER) * freq;
-			lowRange += tmp & -bit;
-			range = tmp + ((range-2*tmp) & -bit);
+			if (bit == 0)
+				range = tmp;
+			else {
+				lowRange += tmp;
+				range -= tmp;
+			}
+// 			lowRange += tmp & -bit;
+// 			range = tmp + ((range-2*tmp) & -bit);
+		}
+
+		void inline codeSkew(const unsigned int shift, const unsigned int bit)
+		{
+			if (range <= MIN_RANGE)
+				normalize();
+			const register unsigned int tmp = range - (range >> shift);
+			if (bit == 0)
+				range = tmp;
+			else {
+				lowRange += tmp;
+				range -= tmp;
+			}
+		}
+
+		void inline codeSkew0(const unsigned int shift)
+		{
+			if (range <= MIN_RANGE)
+				normalize();
+			range -= range >> shift;
+		}
+
+		void inline codeSkew1(const unsigned int shift)
+		{
+			if (range <= MIN_RANGE)
+				normalize();
+			const register unsigned int tmp = range - (range >> shift);
+			lowRange += tmp;
+			range -= tmp;
 		}
 
 		unsigned int inline decode(const unsigned short * pFreqs)
@@ -169,6 +204,19 @@ class CMuxCodec{
 			lowRange -= tmp & tst;
 			range = tmp + ((range - 2*tmp) & tst);
 			return -tst;
+		}
+
+		unsigned int inline decSkew(const unsigned int shift)
+		{
+			NORMALIZE;
+			const register unsigned int tmp = range - (range >> shift);
+			if (lowRange < tmp){
+				range = tmp;
+				return 0;
+			}
+			lowRange -= tmp;
+			range -= tmp;
+			return 1;
 		}
 
 		void inline bitsCode(unsigned int bits, unsigned int length)
