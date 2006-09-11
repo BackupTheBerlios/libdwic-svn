@@ -315,7 +315,7 @@ int main( int argc, char *argv[] )
 	char * progname = argv[0];
 	string infile;
 	string outfile;
-	float ThresRatio = 0.75;
+	float ThresRatio = 0.7;
 	int Quant = 9;
 	float RecLevelRatio = 0;
 	int Type = 0;

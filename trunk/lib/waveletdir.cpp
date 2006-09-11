@@ -300,7 +300,7 @@ void CWaveletDir::CodeBand(CMuxCodec * pCodec, int method)
 				pCurWav->HVLBand.enu<code>(pCodec);
 				pCurWav->HVHBand.enu<code>(pCodec);
 				if (pCurWav->pLow == 0){
-					pCurWav->LBand.bit<code>(pCodec);
+					pCurWav->LBand.pred<code>(pCodec);
 				}
 				pCurWav = pCurWav->pLow;
 			}
@@ -333,7 +333,7 @@ void CWaveletDir::DecodeBand(CMuxCodec * pCodec, int method)
 				pCurWav->HVLBand.enu<decode>(pCodec);
 				pCurWav->HVHBand.enu<decode>(pCodec);
 				if (pCurWav->pLow == 0)
-					pCurWav->LBand.bit<decode>(pCodec);
+					pCurWav->LBand.pred<decode>(pCodec);
 				pCurWav = pCurWav->pLow;
 			}
 	}

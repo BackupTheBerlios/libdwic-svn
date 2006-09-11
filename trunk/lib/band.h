@@ -103,6 +103,8 @@ public:
 	template <cmode mode>
 			void bit(CMuxCodec * pCodec);
 	template <cmode mode>
+			void pred(CMuxCodec * pCodec);
+	template <cmode mode>
 			void Tree(CMuxCodec * pCodec);
 
 	// Statistiques

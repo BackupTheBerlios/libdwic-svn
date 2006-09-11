@@ -110,6 +110,76 @@ void CBand::bit(CMuxCodec * pCodec)
 template void CBand::bit<code>(CMuxCodec *);
 template void CBand::bit<decode>(CMuxCodec *);
 
+template <cmode mode>
+void CBand::pred(CMuxCodec * pCodec)
+{
+		float * pCur = pBand;
+		int k = 6;
+		const int stride = DimXAlign;
+		static const int log[32] = {0,1,2,2,3,3,3,3,4,4,4,4,4,4,4,4,
+									5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5};
+
+		if (mode == code)
+			pCodec->fiboCode((unsigned int) pCur[0]);
+		else
+			pCur[0] = pCodec->fiboDecode();
+
+		for( int i = 1; i < DimX; i++){
+			if (mode == code) {
+				int pred = (int)(pCur[i] - pCur[i - 1]);
+				pCodec->golombCode(ABS(pred), k);
+				if (pred != 0)
+					pCodec->bitsCode((pred < 0),1);
+			} else {
+				int pred = pCodec->golombDecode(k);
+				if (pred != 0 && pCodec->bitsDecode(1))
+					pred = -pred;
+				pCur[i] = pCur[i - 1] + pred;
+			}
+		}
+		pCur += stride;
+
+		for( int j = 1; j < DimY; j++){
+			if (mode == code) {
+				int pred = (int)(pCur[0] - pCur[-stride]);
+				pCodec->golombCode(ABS(pred), k);
+				if (pred != 0)
+					pCodec->bitsCode(pred < 0,1);
+			} else {
+				int pred = pCodec->golombDecode(k);
+				if (pred != 0 && pCodec->bitsDecode(1))
+					pred = -pred;
+				pCur[0] = pCur[-stride] + pred;
+			}
+			for( int i = 1; i < DimX; i++){
+				int var = (int) (ABS(pCur[i - 1] - pCur[i - 1 - stride]) +
+						ABS(pCur[i - stride] - pCur[i - 1 - stride]));
+				var >>= 1;
+				if (var >= 32)
+					var = k;
+				else
+					var = log[var];
+				if (mode == code) {
+					int pred = (int)(pCur[i] - pCur[i - 1] - pCur[i - stride] +
+							pCur[i - 1 - stride]);
+					pCodec->golombCode(ABS(pred), var);
+					if (pred != 0)
+						pCodec->bitsCode(pred < 0,1);
+				} else {
+					int pred = pCodec->golombDecode(var);
+					if (pred != 0 && pCodec->bitsDecode(1))
+						pred = -pred;
+					pCur[i] = pCur[i - 1] + pCur[i - stride] -
+							pCur[i - 1 - stride] + pred;
+				}
+			}
+			pCur += stride;
+		}
+}
+
+template void CBand::pred<code>(CMuxCodec *);
+template void CBand::pred<decode>(CMuxCodec *);
+
 const unsigned short CBand::cumProba[33][18] =
 {
 	{ 0, 4055, 4081, 4082, 4083, 4084, 4085, 4086, 4087, 4088, 4089, 4090, 4091, 4092, 4093, 4094, 4095, 4096},
@@ -257,6 +327,9 @@ template <bool directK>
 	float tmp[16];
 	unsigned int signif = 0;
 	unsigned int k = 0;
+	static const float len[17] = { 0, 4, 6.91, 9.13, 10.83, 12.09, 12.97, 13.48,
+		 13.65, 13.48, 12.97, 12.09, 10.83, 9.13, 6.91, 4, 0};
+
 
 	for( int j = 0; j < 4; j++){
 		for( float * pEnd = pCur + 4; pCur < pEnd; pCur++){
@@ -269,6 +342,10 @@ template <bool directK>
 		}
 		pCur += stride - 4;
 	}
+
+	// TODO : virer ce hack misérable et faire une vraie R/D
+	if (k == 1 && tmp[k] == 1 && kPred == 0)
+		k = 0;
 
 	if (directK)
 		pCodec->bitsCode(k ,5);
