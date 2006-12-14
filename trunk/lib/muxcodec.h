@@ -56,6 +56,8 @@ namespace libdwic {
 #define ROT_BUF_SIZE 	16
 #define ROT_BUF_MASK	(ROT_BUF_SIZE - 1)
 
+#define REG_SIZE (sizeof(unsigned int) * 8)
+
 /**
 @author Nicolas Botti
 */
@@ -78,6 +80,11 @@ class CMuxCodec{
 		unsigned int buffer;
 		unsigned char * pReserved;
 
+		// Taboo coding
+		unsigned int nbTaboo[REG_SIZE];
+		unsigned int sumTaboo[REG_SIZE];
+		unsigned int nTaboo;
+
 		static const unsigned int nbFibo[32];
 		static const unsigned int Cnk[16][16];
 		static const unsigned int enumLenth[];
@@ -96,8 +103,14 @@ class CMuxCodec{
 
 		void golombCode(unsigned int nb, const int k);
 		unsigned int golombDecode(const int k);
+
 		void fiboCode(unsigned int nb);
 		unsigned int fiboDecode(void);
+
+		void initTaboo(unsigned int k);
+		void tabooCode(unsigned int nb);
+		unsigned int tabooDecode(void);
+
 		void enum16Code(unsigned int bits, const unsigned int k);
 		unsigned int enum16Decode(unsigned int k);
 

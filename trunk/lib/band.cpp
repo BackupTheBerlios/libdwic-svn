@@ -120,9 +120,9 @@ void CBand::pred(CMuxCodec * pCodec)
 									5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5};
 
 		if (mode == code)
-			pCodec->fiboCode((unsigned int) pCur[0]);
+			pCodec->tabooCode((unsigned int) pCur[0]);
 		else
-			pCur[0] = pCodec->fiboDecode();
+			pCur[0] = pCodec->tabooDecode();
 
 		for( int i = 1; i < DimX; i++){
 			if (mode == code) {

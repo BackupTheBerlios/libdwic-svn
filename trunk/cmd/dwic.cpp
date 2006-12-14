@@ -184,6 +184,7 @@ typedef union {
 } Header;
 
 #define WAV_LEVELS 5
+#define TABOO_LEN 2
 
 void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 				   int Type)
@@ -212,6 +213,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 
 	if (Type == 0) {
 		CMuxCodec Codec(pEnd, 0);
+		Codec.initTaboo(TABOO_LEN);
 
 		CWaveletDir Wavelet(img.columns(), img.rows(), WAV_LEVELS);
 		Wavelet.SetWeight97();
@@ -268,6 +270,7 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 
 	if (Head.Type == 0) {
 		CMuxCodec Codec(pEnd);
+		Codec.initTaboo(TABOO_LEN);
 		CWaveletDir Wavelet(width, heigth, WAV_LEVELS);
 		Wavelet.SetWeight97();
 		Wavelet.SetCodec(&Codec);

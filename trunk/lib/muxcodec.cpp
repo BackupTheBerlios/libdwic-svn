@@ -123,40 +123,29 @@ unsigned char * CMuxCodec::endCoding(void){
 	return pStream;
 }
 
+void CMuxCodec::initTaboo(unsigned int k)
+{
+	unsigned int i;
+	nbTaboo[0] = 1;
+	nTaboo = k;
+	for( i = 1; i < k; i++)
+		nbTaboo[i] = 1 << (i - 1);
+	for( i = k; i < REG_SIZE; i++) {
+		unsigned int j, accu = nbTaboo[i - k];
+		for( j = i - k + 1; j < i; j++)
+			accu += nbTaboo[j];
+		nbTaboo[i] = accu;
+	}
+	sumTaboo[0] = nbTaboo[0];
+	for( i = 1; i < REG_SIZE; i++)
+		sumTaboo[i] = sumTaboo[i - 1] + nbTaboo[i];
+}
+
 const unsigned int CMuxCodec::nbFibo[32] =
 {
-	1,
-	2,
-	3,
-	5,
-	8,
-	13,
-	21,
-	34,
-	55,
-	89,
-	144,
-	233,
-	377,
-	610,
-	987,
-	1597,
-	2584,
-	4181,
-	6765,
-	10946,
-	17711,
-	28657,
-	46368,
-	75025,
-	121393,
-	196418,
-	317811,
-	514229,
-	832040,
-	1346269,
-	2178309,
-	3524578
+	1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584,
+	4181, 6765, 10946, 17711, 28657, 46368, 75025, 121393, 196418, 317811,
+	514229, 832040, 1346269, 2178309, 3524578
 };
 
 void CMuxCodec::fiboCode(unsigned int nb)
@@ -217,6 +206,84 @@ unsigned int CMuxCodec::fiboDecode(void)
 			l--;
 		}
 	}
+	return nb;
+}
+
+/**
+ * This is an implementation of taboo codes as described by Steven Pigeon in :
+ * http://www.iro.umontreal.ca/~brassard/SEMINAIRES/taboo.ps
+ * or for french speaking people in his phd thesis :
+ * http://www.stevenpigeon.com/Publications/publications/phd.pdf
+ *
+ * the taboo length is set in initTaboo() which have to be called once before
+ * using tabooCode() or tabooDecode()
+ *
+ * @param nb number >= 0 to encode
+ */
+void CMuxCodec::tabooCode(unsigned int nb)
+{
+	int i = 0, l;
+	unsigned int r = 0;
+
+	while (sumTaboo[i] <= nb) i++;
+	l = i;
+	if (i > 0) i--;
+
+	nb -= sumTaboo[i];
+
+	while (i > nTaboo) {
+		unsigned int k = i - nTaboo + 1, cnt = nbTaboo[k], j = 0;
+		while (nb >= cnt)
+			cnt += nbTaboo[k + ++j];
+		nb -= cnt - nbTaboo[k + j];
+		j = nTaboo - j;
+		r = (r << j) | 1;
+		i -= j;
+	}
+
+	if (i == nTaboo) nb++;
+
+	r = ((((r << i) | (nb & ((1 << i) - 1))) << 1) | 1) << nTaboo;
+	bitsCode(r, l + nTaboo);
+}
+
+unsigned int CMuxCodec::tabooDecode(void)
+{
+	int i = 0, l = nTaboo;
+	unsigned int nb = 0;
+
+	if ( nbBits < nTaboo ) fillBuffer(nTaboo);
+
+	unsigned int t = ((1 << nTaboo) - 1) << (nbBits - nTaboo);
+	while( (~buffer & t) != t ){
+		l++;
+		if (l > nbBits){
+			fillBuffer(l);
+			t <<= 8;
+		}
+		t >>= 1;
+	}
+	nbBits -= l;
+
+	unsigned int cd = buffer >> (nbBits + nTaboo + 1);
+
+	i = l - nTaboo;
+
+	if (i > 0) {
+		i--;
+		nb += sumTaboo[i];
+	}
+
+	while (i > nTaboo) {
+		unsigned int j = 1;
+		while (((cd >> (i - j)) & 1) == 0) j++;
+		nb += sumTaboo[i - j] - sumTaboo[i - nTaboo];
+		i -= j;
+	}
+
+	if (i == nTaboo) nb -= 1;
+	nb += cd & ((1 << i) - 1);
+
 	return nb;
 }
 
