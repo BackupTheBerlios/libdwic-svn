@@ -35,12 +35,26 @@
 
 #include "band.h"
 #include "map.h"
-#include "wavelet.h"
-#include "wavelet2d.h"
 
 namespace libdwic {
 
 typedef enum lift {even, odd, diag_even, diag_odd};
+
+#define MAX_WAV_LEVEL 5
+
+// #define ALPHA (-1.586134342)
+// #define BETA (-0.05298011854)
+// #define GAMMA (0.8829110762)
+// #define DELTA (0.4435068522)
+#define XI 1.149604398
+
+
+// http://www.ece.vt.edu/fac_support/dspcl/docs/TCASII05.pdf
+#define ALPHA (-3./2.)
+#define BETA (-1./16.)
+#define GAMMA (4./5.)
+#define DELTA (15./32.)
+// #define XI 1.13137085
 
 #define MOD		.125
 #define ALPHA1	(ALPHA * MOD)
@@ -106,8 +120,6 @@ private:
 	CBand HVLBand;
 	CBand HVHBand;
 	CBand LBand;
-
-	CWavelet2D HVWav;
 
 	CMap HVMap;
 	CMap DMap;

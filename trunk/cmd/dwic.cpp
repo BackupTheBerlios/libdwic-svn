@@ -231,15 +231,6 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		Wavelet.CodeBand(&Codec, 3);
 
 		pEnd = Codec.endCoding();
-	} else if (Type == 1) {
-		CWavelet2D Wavelet(img.columns(), img.rows(), WAV_LEVELS);
-		Wavelet.SetWeight97();
-		Wavelet.Transform97(ImgPixels, img.columns());
-
-// 		Wavelet.Stats();
-
-		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
-// 		pEnd = Wavelet.CodeBand(pEnd);
 	} else {
 		throw UNKNOW_TYPE;
 	}
@@ -282,12 +273,6 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 		Wavelet.SetCodec(&Codec);
 		Wavelet.DecodeMap(4);
 		Wavelet.DecodeBand(&Codec, 3);
-		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
-		Wavelet.Transform97I(ImgPixels, width);
-	} else if (Head.Type == 1) {
-		CWavelet2D Wavelet(width, heigth, WAV_LEVELS);
-		Wavelet.SetWeight97();
-// 		Wavelet.DecodeBand(pEnd);
 		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
 		Wavelet.Transform97I(ImgPixels, width);
 	} else {

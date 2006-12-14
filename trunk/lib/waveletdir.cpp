@@ -48,8 +48,7 @@ CWaveletDir::CWaveletDir(int x, int y, int level, int Align,
 		pLow(0),
 		HVMap(pHigh == 0 ? (CMap*)0 : &pHigh->HVMap, level + 2),
 		DMap(pHigh == 0 ? (CMap*)0 : &pHigh->DMap, level + 2),
-		LMap(level > 1 ? (CMap*)0 : &HVMap, level + 2),
-		HVWav(x >> 1, y >> 1, 1)
+		LMap(level > 1 ? (CMap*)0 : &HVMap, level + 2)
 {
 	if (level > MAX_WAV_LEVEL)
 		level = MAX_WAV_LEVEL;
@@ -681,8 +680,6 @@ void CWaveletDir::SetWeight97(void)
 		HVLBand.Weight = DLBand.Weight * XI;
 		LBand.Weight = HVLBand.Weight * XI;
 
-		HVWav.SetWeight97(HVBand.Weight);
-
 		HVMap.weightH = pHigh->HVMap.weightL;
 		HVMap.weightL = HVMap.weightH * XI * XI;
 		DMap.weightH = pHigh->DMap.weightL;
@@ -695,8 +692,6 @@ void CWaveletDir::SetWeight97(void)
 		HVHBand.Weight = 1./XI;
 		HVLBand.Weight = XI;
 		LBand.Weight = XI * XI;
-
-		HVWav.SetWeight97(HVBand.Weight);
 
 		HVMap.weightL = 1./XI;
 		DMap.weightL = 1.;

@@ -35,7 +35,6 @@
 
 #include "global.h"
 #include "waveletdir.h"
-#include "wavelet2d.h"
 
 namespace libdwic{
 
