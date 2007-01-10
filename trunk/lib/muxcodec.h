@@ -39,12 +39,10 @@ namespace libdwic {
 #define FREQ_COUNT	(1 << FREQ_POWER)
 #define HALF_FREQ_COUNT	(1 << (FREQ_POWER - 1))	// FREQ_COUNT / 2
 
-#define MIN_RANGE		0x00800000
-#define HALF_MIN_RANGE	0x00400000
+#define RANGE_BITS		23
+#define MIN_RANGE		(1 << RANGE_BITS)
 #define MAX_RANGE		0x80000000
 #define NO_CARRY		(MAX_RANGE - 1)
-#define RANGE_BITS		23
-#define END_BITS 		(32 - RANGE_BITS)
 
 #define NORMALIZE \
 	while (range <= MIN_RANGE){ \

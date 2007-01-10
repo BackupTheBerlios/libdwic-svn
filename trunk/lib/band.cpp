@@ -232,7 +232,7 @@ template <cmode mode>
 		void CBand::enu(CMuxCodec * pCodec)
 {
 	if (mode == code)
-		if (Count <= 2){
+		if (Count <= 8){
 			pCodec->bitsCode(0, 1);
 			return;
 		} else
@@ -324,7 +324,7 @@ template <bool directK>
 		unsigned int CBand::enuCode4x4(CMuxCodec * pCodec, float * pCur,
 									   int stride, unsigned int kPred)
 {
-	float tmp[16];
+	int tmp[16];
 	unsigned int signif = 0;
 	unsigned int k = 0;
 	static const float len[17] = { 0, 4, 6.91, 9.13, 10.83, 12.09, 12.97, 13.48,
@@ -334,8 +334,8 @@ template <bool directK>
 	for( int j = 0; j < 4; j++){
 		for( float * pEnd = pCur + 4; pCur < pEnd; pCur++){
 			signif <<= 1;
-			if (pCur[0] != 0) {
-				tmp[k] = pCur[0];
+			tmp[k] = (int)pCur[0];
+			if (tmp[k] != 0) {
 				k++;
 				signif |= 1;
 			}
@@ -344,7 +344,7 @@ template <bool directK>
 	}
 
 	// TODO : virer ce hack misérable et faire une vraie R/D
-	if (k == 1 && tmp[k] == 1 && kPred == 0)
+	if (k == 1 && (unsigned int)(tmp[0] + 1) <= 2 && kPred == 0)
 		k = 0;
 
 	if (directK)
