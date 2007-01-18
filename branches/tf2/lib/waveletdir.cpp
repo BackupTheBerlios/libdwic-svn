@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2006 by Nicolas BOTTI <rududu@laposte.net>              *
+ *   Copyright (C) 2006-2007 Nicolas BOTTI <rududu@laposte.net>            *
  *                                                                         *
  * This software is a computer program whose purpose is to compress        *
  * images.                                                                 *
@@ -46,9 +46,9 @@ CWaveletDir::CWaveletDir(int x, int y, int level, int Align,
 		DimY(y),
 		pHigh(0),
 		pLow(0),
-		HVMap(pHigh == 0 ? (CMap*)0 : &pHigh->HVMap, level + 2),
-		DMap(pHigh == 0 ? (CMap*)0 : &pHigh->DMap, level + 2),
-		LMap(level > 1 ? (CMap*)0 : &HVMap, level + 2)
+		HVMap(pHigh == 0 ? (CMap*)0 : &pHigh->HVMap),
+		DMap(pHigh == 0 ? (CMap*)0 : &pHigh->DMap),
+		LMap(level > 1 ? (CMap*)0 : &HVMap)
 {
 	if (level > MAX_WAV_LEVEL)
 		level = MAX_WAV_LEVEL;
@@ -426,123 +426,121 @@ void CWaveletDir::LazyBandI(void)
 	}
 }
 
-#define PXL_LIFT_EVEN(Coef1,Coef2) \
-	pCur[0] += (pCur[1] + pCur[-1]) * (Coef1) + \
-	(pCur[stride] + pCur[-stride]) * (Coef2); \
-	pCur[1+stride] += (pCur[2+stride] + pCur[stride]) * (Coef1) + \
-	(pCur[1+2*stride] + pCur[1]) * (Coef2);
+#define PXL_LIFT_EVEN \
+	pCur[0] += (pCur[1] + pCur[-1]) * (Coef[pDir[0]][0]) + \
+	(pCur[stride] + pCur[-stride]) * (Coef[pDir[0]][1]); \
+	pCur[1+stride] += (pCur[2+stride] + pCur[stride]) * (Coef[pDir[1+DimX]][0]) + \
+	(pCur[1+2*stride] + pCur[1]) * (Coef[pDir[1+DimX]][1]);
 
-#define PXL_LIFT_EVEN_EDGE(Coef1,Coef2,BitField) \
- pCur[0] += ((BitField)&LEFT?pCur[1] * 2:pCur[1] + pCur[-1]) * (Coef1) + \
-	((BitField)&TOP?pCur[stride] * 2:pCur[stride] + pCur[-stride]) * (Coef2); \
+#define PXL_LIFT_EVEN_EDGE(BitField) \
+ pCur[0] += ((BitField)&LEFT?pCur[1] * 2:pCur[1] + pCur[-1]) * (Coef[pDir[0]][0]) + \
+	((BitField)&TOP?pCur[stride] * 2:pCur[stride] + pCur[-stride]) * (Coef[pDir[0]][1]); \
 	pCur[1+stride] += \
- ((BitField)&RIGHT?2*pCur[stride]:pCur[2+stride] + pCur[stride]) * (Coef1) + \
-	((BitField)&BOTTOM?2*pCur[1]:pCur[1+2*stride] + pCur[1]) * (Coef2);
+ ((BitField)&RIGHT?2*pCur[stride]:pCur[2+stride] + pCur[stride]) * (Coef[pDir[1+DimX]][0]) + \
+	((BitField)&BOTTOM?2*pCur[1]:pCur[1+2*stride] + pCur[1]) * (Coef[pDir[1+DimX]][1]);
 
-#define PXL_LIFT_ODD(Coef1,Coef2) \
-	pCur[1] += (pCur[2] + pCur[0]) * (Coef1) + \
-	(pCur[1+stride] + pCur[1-stride]) * (Coef2); \
-	pCur[stride] += (pCur[1+stride] + pCur[stride-1]) * (Coef1) + \
-	(pCur[2*stride] + pCur[0]) * (Coef2);
+#define PXL_LIFT_ODD \
+	pCur[1] += (pCur[2] + pCur[0]) * (Coef[pDir[1]][0]) + \
+	(pCur[1+stride] + pCur[1-stride]) * (Coef[pDir[1]][1]); \
+	pCur[stride] += (pCur[1+stride] + pCur[stride-1]) * (Coef[pDir[DimX]][0]) + \
+	(pCur[2*stride] + pCur[0]) * (Coef[pDir[DimX]][1]);
 
-#define PXL_LIFT_ODD_EDGE(Coef1,Coef2,BitField) \
-	pCur[1] += ((BitField)&RIGHT?pCur[0] * 2:pCur[2] + pCur[0]) * (Coef1) + \
-	((BitField)&TOP?pCur[1+stride] * 2:pCur[1+stride] + pCur[1-stride]) * (Coef2); \
+#define PXL_LIFT_ODD_EDGE(BitField) \
+	pCur[1] += ((BitField)&RIGHT?pCur[0] * 2:pCur[2] + pCur[0]) * (Coef[pDir[1]][0]) + \
+	((BitField)&TOP?pCur[1+stride] * 2:pCur[1+stride] + pCur[1-stride]) * (Coef[pDir[1]][1]); \
 	pCur[stride] += \
-	((BitField)&LEFT?2*pCur[1+stride]:pCur[1+stride] + pCur[stride-1]) * (Coef1) + \
-	((BitField)&BOTTOM?2*pCur[0]:pCur[2*stride] + pCur[0]) * (Coef2);
+	((BitField)&LEFT?2*pCur[1+stride]:pCur[1+stride] + pCur[stride-1]) * (Coef[pDir[DimX]][0]) + \
+	((BitField)&BOTTOM?2*pCur[0]:pCur[2*stride] + pCur[0]) * (Coef[pDir[DimX]][1]);
 
-#define PXL_LIFT_EVEN_DIAG(Coef1,Coef2) \
-	pCur[0] += (pCur[1+stride] + pCur[-1-stride]) * (Coef1) + \
-	(pCur[-1+stride] + pCur[1-stride]) * (Coef2); \
-	pCur[1] += (pCur[2+stride] + pCur[-stride]) * (Coef1) + \
-	(pCur[stride] + pCur[2-stride]) * (Coef2);
+#define PXL_LIFT_EVEN_DIAG \
+	pCur[0] += (pCur[1+stride] + pCur[-1-stride]) * (Coef[pDir[0]][0]) + \
+	(pCur[-1+stride] + pCur[1-stride]) * (Coef[pDir[0]][1]); \
+	pCur[1] += (pCur[2+stride] + pCur[-stride]) * (Coef[pDir[1]][0]) + \
+	(pCur[stride] + pCur[2-stride]) * (Coef[pDir[1]][1]);
 
-#define PXL_LIFT_EVEN_EDGE_DIAG(Coef1,Coef2,BitField) \
-	pCur[0] += ((BitField)&(TOP|LEFT)?2*pCur[1+stride]:pCur[1+stride] + pCur[-1-stride]) * (Coef1) + \
-	((BitField)&TOP?(BitField)&LEFT?2*pCur[1+stride]:pCur[-1+stride]*2:(BitField)&LEFT?2*pCur[1-stride]:pCur[-1+stride] + pCur[1-stride]) * (Coef2); \
-	pCur[1] += ((BitField)&TOP?(BitField)&RIGHT?2*pCur[stride]:2*pCur[2+stride]:(BitField)&RIGHT?2*pCur[-stride]:pCur[2+stride] + pCur[-stride]) * (Coef1) + \
-	((BitField)&(TOP|RIGHT)?2*pCur[stride]:pCur[stride] + pCur[2-stride]) * (Coef2);
+#define PXL_LIFT_EVEN_EDGE_DIAG(BitField) \
+	pCur[0] += ((BitField)&(TOP|LEFT)?2*pCur[1+stride]:pCur[1+stride] + pCur[-1-stride]) * (Coef[pDir[0]][0]) + \
+	((BitField)&TOP?(BitField)&LEFT?2*pCur[1+stride]:pCur[-1+stride]*2:(BitField)&LEFT?2*pCur[1-stride]:pCur[-1+stride] + pCur[1-stride]) * (Coef[pDir[0]][1]); \
+	pCur[1] += ((BitField)&TOP?(BitField)&RIGHT?2*pCur[stride]:2*pCur[2+stride]:(BitField)&RIGHT?2*pCur[-stride]:pCur[2+stride] + pCur[-stride]) * (Coef[pDir[1]][0]) + \
+	((BitField)&(TOP|RIGHT)?2*pCur[stride]:pCur[stride] + pCur[2-stride]) * (Coef[pDir[1]][1]);
 
-#define PXL_LIFT_ODD_DIAG(Coef1,Coef2) \
-	pCur[stride] += (pCur[1+2*stride] + pCur[-1]) * (Coef1) + \
-	(pCur[-1+2*stride] + pCur[1]) * (Coef2); \
-	pCur[1+stride] += (pCur[2+2*stride] + pCur[0]) * (Coef1) + \
-	(pCur[2*stride] + pCur[2]) * (Coef2);
+#define PXL_LIFT_ODD_DIAG \
+	pCur[stride] += (pCur[1+2*stride] + pCur[-1]) * (Coef[pDir[DimX]][0]) + \
+	(pCur[-1+2*stride] + pCur[1]) * (Coef[pDir[DimX]][1]); \
+	pCur[1+stride] += (pCur[2+2*stride] + pCur[0]) * (Coef[pDir[1+DimX]][0]) + \
+	(pCur[2*stride] + pCur[2]) * (Coef[pDir[1+DimX]][1]);
 
-#define PXL_LIFT_ODD_EDGE_DIAG(Coef1,Coef2,BitField) \
-	pCur[stride] += ((BitField)&BOTTOM?(BitField)&LEFT?2*pCur[1]:2*pCur[-1]:(BitField)&LEFT?2*pCur[1+2*stride]:pCur[1+2*stride] + pCur[-1]) * (Coef1) + \
-	((BitField)&(BOTTOM|LEFT)?2*pCur[1]:pCur[-1+2*stride] + pCur[1]) * (Coef2); \
-	pCur[1+stride] += ((BitField)&(BOTTOM|RIGHT)?2*pCur[0]:pCur[2+2*stride] + pCur[0]) * (Coef1) + \
-	((BitField)&BOTTOM?(BitField)&RIGHT?2*pCur[0]:2*pCur[2]:(BitField)&RIGHT?2*pCur[2*stride]:pCur[2*stride] + pCur[2]) * (Coef2);
+#define PXL_LIFT_ODD_EDGE_DIAG(BitField) \
+	pCur[stride] += ((BitField)&BOTTOM?(BitField)&LEFT?2*pCur[1]:2*pCur[-1]:(BitField)&LEFT?2*pCur[1+2*stride]:pCur[1+2*stride] + pCur[-1]) * (Coef[pDir[DimX]][0]) + \
+	((BitField)&(BOTTOM|LEFT)?2*pCur[1]:pCur[-1+2*stride] + pCur[1]) * (Coef[pDir[DimX]][1]); \
+	pCur[1+stride] += ((BitField)&(BOTTOM|RIGHT)?2*pCur[0]:pCur[2+2*stride] + pCur[0]) * (Coef[pDir[1+DimX]][0]) + \
+	((BitField)&BOTTOM?(BitField)&RIGHT?2*pCur[0]:2*pCur[2]:(BitField)&RIGHT?2*pCur[2*stride]:pCur[2*stride] + pCur[2]) * (Coef[pDir[1+DimX]][1]);
 
-#define PXL_LIFT(Coef1,Coef2) \
+#define PXL_LIFT \
 	switch( lft_opt ){ \
 		case even : \
-			PXL_LIFT_EVEN(Coef1,Coef2); \
+			PXL_LIFT_EVEN; \
 			break; \
 		case odd : \
-			PXL_LIFT_ODD(Coef1,Coef2); \
+			PXL_LIFT_ODD; \
 			break; \
 		case diag_even: \
-			PXL_LIFT_EVEN_DIAG(Coef1,Coef2); \
+			PXL_LIFT_EVEN_DIAG; \
 			break; \
 		case diag_odd: \
-			PXL_LIFT_ODD_DIAG(Coef1,Coef2); \
-			break; \
+			PXL_LIFT_ODD_DIAG; \
 	}
 
-#define PXL_LIFT_EDGE(Coef1,Coef2,BitField) \
+#define PXL_LIFT_EDGE(BitField) \
 	switch( lft_opt ){ \
 		case even : \
-			PXL_LIFT_EVEN_EDGE(Coef1,Coef2,BitField); \
+			PXL_LIFT_EVEN_EDGE(BitField); \
 			break; \
 		case odd : \
-			PXL_LIFT_ODD_EDGE(Coef1,Coef2,BitField); \
+			PXL_LIFT_ODD_EDGE(BitField); \
 			break; \
 		case diag_even : \
-			PXL_LIFT_EVEN_EDGE_DIAG(Coef1,Coef2,BitField); \
+			PXL_LIFT_EVEN_EDGE_DIAG(BitField); \
 			break; \
 		case diag_odd : \
-			PXL_LIFT_ODD_EDGE_DIAG(Coef1,Coef2,BitField); \
-			break; \
-}
+			PXL_LIFT_ODD_EDGE_DIAG(BitField); \
+	}
 
 template <lift lft_opt>
 void CWaveletDir::LiftBand(float * pCur, int stride, int DimX, int DimY,
 						   float Coef1, float Coef2, char * pDir)
 {
-	float Coef[2][2] = {{Coef1, Coef2}, {Coef2, Coef1}};
-	PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], TOP|LEFT);
+	float Coef[3][2] = {
+		{Coef1, Coef2},
+		{(Coef1 + Coef2) * .5, (Coef1 + Coef2) * .5},
+		{Coef2, Coef1}
+	};
+	PXL_LIFT_EDGE(TOP|LEFT);
 	float * pNextCur = pCur + (stride << 1);
-	pDir++;
-	pCur += 2;
-	for(int i = 2 ; i < DimX - 2; i += 2, pDir++, pCur += 2){
-		PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], TOP);
+	char * pNextDir = pDir + (DimX << 1);
+	pDir += 2; pCur += 2;
+	for(int i = 2 ; i < DimX - 2; i += 2, pDir += 2, pCur += 2){
+		PXL_LIFT_EDGE(TOP);
 	}
-	PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], TOP|RIGHT);
-	pDir++;
+	PXL_LIFT_EDGE(TOP|RIGHT);
 	for(int j = 2; j < DimY - 2; j += 2){
-		pCur = pNextCur;
-		pNextCur += stride << 1;
-		PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], LEFT);
-		pCur += 2;
-		pDir++;
-		for(int i = 2; i < DimX - 2; i += 2, pDir++, pCur += 2){
-			PXL_LIFT(Coef[0][*pDir], Coef[1][*pDir]);
+		pCur = pNextCur; pDir = pNextDir;
+		pNextCur += stride << 1; pNextDir += DimX << 1;
+		PXL_LIFT_EDGE(LEFT);
+		pDir += 2; pCur += 2;
+		for(int i = 2; i < DimX - 2; i += 2, pDir += 2, pCur += 2){
+			PXL_LIFT;
 		}
-		PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], RIGHT);
-		pDir++;
+		PXL_LIFT_EDGE(RIGHT);
 	}
-	pCur = pNextCur;
-	pNextCur += stride << 1;
-	PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], BOTTOM|LEFT);
-	pDir++;
-	pCur += 2;
-	for(int i = 2 ; i < DimX - 2; i += 2, pDir++, pCur += 2){
-		PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], BOTTOM);
+	pCur = pNextCur; pDir = pNextDir;
+	pNextCur += stride << 1; pNextDir += DimX << 1;
+	PXL_LIFT_EDGE(BOTTOM|LEFT);
+	pDir += 2; pCur += 2;
+	for(int i = 2 ; i < DimX - 2; i += 2, pDir += 2, pCur += 2){
+		PXL_LIFT_EDGE(BOTTOM);
 	}
-	PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], BOTTOM|RIGHT);
+	PXL_LIFT_EDGE(BOTTOM|RIGHT);
 }
 
 void CWaveletDir::Transform97(float * pImage, int stride, float lambda)
@@ -749,7 +747,7 @@ void CWaveletDir::GetImageDir97(float * pImage, int stride)
 	}
 
 	// lifting partiel 2
-	HVMap.SetDir(1);
+	HVMap.SetDir(2);
 	LiftBand<odd>(pImage2, DimX, DimX, DimY, ALPHA1, ALPHA2, HVMap.pMap);
 	LiftBand<even>(pImage2, DimX, DimX, DimY, BETA1, BETA2, HVMap.pMap);
 	LiftBand<odd>(pImage2, DimX, DimX, DimY, GAMMA1, GAMMA2, HVMap.pMap);
@@ -799,7 +797,7 @@ void CWaveletDir::GetBandDir97(void)
 	LiftBand<odd>(pBand1, stride, DimX, DimY, GAMMA1, GAMMA2, LMap.pMap);
 
 	// lifting partiel 2
-	LMap.SetDir(1);
+	LMap.SetDir(2);
 	LiftBand<odd>(pBand2, stride, DimX, DimY, ALPHA1, ALPHA2, LMap.pMap);
 	LiftBand<even>(pBand2, stride, DimX, DimY, BETA1, BETA2, LMap.pMap);
 	LiftBand<odd>(pBand2, stride, DimX, DimY, GAMMA1, GAMMA2, LMap.pMap);
@@ -836,7 +834,7 @@ void CWaveletDir::GetImageDirDiag97(float * pImage, int stride)
 	LiftBand<diag_odd>(pImage1, DimX, DimX, DimY, GAMMA1, GAMMA2, DMap.pMap);
 
 	// lifting partiel 2
-	DMap.SetDir(1);
+	DMap.SetDir(2);
 	LiftBand<diag_odd>(pImage2, DimX, DimX, DimY, ALPHA1, ALPHA2, DMap.pMap);
 	LiftBand<diag_even>(pImage2, DimX, DimX, DimY, BETA1, BETA2, DMap.pMap);
 	LiftBand<diag_odd>(pImage2, DimX, DimX, DimY, GAMMA1, GAMMA2, DMap.pMap);

@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2006 by Nicolas BOTTI <rududu@laposte.net>              *
+ *   Copyright (C) 2006-2007 Nicolas BOTTI <rududu@laposte.net>            *
  *                                                                         *
  * This software is a computer program whose purpose is to compress        *
  * images.                                                                 *
@@ -33,94 +33,33 @@
 
 #pragma once
 
-#include "bitcodec.h"
-
 namespace libdwic {
-
-#define MAX_TREE_DEPTH 5
-
-typedef struct {
-	short rate;		// rate of this tree branch, 0 if the node is a leaf
-	int dist;		// distortion associated with this rate
-	int refDist;	// reference distortion
-} node;
-
 
 /**
 @author Nicolas Botti
 */
 class CMap{
 public:
-	CMap(CMap * pHighMap, int treeDepth);
+	CMap(CMap * pHighMap);
 
     ~CMap();
 
 	void Init(int DimX = 0, int DimY = 0);
-	void GetImageDist(float * pImage1, float * pImage2, int stride);
-	void GetImageDist(float * pImage1, float * pImage2,
-					  float * pBand1, float * pBand2, int stride);
-	void GetImageDistDiag(float * pImage1, float * pImage2, int stride);
-	void SetDir(int Sel);
+	void SetDir(char Sel);
 	void GetMap(unsigned char * pOut);
-	void GetDist(unsigned char * pOut);
 
-	void SetCodec(CMuxCodec * pCodec);
-	void Order0Code(void);
-	void Order0Dec(void);
-	void Neighbor4Code(void);
-	void Neighbor4Dec(void);
-	void TreeCode(void);
-	void TreeDec(void);
+	void SelectDir(float * pImage, int stride);
 
-	void OptimiseDir(float const lambda);
-	void BuidTree(float const lambda);
-	void ApplyTree(void);
-// 	void OptimiseDirTree(float const lambda);
-	void SelectDir(void);
-// 	void TreeSum(void);
-
-	void BuidNodes(float const lambda);
-	void ApplyNodes(void);
-	void CodeNodes(void);
-	void DecodeNodes(void);
-
-	unsigned int DimX;		// Width of the map (blocks)
-	unsigned int DimY;		// Height of the map (blocks)
-	unsigned int ImageX;	// Width of the original image
-	unsigned int ImageY;	// Height of the original image
-	unsigned int MapSize;	// (DimX * DimY), the band size in blocks
+	unsigned int DimX;		// Width of the map (pxls)
+	unsigned int DimY;		// Height of the map (pxls)
+	unsigned int MapSize;	// (DimX * DimY)
 	char * pMap;			// Directional map information
-	short * pDist;			// Distortion difference
-
-	float weightL;			// Low band weight
-	float weightH;			// High band weight
 
 private:
+	static const char LUT1[5];
+	static const char LUT2[9];
 
 	CMap * pLow, * pHigh;	// Pointers to low and high direction map
-	CBitCodec DirCodec;		// Context coder for directions
-	CBitCodec NodeCodec;	// Context coder for nodes
-	CBitCodec LeafCodec;	// Context coder for nodes direction
-
-	int treeDepth;
-	node * pTree[MAX_TREE_DEPTH];
-
-	node * pNodes;
-
-	void SetDir(int Dir, int x, int y, int depth);
-	void ApplyTree(int x, int y, int depth);
-
-	void SetDir(int Dir, int x, int y);
-	void ApplyNodes(int x, int y);
-	void CodeNodes(int x, int y, int context);
-	void DecodeNodes(int x, int y, int context);
-
-// 	static void GetDirBlock(float * pBlock, int Stride, short * Result);
-// 	static void GetDirBlock(float * pBlock, int Stride, short * Result
-// 			, int BitField);
-// 	static void GetDirBlockDiag(float * pBlock, int Stride, short * Result);
-// 	static void GetDirBlockDiag(float * pBlock, int Stride, short * Result
-// 			, int BitField);
 };
 
 }
