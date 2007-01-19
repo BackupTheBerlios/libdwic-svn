@@ -60,8 +60,8 @@ CMap::~CMap()
 
 void CMap::Init(int DimX, int DimY)
 {
-	this->DimX = DimX >> 1;
-	this->DimY = DimY >> 1;
+	this->DimX = DimX;
+	this->DimY = DimY;
 	MapSize = this->DimX * this->DimY;
 	if (MapSize != 0)
 		pMap = new char[MapSize];
@@ -77,23 +77,19 @@ void CMap::GetMap(unsigned char * pOut)
 	memcpy(pOut, pMap, MapSize);
 }
 
-void CMap::SelectDir(void)
-{
-	for( int i = 0; i < MapSize; i++){
-		pMap[i] = 0;
-		if (pDist[i] >= 0)
-			pMap[i] = 1;
-	}
-
-	return;
-}
-
-void CMap::GetImageDist(float * pImage1, float * pImage2, int stride)
+/**
+ * fills pMap with the best local direction, estimated from 2 prediction images
+ * along the H and V directions
+ * @param pImage1
+ * @param pImage2
+ * @param stride
+ */
+void CMap::SelectDir(float * pImage1, float * pImage2, int stride)
 {
 	char * pDir = this->pMap;
 	int diff = 2 * stride - (DimX << 1);
 	int end = stride * (DimY << 1);
-	int pos1 = 1, pos2 = stride, pos3 = 2 * stride;
+	int pos1 = 1, pos2 = stride, pos3 = 2 * stride + 1;
 
 	for( ; pos1 < end; pos1 += diff, pos2 += diff){
 		for( int stop = pos1 + (DimX << 1); pos1 < stop; pos1 += 2, pos2 += 2){
@@ -115,13 +111,20 @@ void CMap::GetImageDist(float * pImage1, float * pImage2, int stride)
 	pDir[0] = ((pImage1[pos1] + pImage1[pos2]) > 0) << 1;
 }
 
-void CMap::GetImageDistDiag(float * pImage1, float * pImage2, int stride)
+/**
+ * fills pMap with the best local direction, estimated from 2 prediction images
+ * along the 2 diagonal directions
+ * @param pImage1
+ * @param pImage2
+ * @param stride
+ */
+void CMap::SelectDirDiag(float * pImage1, float * pImage2, int stride)
 {
 	char * pDir = this->pMap;
 	int diff = 2 * stride - (DimX << 1);
 	int end = stride * (DimY << 2);
 
-	for(int pos = 1 + stride; pos < end; pos += diff, pos2 += diff){
+	for(int pos = 1 + stride; pos < end; pos += diff){
 		for( int stop = pos + (DimX << 1); pos < stop; pos += 2){
 			pImage1[pos] = fabsf(pImage1[pos]) - fabsf(pImage2[pos]);
 		}
@@ -152,6 +155,12 @@ void CMap::GetImageDistDiag(float * pImage1, float * pImage2, int stride)
 const char CMap::LUT1[5] = {0, 0, 1, 2, 2};
 const char CMap::LUT2[9] = {0, 0, 0, 0, 1, 2, 2, 2, 2};
 
+/**
+ * Put the interpolated directions from pMap to pOut
+ * use for H/V transform
+ * @param pOut
+ * @param stride
+ */
 void CMap::GetDirs(char * pOut, int stride)
 {
 	char * pDir = this->pMap - DimX - 1;
@@ -179,11 +188,17 @@ void CMap::GetDirs(char * pOut, int stride)
 	}
 }
 
+/**
+ * Put the interpolated directions from pMap to pOut
+ * use for diagonal transform
+ * @param pOut
+ * @param stride
+ */
 void CMap::GetDirsDiag(char * pOut, int stride)
 {
 	char * pDir = this->pMap;
 	int diff = 4 * stride - (DimX << 1);
-	int end = stride * (DimY << 1);
+	int end = stride * ((DimY - 1) << 2);
 	int pos1 = 0, pos2 = stride + 1, pos3 = 2 * stride, pos4 = 3 * stride + 1;
 
 	pOut[pos1] = LUT1[pDir[0] + pDir[1]];
@@ -214,6 +229,7 @@ void CMap::GetDirsDiag(char * pOut, int stride)
 	pOut[pos1 + 2] = pDir[1];
 	pOut[pos3] = pDir[0];
 	pDir += 2, pos1 += 4, pos2 += 4, pos3 += 4, pos4 += 4;
+	pos1 += diff, pos2 += diff, pos3 += diff, pos4 += diff;
 	for( ; pos1 < end; pos1 += diff, pos2 += diff, pos3 += diff, pos4 += diff){
 		pOut[pos1] = LUT2[pDir[-DimX] + pDir[0] + 2 * pDir[1]];
 		pOut[pos3 + 2] = LUT2[pDir[2] + pDir[DimX + 1] + pDir[0] + pDir[1]];
@@ -271,7 +287,6 @@ void CMap::GetDirsDiag(char * pOut, int stride)
 	pOut[pos4 + 2] = 1;
 	pOut[pos1 + 2] = pDir[1];
 	pOut[pos3] = pDir[0];
-	pDir += 2, pos1 += 4, pos2 += 4, pos3 += 4, pos4 += 4;
 }
 
 }

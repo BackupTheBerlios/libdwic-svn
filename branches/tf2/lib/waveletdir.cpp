@@ -78,27 +78,26 @@ void CWaveletDir::Init(int level, int Align)
 	HVBand.Init(DimX >> 1, DimY >> 1, Align);
 	HVHBand.Init(DimX >> 1, DimY >> 2, Align, true);
 	HVLBand.Init(DimX >> 1, DimY >> 2, Align, true);
-	HVMap.Init(DimX, DimY);
-	DMap.Init(DimX, DimY);
+	HVMap.Init(DimX >> 1, DimY >> 1);
+	DMap.Init(DimX >> 1, DimY >> 2);
 	Level = level;
 
 	if (level > 1){
 		pLow = new CWaveletDir(DimX >> 1, DimY >> 1, level - 1, Align, this);
 	}else{
 		LBand.Init(DimX >> 1, DimY >> 1, Align);
-		LMap.Init(DimX >> 1, DimY >> 1);
 	}
 }
 
 void CWaveletDir::SetCodec(CMuxCodec * Codec)
 {
-	HVMap.SetCodec(Codec);
-	DMap.SetCodec(Codec);
+// 	HVMap.SetCodec(Codec);
+// 	DMap.SetCodec(Codec);
 
 	if (pLow != 0)
 		pLow->SetCodec(Codec);
-	else
-		LMap.SetCodec(Codec);
+// 	else
+// 		LMap.SetCodec(Codec);
 }
 
 void CWaveletDir::GetMap(unsigned char * pOut, int level, int Direction)
@@ -148,20 +147,6 @@ void CWaveletDir::GetBand(float * pOut, int level, int Direction)
 	}
 }
 
-void CWaveletDir::GetDist(unsigned char * pOut, int level, int Direction)
-{
-	CWaveletDir * pCurWav = this;
-	while( pCurWav != 0 && pCurWav->Level != level ){
-		pCurWav = pCurWav->pLow;
-	}
-	if (pCurWav != 0) {
-		if (Direction == 0)
-			pCurWav->HVMap.GetDist(pOut);
-		else
-			pCurWav->DMap.GetDist(pOut);
-	}
-}
-
 #define PRINT_STAT(band) \
 	cout << band << " " << Level << " :\t"; \
 	/*cout << "Moyenne : " << Mean << endl;*/ \
@@ -187,81 +172,6 @@ void CWaveletDir::Stats(void)
 	else{
 		LBand.Mean(Mean, Var);
 		PRINT_STAT("L");
-	}
-}
-
-void CWaveletDir::CodeMap(int Options)
-{
-	CWaveletDir * pCurWav = this;
-
-	while( pCurWav->pLow != 0 ){
-		pCurWav = pCurWav->pLow;
-	}
-
-	if (Options == 0) {
-		pCurWav->DMap.Order0Code();
-		pCurWav->HVMap.Order0Code();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.Order0Code();
-			pCurWav->HVMap.Order0Code();
-		}
-	} else if (Options == 1) {
-		pCurWav->DMap.Neighbor4Code();
-		pCurWav->HVMap.Neighbor4Code();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.Neighbor4Code();
-			pCurWav->HVMap.Neighbor4Code();
-		}
-	} else if (Options == 3) {
-		pCurWav->DMap.Neighbor4Code();
-		pCurWav->HVMap.Neighbor4Code();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.TreeCode();
-			pCurWav->HVMap.TreeCode();
-		}
-	} else if (Options == 4) {
-		HVMap.CodeNodes();
-		DMap.CodeNodes();
-	}
-}
-
-void CWaveletDir::DecodeMap(int Options)
-{
-	CWaveletDir * pCurWav = this;
-	while( pCurWav->pLow != 0 ){
-		pCurWav = pCurWav->pLow;
-	}
-
-	if (Options == 0) {
-		pCurWav->DMap.Order0Dec();
-		pCurWav->HVMap.Order0Dec();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.Order0Dec();
-			pCurWav->HVMap.Order0Dec();
-		}
-	} else if (Options == 1) {
-		pCurWav->DMap.Neighbor4Dec();
-		pCurWav->HVMap.Neighbor4Dec();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.Neighbor4Dec();
-			pCurWav->HVMap.Neighbor4Dec();
-		}
-	} else if (Options == 3) {
-		pCurWav->DMap.Neighbor4Dec();
-		pCurWav->HVMap.Neighbor4Dec();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.TreeDec();
-			pCurWav->HVMap.TreeDec();
-		}
-	} else if (Options == 4) {
-		HVMap.DecodeNodes();
-		DMap.DecodeNodes();
 	}
 }
 
@@ -454,25 +364,25 @@ void CWaveletDir::LazyBandI(void)
 
 #define PXL_LIFT_EVEN_DIAG \
 	pCur[0] += (pCur[1+stride] + pCur[-1-stride]) * (Coef[pDir[0]][0]) + \
-	(pCur[-1+stride] + pCur[1-stride]) * (Coef[pDir[0]][1]); \
+	(pCur[-1+stride] + pCur[1-stride]) * (Coef[pDir[0]][1]);/* \
 	pCur[1] += (pCur[2+stride] + pCur[-stride]) * (Coef[pDir[1]][0]) + \
-	(pCur[stride] + pCur[2-stride]) * (Coef[pDir[1]][1]);
+	(pCur[stride] + pCur[2-stride]) * (Coef[pDir[1]][1]);*/
 
 #define PXL_LIFT_EVEN_EDGE_DIAG(BitField) \
 	pCur[0] += ((BitField)&(TOP|LEFT)?2*pCur[1+stride]:pCur[1+stride] + pCur[-1-stride]) * (Coef[pDir[0]][0]) + \
-	((BitField)&TOP?(BitField)&LEFT?2*pCur[1+stride]:pCur[-1+stride]*2:(BitField)&LEFT?2*pCur[1-stride]:pCur[-1+stride] + pCur[1-stride]) * (Coef[pDir[0]][1]); \
+	((BitField)&TOP?(BitField)&LEFT?2*pCur[1+stride]:pCur[-1+stride]*2:(BitField)&LEFT?2*pCur[1-stride]:pCur[-1+stride] + pCur[1-stride]) * (Coef[pDir[0]][1]);/* \
 	pCur[1] += ((BitField)&TOP?(BitField)&RIGHT?2*pCur[stride]:2*pCur[2+stride]:(BitField)&RIGHT?2*pCur[-stride]:pCur[2+stride] + pCur[-stride]) * (Coef[pDir[1]][0]) + \
-	((BitField)&(TOP|RIGHT)?2*pCur[stride]:pCur[stride] + pCur[2-stride]) * (Coef[pDir[1]][1]);
+	((BitField)&(TOP|RIGHT)?2*pCur[stride]:pCur[stride] + pCur[2-stride]) * (Coef[pDir[1]][1]);*/
 
 #define PXL_LIFT_ODD_DIAG \
-	pCur[stride] += (pCur[1+2*stride] + pCur[-1]) * (Coef[pDir[DimX]][0]) + \
-	(pCur[-1+2*stride] + pCur[1]) * (Coef[pDir[DimX]][1]); \
+	/*pCur[stride] += (pCur[1+2*stride] + pCur[-1]) * (Coef[pDir[DimX]][0]) + \
+	(pCur[-1+2*stride] + pCur[1]) * (Coef[pDir[DimX]][1]);*/ \
 	pCur[1+stride] += (pCur[2+2*stride] + pCur[0]) * (Coef[pDir[1+DimX]][0]) + \
 	(pCur[2*stride] + pCur[2]) * (Coef[pDir[1+DimX]][1]);
 
 #define PXL_LIFT_ODD_EDGE_DIAG(BitField) \
-	pCur[stride] += ((BitField)&BOTTOM?(BitField)&LEFT?2*pCur[1]:2*pCur[-1]:(BitField)&LEFT?2*pCur[1+2*stride]:pCur[1+2*stride] + pCur[-1]) * (Coef[pDir[DimX]][0]) + \
-	((BitField)&(BOTTOM|LEFT)?2*pCur[1]:pCur[-1+2*stride] + pCur[1]) * (Coef[pDir[DimX]][1]); \
+	/*pCur[stride] += ((BitField)&BOTTOM?(BitField)&LEFT?2*pCur[1]:2*pCur[-1]:(BitField)&LEFT?2*pCur[1+2*stride]:pCur[1+2*stride] + pCur[-1]) * (Coef[pDir[DimX]][0]) + \
+	((BitField)&(BOTTOM|LEFT)?2*pCur[1]:pCur[-1+2*stride] + pCur[1]) * (Coef[pDir[DimX]][1]);*/ \
 	pCur[1+stride] += ((BitField)&(BOTTOM|RIGHT)?2*pCur[0]:pCur[2+2*stride] + pCur[0]) * (Coef[pDir[1+DimX]][0]) + \
 	((BitField)&BOTTOM?(BitField)&RIGHT?2*pCur[0]:2*pCur[2]:(BitField)&RIGHT?2*pCur[2*stride]:pCur[2*stride] + pCur[2]) * (Coef[pDir[1+DimX]][1]);
 
@@ -545,17 +455,17 @@ void CWaveletDir::LiftBand(float * pCur, int stride, int DimX, int DimY,
 
 void CWaveletDir::Transform97(float * pImage, int stride, float lambda)
 {
-	float * pTmpImage = new float [stride * DimY];
+// 	float * pTmpImage = new float [stride * DimY];
+//
+// 	memcpy(pTmpImage, pImage, stride * DimY * sizeof(float));
+// 	Transform97(pTmpImage, stride, true);
+// 	HVMap.BuidNodes(lambda);
+// 	HVMap.ApplyNodes();
+// 	DMap.BuidNodes(lambda);
+// 	DMap.ApplyNodes();
+	Transform97(pImage, stride, true);
 
-	memcpy(pTmpImage, pImage, stride * DimY * sizeof(float));
-	Transform97(pTmpImage, stride, true);
-	HVMap.BuidNodes(lambda);
-	HVMap.ApplyNodes();
-	DMap.BuidNodes(lambda);
-	DMap.ApplyNodes();
-	Transform97(pImage, stride, false);
-
-	delete[] pTmpImage;
+// 	delete[] pTmpImage;
 }
 
 /**
@@ -575,97 +485,54 @@ void CWaveletDir::Transform97(float * pImage, int stride, float lambda)
  */
 void CWaveletDir::Transform97(float * pImage, int stride, bool getDir)
 {
+	char * pDir = new char [DimX * DimY];
+
 	if (getDir)
 		GetImageDir97(pImage, stride);
-	else if (pHigh != 0) {
-		float * pBand = pHigh->HVBand.pBand;
-		int DimX = pHigh->HVBand.DimX, DimY = pHigh->HVBand.DimY;
-		int stride = pHigh->HVBand.DimXAlign;
-		LiftBand<odd>(pBand, stride, DimX, DimY, ALPHA1, ALPHA2, HVMap.pMap);
-		LiftBand<even>(pBand, stride, DimX, DimY, BETA1, BETA2, HVMap.pMap);
-		LiftBand<odd>(pBand, stride, DimX, DimY, GAMMA1, GAMMA2, HVMap.pMap);
-		LiftBand<even>(pBand, stride, DimX, DimY, DELTA1, DELTA2, HVMap.pMap);
 
-		pHigh->LazyBand();
-	}
-
-	LiftBand<odd>(pImage, stride, DimX, DimY, ALPHA1, ALPHA2, HVMap.pMap);
-	LiftBand<even>(pImage, stride, DimX, DimY, BETA1, BETA2, HVMap.pMap);
-	LiftBand<odd>(pImage, stride, DimX, DimY, GAMMA1, GAMMA2, HVMap.pMap);
-	LiftBand<even>(pImage, stride, DimX, DimY, DELTA1, DELTA2, HVMap.pMap);
+	HVMap.GetDirs(pDir, DimX);
+	LiftBand<odd>(pImage, stride, DimX, DimY, ALPHA1, ALPHA2, pDir);
+	LiftBand<even>(pImage, stride, DimX, DimY, BETA1, BETA2, pDir);
+	LiftBand<odd>(pImage, stride, DimX, DimY, GAMMA1, GAMMA2, pDir);
+	LiftBand<even>(pImage, stride, DimX, DimY, DELTA1, DELTA2, pDir);
 
 	if (getDir)
 		GetImageDirDiag97(pImage, stride);
 
-	LiftBand<diag_odd>(pImage, stride, DimX, DimY, ALPHA1, ALPHA2, DMap.pMap);
-	LiftBand<diag_even>(pImage, stride, DimX, DimY, BETA1, BETA2, DMap.pMap);
-	LiftBand<diag_odd>(pImage, stride, DimX, DimY, GAMMA1, GAMMA2, DMap.pMap);
-	LiftBand<diag_even>(pImage, stride, DimX, DimY, DELTA1, DELTA2, DMap.pMap);
+	DMap.GetDirsDiag(pDir, DimX);
+	LiftBand<diag_odd>(pImage, stride, DimX, DimY, ALPHA1, ALPHA2, pDir);
+	LiftBand<diag_even>(pImage, stride, DimX, DimY, BETA1, BETA2, pDir);
+	LiftBand<diag_odd>(pImage, stride, DimX, DimY, GAMMA1, GAMMA2, pDir);
+	LiftBand<diag_even>(pImage, stride, DimX, DimY, DELTA1, DELTA2, pDir);
 
 	LazyImage(pImage, stride);
 
-// 	HVWav.Transform97(HVBand.pBand, HVBand.DimXAlign);
-
-	if (pLow != 0){
+	delete[] pDir;
+	if (pLow != 0)
 		pLow->Transform97(pImage, stride, getDir);
-	} else {
-		if (getDir)
-			GetBandDir97();
-		else {
-			float * pBand = HVBand.pBand;
-			int DimX = HVBand.DimX, DimY = HVBand.DimY;
-			int stride = HVBand.DimXAlign;
-			LiftBand<odd>(pBand, stride, DimX, DimY, ALPHA1, ALPHA2, LMap.pMap);
-			LiftBand<even>(pBand, stride, DimX, DimY, BETA1, BETA2, LMap.pMap);
-			LiftBand<odd>(pBand, stride, DimX, DimY, GAMMA1, GAMMA2, LMap.pMap);
-			LiftBand<even>(pBand, stride, DimX, DimY, DELTA1, DELTA2, LMap.pMap);
-
-			LazyBand();
-		}
-	}
 }
 
 void CWaveletDir::Transform97I(float * pImage, int stride)
 {
 	if (pLow != 0)
 		pLow->Transform97I(pImage, stride);
-	else {
-		LazyBandI();
-
-		float * pBand = HVBand.pBand;
-		int DimX = HVBand.DimX, DimY = HVBand.DimY;
-		int stride = HVBand.DimXAlign;
-		LiftBand<even>(pBand, stride, DimX, DimY, -DELTA1, -DELTA2, LMap.pMap);
-		LiftBand<odd>(pBand, stride, DimX, DimY, -GAMMA1, -GAMMA2, LMap.pMap);
-		LiftBand<even>(pBand, stride, DimX, DimY, -BETA1, -BETA2, LMap.pMap);
-		LiftBand<odd>(pBand, stride, DimX, DimY, -ALPHA1, -ALPHA2, LMap.pMap);
-	}
-
-// 	HVWav.Transform97I(HVBand.pBand, HVBand.DimXAlign);
+	char * pDir = new char [DimX * DimY];
 
 	LazyImageI(pImage, stride);
 
-	LiftBand<diag_even>(pImage, stride, DimX, DimY, -DELTA1, -DELTA2, DMap.pMap);
-	LiftBand<diag_odd>(pImage, stride, DimX, DimY, -GAMMA1, -GAMMA2, DMap.pMap);
-	LiftBand<diag_even>(pImage, stride, DimX, DimY, -BETA1, -BETA2, DMap.pMap);
-	LiftBand<diag_odd>(pImage, stride, DimX, DimY, -ALPHA1, -ALPHA2, DMap.pMap);
+	DMap.GetDirsDiag(pDir, DimX);
+	LiftBand<diag_even>(pImage, stride, DimX, DimY, -DELTA1, -DELTA2, pDir);
+	LiftBand<diag_odd>(pImage, stride, DimX, DimY, -GAMMA1, -GAMMA2, pDir);
+	LiftBand<diag_even>(pImage, stride, DimX, DimY, -BETA1, -BETA2, pDir);
+	LiftBand<diag_odd>(pImage, stride, DimX, DimY, -ALPHA1, -ALPHA2, pDir);
 
-	LiftBand<even>(pImage, stride, DimX, DimY, -DELTA1, -DELTA2, HVMap.pMap);
-	LiftBand<odd>(pImage, stride, DimX, DimY, -GAMMA1, -GAMMA2, HVMap.pMap);
-	LiftBand<even>(pImage, stride, DimX, DimY, -BETA1, -BETA2, HVMap.pMap);
-	LiftBand<odd>(pImage, stride, DimX, DimY, -ALPHA1, -ALPHA2, HVMap.pMap);
+	HVMap.GetDirs(pDir, DimX);
+	LiftBand<even>(pImage, stride, DimX, DimY, -DELTA1, -DELTA2, pDir);
+	LiftBand<odd>(pImage, stride, DimX, DimY, -GAMMA1, -GAMMA2, pDir);
+	LiftBand<even>(pImage, stride, DimX, DimY, -BETA1, -BETA2, pDir);
+	LiftBand<odd>(pImage, stride, DimX, DimY, -ALPHA1, -ALPHA2, pDir);
 
-	if (pHigh != 0) {
-		pHigh->LazyBandI();
-
-		float * pBand = pHigh->HVBand.pBand;
-		int DimX = pHigh->HVBand.DimX, DimY = pHigh->HVBand.DimY;
-		int stride = pHigh->HVBand.DimXAlign;
-		LiftBand<even>(pBand, stride, DimX, DimY, -DELTA1, -DELTA2, HVMap.pMap);
-		LiftBand<odd>(pBand, stride, DimX, DimY, -GAMMA1, -GAMMA2, HVMap.pMap);
-		LiftBand<even>(pBand, stride, DimX, DimY, -BETA1, -BETA2, HVMap.pMap);
-		LiftBand<odd>(pBand, stride, DimX, DimY, -ALPHA1, -ALPHA2, HVMap.pMap);
-	}
+	delete[] pDir;
 }
 
 void CWaveletDir::SetWeight97(void)
@@ -677,12 +544,6 @@ void CWaveletDir::SetWeight97(void)
 		HVHBand.Weight = pHigh->HVLBand.Weight;
 		HVLBand.Weight = DLBand.Weight * XI;
 		LBand.Weight = HVLBand.Weight * XI;
-
-		HVMap.weightH = pHigh->HVMap.weightL;
-		HVMap.weightL = HVMap.weightH * XI * XI;
-		DMap.weightH = pHigh->DMap.weightL;
-		DMap.weightL = DMap.weightH * XI * XI;
-
 	}else{
 		DHBand.Weight = 1./(XI * XI);
 		DLBand.Weight = 1.;
@@ -690,24 +551,16 @@ void CWaveletDir::SetWeight97(void)
 		HVHBand.Weight = 1./XI;
 		HVLBand.Weight = XI;
 		LBand.Weight = XI * XI;
-
-		HVMap.weightL = 1./XI;
-		DMap.weightL = 1.;
-		DMap.weightH = 1./ (XI * XI);
 	}
 	if (pLow != 0)
 		pLow->SetWeight97();
-	else {
-		LMap.weightH = HVMap.weightL;
-		LMap.weightL = LMap.weightH * XI * XI;
-	}
 }
 
 void CWaveletDir::GetImageDir97(float * pImage, int stride)
 {
 	float * pImage1 = new float [DimX * DimY];
 	float * pImage2 = new float [DimX * DimY];
-	float * pBand1 = 0, * pBand2 = 0;
+	char * pDir = new char [DimX * DimY];
 	float * pCur = pImage, * pCur1 = pImage1, * pCur2 = pImage2;
 
 	// copie de l'image x2
@@ -719,103 +572,32 @@ void CWaveletDir::GetImageDir97(float * pImage, int stride)
 		pCur2 += DimX;
 	}
 
-	// copie de la bande HV
-	if (pHigh != 0) {
-		pBand1 = new float [DimX * DimY];
-		pBand2 = new float [DimX * DimY];
-		pCur = pHigh->HVBand.pBand;
-		pCur1 = pBand1;
-		pCur2 = pBand2;
-		for( int i = 0; i < DimY; i++){
-			memcpy(pCur1, pCur, DimX * sizeof(float));
-			memcpy(pCur2, pCur, DimX * sizeof(float));
-			pCur += pHigh->HVBand.DimXAlign;
-			pCur1 += DimX;
-			pCur2 += DimX;
-		}
-	}
-
 	// lifting partiel 1
-	HVMap.SetDir(0);
-	LiftBand<odd>(pImage1, DimX, DimX, DimY, ALPHA1, ALPHA2, HVMap.pMap);
-	LiftBand<even>(pImage1, DimX, DimX, DimY, BETA1, BETA2, HVMap.pMap);
-	LiftBand<odd>(pImage1, DimX, DimX, DimY, GAMMA1, GAMMA2, HVMap.pMap);
-	if (pHigh != 0) {
-		LiftBand<odd>(pBand1, DimX, DimX, DimY, ALPHA1, ALPHA2, HVMap.pMap);
-		LiftBand<even>(pBand1, DimX, DimX, DimY, BETA1, BETA2, HVMap.pMap);
-		LiftBand<odd>(pBand1, DimX, DimX, DimY, GAMMA1, GAMMA2, HVMap.pMap);
-	}
+	memset(pDir, 0, DimX * DimY);
+	LiftBand<odd>(pImage1, DimX, DimX, DimY, ALPHA1, ALPHA2, pDir);
+	LiftBand<even>(pImage1, DimX, DimX, DimY, BETA1, BETA2, pDir);
+	LiftBand<odd>(pImage1, DimX, DimX, DimY, GAMMA1, GAMMA2, pDir);
 
 	// lifting partiel 2
-	HVMap.SetDir(2);
-	LiftBand<odd>(pImage2, DimX, DimX, DimY, ALPHA1, ALPHA2, HVMap.pMap);
-	LiftBand<even>(pImage2, DimX, DimX, DimY, BETA1, BETA2, HVMap.pMap);
-	LiftBand<odd>(pImage2, DimX, DimX, DimY, GAMMA1, GAMMA2, HVMap.pMap);
-	if (pHigh != 0) {
-		LiftBand<odd>(pBand2, DimX, DimX, DimY, ALPHA1, ALPHA2, HVMap.pMap);
-		LiftBand<even>(pBand2, DimX, DimX, DimY, BETA1, BETA2, HVMap.pMap);
-		LiftBand<odd>(pBand2, DimX, DimX, DimY, GAMMA1, GAMMA2, HVMap.pMap);
-	}
+	memset(pDir, 2, DimX * DimY);
+	LiftBand<odd>(pImage2, DimX, DimX, DimY, ALPHA1, ALPHA2, pDir);
+	LiftBand<even>(pImage2, DimX, DimX, DimY, BETA1, BETA2, pDir);
+	LiftBand<odd>(pImage2, DimX, DimX, DimY, GAMMA1, GAMMA2, pDir);
 
 	// calcul des distortions
-	if (pHigh == 0)
-		HVMap.GetImageDist(pImage1, pImage2, DimX);
-	else
-		HVMap.GetImageDist(pImage1, pImage2, pBand1, pBand2, DimX);
-
-	HVMap.SelectDir();
+	HVMap.SelectDir(pImage1, pImage2, DimX);
 
 	// desallocation de la mémoire
 	delete[] pImage1;
 	delete[] pImage2;
-	delete[] pBand1;
-	delete[] pBand2;
-}
-
-void CWaveletDir::GetBandDir97(void)
-{
-	float * pBand1 = new float [HVBand.BandSize];
-	float * pBand2 = new float [HVBand.BandSize];
-	float * pCur = HVBand.pBand, * pCur1 = pBand1, * pCur2 = pBand2;
-	int stride = HVBand.DimXAlign;
-	int DimX = HVBand.DimX;
-	int DimY = HVBand.DimY;
-
-	// copie de la bande HV
-	for( int i = 0; i < HVBand.DimY; i++){
-		memcpy(pCur1, pCur, HVBand.DimX * sizeof(float));
-		memcpy(pCur2, pCur, HVBand.DimX * sizeof(float));
-		pCur += stride;
-		pCur1 += stride;
-		pCur2 += stride;
-	}
-
-	// lifting partiel 1
-	LMap.SetDir(0);
-	LiftBand<odd>(pBand1, stride, DimX, DimY, ALPHA1, ALPHA2, LMap.pMap);
-	LiftBand<even>(pBand1, stride, DimX, DimY, BETA1, BETA2, LMap.pMap);
-	LiftBand<odd>(pBand1, stride, DimX, DimY, GAMMA1, GAMMA2, LMap.pMap);
-
-	// lifting partiel 2
-	LMap.SetDir(2);
-	LiftBand<odd>(pBand2, stride, DimX, DimY, ALPHA1, ALPHA2, LMap.pMap);
-	LiftBand<even>(pBand2, stride, DimX, DimY, BETA1, BETA2, LMap.pMap);
-	LiftBand<odd>(pBand2, stride, DimX, DimY, GAMMA1, GAMMA2, LMap.pMap);
-
-	// calcul des distortions
-	LMap.GetImageDist(pBand1, pBand2, stride);
-
-	LMap.SelectDir();
-
-	// desallocation de la mémoire
-	delete[] pBand1;
-	delete[] pBand2;
+	delete[] pDir;
 }
 
 void CWaveletDir::GetImageDirDiag97(float * pImage, int stride)
 {
 	float * pImage1 = new float [DimX * DimY];
 	float * pImage2 = new float [DimX * DimY];
+	char * pDir = new char [DimX * DimY];
 	float * pCur = pImage, * pCur1 = pImage1, * pCur2 = pImage2;
 
 	// copie de l'image x2
@@ -828,24 +610,24 @@ void CWaveletDir::GetImageDirDiag97(float * pImage, int stride)
 	}
 
 	// lifting partiel 1
-	DMap.SetDir(0);
-	LiftBand<diag_odd>(pImage1, DimX, DimX, DimY, ALPHA1, ALPHA2, DMap.pMap);
-	LiftBand<diag_even>(pImage1, DimX, DimX, DimY, BETA1, BETA2, DMap.pMap);
-	LiftBand<diag_odd>(pImage1, DimX, DimX, DimY, GAMMA1, GAMMA2, DMap.pMap);
+	memset(pDir, 0, DimX * DimY);
+	LiftBand<diag_odd>(pImage1, DimX, DimX, DimY, ALPHA1, ALPHA2, pDir);
+	LiftBand<diag_even>(pImage1, DimX, DimX, DimY, BETA1, BETA2, pDir);
+	LiftBand<diag_odd>(pImage1, DimX, DimX, DimY, GAMMA1, GAMMA2, pDir);
 
 	// lifting partiel 2
-	DMap.SetDir(2);
-	LiftBand<diag_odd>(pImage2, DimX, DimX, DimY, ALPHA1, ALPHA2, DMap.pMap);
-	LiftBand<diag_even>(pImage2, DimX, DimX, DimY, BETA1, BETA2, DMap.pMap);
-	LiftBand<diag_odd>(pImage2, DimX, DimX, DimY, GAMMA1, GAMMA2, DMap.pMap);
+	memset(pDir, 2, DimX * DimY);
+	LiftBand<diag_odd>(pImage2, DimX, DimX, DimY, ALPHA1, ALPHA2, pDir);
+	LiftBand<diag_even>(pImage2, DimX, DimX, DimY, BETA1, BETA2, pDir);
+	LiftBand<diag_odd>(pImage2, DimX, DimX, DimY, GAMMA1, GAMMA2, pDir);
 
 	// calcul des distortions
-	DMap.GetImageDistDiag(pImage1, pImage2, DimX);
- 	DMap.SelectDir();
+	DMap.SelectDirDiag(pImage1, pImage2, DimX);
 
 	// desallocation de la mémoire
 	delete[] pImage1;
 	delete[] pImage2;
+	delete[] pDir;
 }
 
 unsigned int CWaveletDir::TSUQ(float Quant, float Thres)

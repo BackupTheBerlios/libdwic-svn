@@ -48,7 +48,10 @@ public:
 	void SetDir(char Sel);
 	void GetMap(unsigned char * pOut);
 
-	void SelectDir(float * pImage, int stride);
+	void SelectDir(float * pImage1, float * pImage2, int stride);
+	void SelectDirDiag(float * pImage1, float * pImage2, int stride);
+	void GetDirs(char * pOut, int stride);
+	void GetDirsDiag(char * pOut, int stride);
 
 	unsigned int DimX;		// Width of the map (pxls)
 	unsigned int DimY;		// Height of the map (pxls)

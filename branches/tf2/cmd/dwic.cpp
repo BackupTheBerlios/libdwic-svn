@@ -48,6 +48,9 @@ using namespace libdwic;
 #define BAD_MAGIC		2
 #define UNKNOW_TYPE		3
 
+#define WAV_LEVELS 2
+#define TABOO_LEN 2
+
 template <class Pxl>
 void BW2RGB(Pxl * pIn, int stride, Pxl offset = 0)
 {
@@ -72,7 +75,7 @@ void Map2PNG(CWaveletDir & Wavelet, string & outfile)
 	int MapDimX = Wavelet.GetDimX() >> 1;
 	int MapDimY = Wavelet.GetDimY() >> 1;
 	unsigned char * pMap = new unsigned char [MapDimX * MapDimY * 3];
-	for( int i = 5; i > 0; i--){
+	for( int i = WAV_LEVELS; i > 0; i--){
 		Wavelet.GetMap(pMap, i, 0);
 		BW2RGB(pMap, MapDimX * MapDimY);
 		Image map1(MapDimX, MapDimY, "RGB", CharPixel, pMap);
@@ -81,6 +84,8 @@ void Map2PNG(CWaveletDir & Wavelet, string & outfile)
 		char tmp[8];
 		sprintf(tmp, "MapHV%i.png", i);
 		map1.write(outfile + tmp);
+
+		MapDimY >>= 1;
 		Wavelet.GetMap(pMap, i, 1);
 		BW2RGB(pMap, MapDimX * MapDimY);
 		Image map2(MapDimX, MapDimY, "RGB", CharPixel, pMap);
@@ -89,33 +94,6 @@ void Map2PNG(CWaveletDir & Wavelet, string & outfile)
 		sprintf(tmp, "MapD%i.png", i);
 		map2.write(outfile + tmp);
 		MapDimX >>= 1;
-		MapDimY >>= 1;
-	}
-	delete[] pMap;
-}
-
-void Dist2PNG(CWaveletDir & Wavelet, string & outfile)
-{
-
-	int MapDimX = Wavelet.GetDimX() >> 1;
-	int MapDimY = Wavelet.GetDimY() >> 1;
-	unsigned char * pMap = new unsigned char [MapDimX * MapDimY * 3];
-	for( int i = 5; i > 0; i--){
-		Wavelet.GetDist(pMap, i, 0);
-		BW2RGB(pMap, MapDimX * MapDimY);
-		Image map1(MapDimX, MapDimY, "RGB", CharPixel, pMap);
-		map1.type( GrayscaleType );
-		char tmp[8];
-		sprintf(tmp, "HV%i.png", i);
-		map1.write(outfile + tmp);
-		Wavelet.GetDist(pMap, i, 1);
-		BW2RGB(pMap, MapDimX * MapDimY);
-		Image map2(MapDimX, MapDimY, "RGB", CharPixel, pMap);
-		map2.type( GrayscaleType );
-		sprintf(tmp, "D%i.png", i);
-		map2.write(outfile + tmp);
-		MapDimX >>= 1;
-		MapDimY >>= 1;
 	}
 	delete[] pMap;
 }
@@ -183,9 +161,6 @@ typedef union {
 	char last;
 } Header;
 
-#define WAV_LEVELS 5
-#define TABOO_LEN 2
-
 void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 				   int Type)
 {
@@ -218,19 +193,29 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		CWaveletDir Wavelet(img.columns(), img.rows(), WAV_LEVELS);
 		Wavelet.SetWeight97();
 		Wavelet.SetCodec(&Codec);
-		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant] * .75f);
+		Wavelet.Transform97(ImgPixels, img.columns(), 0.f);
 
 // 		Wavelet.Stats();
-// 		Map2PNG(Wavelet, outfile);
-// 		Dist2PNG(Wavelet, outfile);
+ 		Map2PNG(Wavelet, outfile);
 
-		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
+// 		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
 
 // 		Band2PNG(Wavelet, outfile);
 
-		Wavelet.CodeMap(4);
+// 		Wavelet.CodeMap(4);
 
-		Wavelet.CodeBand(&Codec, 3);
+// 		Wavelet.CodeBand(&Codec, 3);
+
+		Wavelet.Transform97I(ImgPixels, img.columns());
+
+		FLOAT2CHAR(ImgPixels, img.columns() * img.rows());
+		BW2RGB((unsigned char *)ImgPixels, img.columns() * img.rows());
+		Image img2(img.columns(), img.rows(), "RGB", CharPixel, ImgPixels);
+		img2.type( GrayscaleType );
+		img2.depth(8);
+	// img.display();
+
+		img2.write(outfile + ".png");
 
 		pEnd = Codec.endCoding();
 	} else {
@@ -274,7 +259,7 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 		CWaveletDir Wavelet(width, heigth, WAV_LEVELS);
 		Wavelet.SetWeight97();
 		Wavelet.SetCodec(&Codec);
-		Wavelet.DecodeMap(4);
+// 		Wavelet.DecodeMap(4);
 		Wavelet.DecodeBand(&Codec, 3);
 		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
 		Wavelet.Transform97I(ImgPixels, width);

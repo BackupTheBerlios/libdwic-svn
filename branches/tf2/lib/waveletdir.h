@@ -87,8 +87,6 @@ public:
 	void SetWeight97(void);
 
 	void SetCodec(CMuxCodec * Codec);
-	void CodeMap(int Options = 0);
-	void DecodeMap(int Options = 0);
 	void CodeBand(CMuxCodec * pCodec, int method = 1);
 	void DecodeBand(CMuxCodec * pCodec, int method = 1);
 
