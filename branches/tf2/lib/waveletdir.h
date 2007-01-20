@@ -56,7 +56,7 @@ typedef enum lift {even, odd, diag_even, diag_odd};
 #define DELTA (15./32.)
 // #define XI 1.13137085
 
-#define MOD		.125
+#define MOD		0
 #define ALPHA1	(ALPHA * MOD)
 #define ALPHA2	(ALPHA * (1-MOD))
 #define BETA1	(BETA * MOD)

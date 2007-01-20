@@ -289,4 +289,71 @@ void CMap::GetDirsDiag(char * pOut, int stride)
 	pOut[pos3] = pDir[0];
 }
 
+void CMap::SetNoDir(float * pBand, int stride)
+{
+	char * pDir = this->pMap;
+	int diff = stride - DimX;
+	int end = stride * DimY;
+	int pos = 0;
+
+	for( ; pos < end; pos += diff)
+		for( int stop = pos + DimX; pos < stop; pos++, pDir++)
+			if (pBand[pos] == 0) *pDir = 1;
+
+	pDir = this->pMap;
+
+	char * pTmp, * ptr = new char [MapSize];
+	pTmp = ptr;
+	memcpy(pTmp, pDir, MapSize);
+
+
+	if (pDir[0] == 1)
+		pDir[0] = LUT1[pTmp[1] + pTmp[DimX]];
+	pDir++, pTmp++;
+	for( char * pEnd = pDir + DimX - 2; pDir < pEnd; pDir++, pTmp++){
+		if (pDir[0] == 1)
+			pDir[0] = LUT2[pTmp[-1] + pTmp[1] + pTmp[DimX] * 2];
+	}
+	if (pDir[0] == 1)
+		pDir[0] = LUT1[pTmp[-1] + pTmp[DimX]];
+	pDir++, pTmp++;
+	for( char * pEnd = pDir + MapSize - 2 * DimX; pDir < pEnd; ){
+		if (pDir[0] == 1)
+			pDir[0] = LUT2[pTmp[1] * 2 + pTmp[-DimX] + pTmp[DimX]];
+		pDir++, pTmp++;
+		for( char * pEnd = pDir + DimX - 2; pDir < pEnd; pDir++, pTmp++){
+			if (pDir[0] == 1)
+				pDir[0] = LUT2[pTmp[-1] + pTmp[1] + pTmp[-DimX] + pTmp[DimX]];
+		}
+		if (pDir[0] == 1)
+			pDir[0] = LUT2[pTmp[-1] * 2 + pTmp[-DimX] + pTmp[DimX]];
+		pDir++, pTmp++;
+	}
+	if (pDir[0] == 1)
+		pDir[0] = LUT1[pTmp[1] + pTmp[-DimX]];
+	pDir++, pTmp++;
+	for( char * pEnd = pDir + DimX - 2; pDir < pEnd; pDir++, pTmp++){
+		if (pDir[0] == 1)
+			pDir[0] = LUT2[pTmp[-1] + pTmp[1] + pTmp[-DimX] * 2];
+	}
+	if (pDir[0] == 1)
+		pDir[0] = LUT1[pTmp[-1] + pTmp[-DimX]];
+
+	delete[] ptr;
+}
+
+void CMap::SetNoDirDiag(float * pHBand, float * pLBand, int stride)
+{
+	char * pDir = this->pMap;
+	int diff = stride - (DimX >> 1);
+	int end = stride * DimY;
+	int pos = 0;
+
+	for( ; pos < end; pos += diff)
+		for( int stop = pos + (DimX >> 1); pos < stop; pos++, pDir += 2) {
+			if (pHBand[pos] == 0) pDir[0] = 1;
+			if (pLBand[pos] == 0) pDir[1] = 1;
+		}
+}
+
 }

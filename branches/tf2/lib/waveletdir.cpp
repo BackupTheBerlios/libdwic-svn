@@ -538,15 +538,16 @@ void CWaveletDir::Transform97I(float * pImage, int stride)
 void CWaveletDir::SetWeight97(void)
 {
 	if (pHigh != 0){
-		DLBand.Weight = pHigh->LBand.Weight;
-		DHBand.Weight = pHigh->DLBand.Weight;
-		HVBand.Weight = DLBand.Weight;
-		HVHBand.Weight = pHigh->HVLBand.Weight;
-		HVLBand.Weight = DLBand.Weight * XI;
-		LBand.Weight = HVLBand.Weight * XI;
+		DLBand.Weight = pHigh->DLBand.Weight * XI * XI;
+		DHBand.Weight = pHigh->DHBand.Weight * XI * XI;
+		HVBand.Weight = pHigh->HVBand.Weight * XI * XI;
+		HVHBand.Weight = pHigh->HVHBand.Weight * XI * XI;
+		HVLBand.Weight = pHigh->HVHBand.Weight * XI * XI;
+		LBand.Weight = pHigh->LBand.Weight * XI * XI;
 	}else{
-		DHBand.Weight = 1./(XI * XI);
-		DLBand.Weight = 1.;
+		DLBand.Weight = DHBand.Weight = 1./XI;
+// 		DHBand.Weight = 1./(XI * XI);
+// 		DLBand.Weight = 1.;
 		HVBand.Weight = 1.;
 		HVHBand.Weight = 1./XI;
 		HVLBand.Weight = XI;
@@ -636,18 +637,21 @@ unsigned int CWaveletDir::TSUQ(float Quant, float Thres)
 	Count += DLBand.TSUQ(Quant, Thres);
 	Count += DHBand.TSUQ(Quant, Thres);
 
-	if (pLow != 0) {
+	Count += HVBand.TSUQ(Quant, Thres);
+
+// 	Count += HVHBand.TSUQ(Quant, Thres);
+// 	Count += HVLBand.TSUQ(Quant, Thres);
+
+	HVMap.SetNoDir(HVBand.pBand, HVBand.DimXAlign);
+
+	if (pHigh)
+		pHigh->DMap.SetNoDirDiag(DHBand.pBand, DLBand.pBand, DHBand.DimXAlign);
+
+	if (pLow != 0)
 		Count += pLow->TSUQ(Quant, Thres);
-		Count += HVHBand.TSUQ(Quant, Thres);
-		Count += HVLBand.TSUQ(Quant, Thres);
-// 		HVWav.TSUQ(Quant, Thres, 1);
-	} else {
+	else
 		Count += LBand.TSUQ(Quant, Quant * .5);
-		Count += HVHBand.TSUQ(Quant, Thres);
-		Count += HVLBand.TSUQ(Quant, Thres);
-// 		Count += HVBand.TSUQ(Quant, Thres);
-// 		HVWav.TSUQ(Quant, Thres, 1);
-	}
+
 	return Count;
 }
 
@@ -656,18 +660,15 @@ void CWaveletDir::TSUQi(float Quant, float RecLevel)
 	DLBand.TSUQi(Quant, RecLevel);
 	DHBand.TSUQi(Quant, RecLevel);
 
-	if (pLow != 0){
+	HVBand.TSUQi(Quant, RecLevel);
+
+// 	HVHBand.TSUQi(Quant, RecLevel);
+// 	HVLBand.TSUQi(Quant, RecLevel);
+
+	if (pLow != 0)
 		pLow->TSUQi(Quant, RecLevel);
-		HVHBand.TSUQi(Quant, RecLevel);
-		HVLBand.TSUQi(Quant, RecLevel);
-// 		HVWav.TSUQi(Quant, RecLevel, 1);
-	} else {
+	else
 		LBand.TSUQi(Quant, 0);
-		HVHBand.TSUQi(Quant, RecLevel);
-		HVLBand.TSUQi(Quant, RecLevel);
-// 		HVBand.TSUQi(Quant, RecLevel);
-// 		HVWav.TSUQi(Quant, RecLevel, 1);
-	}
 }
 
 }

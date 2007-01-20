@@ -52,6 +52,8 @@ public:
 	void SelectDirDiag(float * pImage1, float * pImage2, int stride);
 	void GetDirs(char * pOut, int stride);
 	void GetDirsDiag(char * pOut, int stride);
+	void SetNoDir(float * pBand, int stride);
+	void SetNoDirDiag(float * pHBand, float * pLBand, int stride);
 
 	unsigned int DimX;		// Width of the map (pxls)
 	unsigned int DimY;		// Height of the map (pxls)

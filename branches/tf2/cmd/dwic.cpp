@@ -48,7 +48,7 @@ using namespace libdwic;
 #define BAD_MAGIC		2
 #define UNKNOW_TYPE		3
 
-#define WAV_LEVELS 2
+#define WAV_LEVELS 5
 #define TABOO_LEN 2
 
 template <class Pxl>
@@ -196,9 +196,10 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		Wavelet.Transform97(ImgPixels, img.columns(), 0.f);
 
 // 		Wavelet.Stats();
- 		Map2PNG(Wavelet, outfile);
+//  	Map2PNG(Wavelet, outfile);
 
-// 		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
+		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
+		Wavelet.TSUQi(Quants[Quant], Quants[Quant] * 0);
 
 // 		Band2PNG(Wavelet, outfile);
 
