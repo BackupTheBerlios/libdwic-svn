@@ -3,22 +3,20 @@
 Q=( 30 28 26 24 22 20 18 16 14 12 10 8 6 4 2 0 )
 Qu=( 10 20 30 40 50 60 70 80 90 93 96 )
 
+OUT_IMAGE="test.pgm"
 
-IN_IMAGE="lena.png"
-OUT_IMAGE="test.png"
-
-for IN_IMAGE in *.png ; do
+for IN_IMAGE in *.pgm ; do
 
 	OUT_FILE="test.dwi"
-	BENCH_FILE="${IN_IMAGE%.png}.dwic.dat"
+	BENCH_FILE="${IN_IMAGE%.pgm}.dwic.dat"
 	echo "# Image : $IN_IMAGE" > $BENCH_FILE
 	for q in ${Q[@]} ; do
 		dwic -i $IN_IMAGE -o $OUT_FILE -q $q -v 0
 		tmp=( `ls -l $OUT_FILE` )
 		file_size=${tmp[4]}
 		dwic -i $OUT_FILE -o $OUT_IMAGE
-		tmp=( `compare -metric PSNR $IN_IMAGE $OUT_IMAGE /dev/null | grep dB` )
-		psnr=${tmp[0]}
+		tmp=( `pnmpsnr $IN_IMAGE $OUT_IMAGE 2>&1 ` )
+		psnr=${tmp[((${#tmp[@]}-2))]}
 		echo "$file_size	$psnr" >> $BENCH_FILE
 	done
 	rm $OUT_FILE $OUT_IMAGE
