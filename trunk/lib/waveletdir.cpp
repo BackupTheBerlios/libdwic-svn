@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2006 by Nicolas BOTTI <rududu@laposte.net>              *
+ *   Copyright (C) 2006-2007 Nicolas BOTTI <rududu@laposte.net>            *
  *                                                                         *
  * This software is a computer program whose purpose is to compress        *
  * images.                                                                 *
@@ -46,9 +46,9 @@ CWaveletDir::CWaveletDir(int x, int y, int level, int Align,
 		DimY(y),
 		pHigh(0),
 		pLow(0),
-		HVMap(pHigh == 0 ? (CMap*)0 : &pHigh->HVMap, level + 2),
-		DMap(pHigh == 0 ? (CMap*)0 : &pHigh->DMap, level + 2),
-		LMap(level > 1 ? (CMap*)0 : &HVMap, level + 2)
+		HVMap(pHigh == 0 ? (CMap*)0 : &pHigh->HVMap),
+		DMap(pHigh == 0 ? (CMap*)0 : &pHigh->DMap),
+		LMap(level > 1 ? (CMap*)0 : &HVMap)
 {
 	if (level > MAX_WAV_LEVEL)
 		level = MAX_WAV_LEVEL;
@@ -199,30 +199,6 @@ void CWaveletDir::CodeMap(int Options)
 	}
 
 	if (Options == 0) {
-		pCurWav->DMap.Order0Code();
-		pCurWav->HVMap.Order0Code();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.Order0Code();
-			pCurWav->HVMap.Order0Code();
-		}
-	} else if (Options == 1) {
-		pCurWav->DMap.Neighbor4Code();
-		pCurWav->HVMap.Neighbor4Code();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.Neighbor4Code();
-			pCurWav->HVMap.Neighbor4Code();
-		}
-	} else if (Options == 3) {
-		pCurWav->DMap.Neighbor4Code();
-		pCurWav->HVMap.Neighbor4Code();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.TreeCode();
-			pCurWav->HVMap.TreeCode();
-		}
-	} else if (Options == 4) {
 		HVMap.CodeNodes();
 		DMap.CodeNodes();
 	}
@@ -236,30 +212,6 @@ void CWaveletDir::DecodeMap(int Options)
 	}
 
 	if (Options == 0) {
-		pCurWav->DMap.Order0Dec();
-		pCurWav->HVMap.Order0Dec();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.Order0Dec();
-			pCurWav->HVMap.Order0Dec();
-		}
-	} else if (Options == 1) {
-		pCurWav->DMap.Neighbor4Dec();
-		pCurWav->HVMap.Neighbor4Dec();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.Neighbor4Dec();
-			pCurWav->HVMap.Neighbor4Dec();
-		}
-	} else if (Options == 3) {
-		pCurWav->DMap.Neighbor4Dec();
-		pCurWav->HVMap.Neighbor4Dec();
-		while( pCurWav->pHigh != 0 ){
-			pCurWav = pCurWav->pHigh;
-			pCurWav->DMap.TreeDec();
-			pCurWav->HVMap.TreeDec();
-		}
-	} else if (Options == 4) {
 		HVMap.DecodeNodes();
 		DMap.DecodeNodes();
 	}
@@ -512,37 +464,41 @@ template <lift lft_opt>
 void CWaveletDir::LiftBand(float * pCur, int stride, int DimX, int DimY,
 						   float Coef1, float Coef2, char * pDir)
 {
-	float Coef[2][2] = {{Coef1, Coef2}, {Coef2, Coef1}};
-	PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], TOP|LEFT);
+	float Coef[3][2] = {
+		{Coef1, Coef2},
+		{Coef2, Coef1},
+		{(Coef1 + Coef2) * .5, (Coef1 + Coef2) * .5}
+	};
+	PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], TOP|LEFT);
 	float * pNextCur = pCur + (stride << 1);
 	pDir++;
 	pCur += 2;
 	for(int i = 2 ; i < DimX - 2; i += 2, pDir++, pCur += 2){
-		PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], TOP);
+		PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], TOP);
 	}
-	PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], TOP|RIGHT);
+	PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], TOP|RIGHT);
 	pDir++;
 	for(int j = 2; j < DimY - 2; j += 2){
 		pCur = pNextCur;
 		pNextCur += stride << 1;
-		PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], LEFT);
+		PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], LEFT);
 		pCur += 2;
 		pDir++;
 		for(int i = 2; i < DimX - 2; i += 2, pDir++, pCur += 2){
-			PXL_LIFT(Coef[0][*pDir], Coef[1][*pDir]);
+			PXL_LIFT(Coef[*pDir][0], Coef[*pDir][1]);
 		}
-		PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], RIGHT);
+		PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], RIGHT);
 		pDir++;
 	}
 	pCur = pNextCur;
 	pNextCur += stride << 1;
-	PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], BOTTOM|LEFT);
+	PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], BOTTOM|LEFT);
 	pDir++;
 	pCur += 2;
 	for(int i = 2 ; i < DimX - 2; i += 2, pDir++, pCur += 2){
-		PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], BOTTOM);
+		PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], BOTTOM);
 	}
-	PXL_LIFT_EDGE(Coef[0][*pDir], Coef[1][*pDir], BOTTOM|RIGHT);
+	PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], BOTTOM|RIGHT);
 }
 
 void CWaveletDir::Transform97(float * pImage, int stride, float lambda)

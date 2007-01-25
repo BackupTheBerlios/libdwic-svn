@@ -221,14 +221,14 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant] * .75f);
 
 // 		Wavelet.Stats();
-// 		Map2PNG(Wavelet, outfile);
+//  	Map2PNG(Wavelet, outfile);
 // 		Dist2PNG(Wavelet, outfile);
 
 		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
 
 // 		Band2PNG(Wavelet, outfile);
 
-		Wavelet.CodeMap(4);
+		Wavelet.CodeMap(0);
 
 		Wavelet.CodeBand(&Codec, 3);
 
@@ -274,7 +274,7 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 		CWaveletDir Wavelet(width, heigth, WAV_LEVELS);
 		Wavelet.SetWeight97();
 		Wavelet.SetCodec(&Codec);
-		Wavelet.DecodeMap(4);
+		Wavelet.DecodeMap(0);
 		Wavelet.DecodeBand(&Codec, 3);
 		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
 		Wavelet.Transform97I(ImgPixels, width);
@@ -287,6 +287,7 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 	Image img(width, heigth, "RGB", CharPixel, ImgPixels);
 	img.type( GrayscaleType );
 	img.depth(8);
+	img.compressType(UndefinedCompression);
 	// img.display();
 
 	img.write(outfile);

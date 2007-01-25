@@ -180,7 +180,7 @@
   </cppsupportpart>
   <kdevdebugger>
     <general>
-      <programargs>-q 8 -i ~/Documents/Images/Images\ test/lena.png -o ~/Documents/Images/Images\ test/tst.dwi -v 0</programargs>
+      <programargs>-i ~/Documents/Images/Images\ test/lena.png -o ~/Documents/Images/Images\ test/tst.dwi</programargs>
       <gdbpath/>
       <dbgshell>libtool</dbgshell>
       <configGdbScript/>
@@ -197,7 +197,7 @@
     </display>
   </kdevdebugger>
   <ctagspart>
-    <customArguments/>
+    <customArguments>-R --c++-types=+px --excmd=pattern --exclude=Makefile --exclude=&quot;.*&quot; --extra=+q</customArguments>
     <customTagfilePath/>
   </ctagspart>
 </kdevelop>

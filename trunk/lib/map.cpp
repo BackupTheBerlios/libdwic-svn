@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2006 by Nicolas BOTTI <rududu@laposte.net>              *
+ *   Copyright (C) 2006-2007 Nicolas BOTTI <rududu@laposte.net>            *
  *                                                                         *
  * This software is a computer program whose purpose is to compress        *
  * images.                                                                 *
@@ -42,7 +42,7 @@ using namespace std;
 
 namespace libdwic {
 
-CMap::CMap(CMap * pHighMap, int treeDepth):
+CMap::CMap(CMap * pHighMap):
 pMap(0),
 pDist(0),
 pLow(0),
@@ -51,8 +51,6 @@ pNodes(0)
 	pHigh = pHighMap;
 	if (pHigh != 0)
 		pHigh->pLow = this;
-	pTree[0] = 0;
-	this->treeDepth = MIN(treeDepth, MAX_TREE_DEPTH);
 	Init();
 }
 
@@ -62,7 +60,6 @@ CMap::~CMap()
 	delete[] pMap;
 	delete[] pDist;
 	delete[] pNodes;
-	delete[] pTree[0];
 }
 
 void CMap::Init(int DimX, int DimY)
@@ -75,19 +72,14 @@ void CMap::Init(int DimX, int DimY)
 	if (MapSize != 0){
 		pMap = new char[MapSize];
 		pDist = new short[MapSize];
-		pTree[0] = new node[(MapSize - (MapSize >> (2 * treeDepth))) / 3];
 		if (pHigh != 0)
 			pNodes = new node [MapSize];
-		for( int i = 1; i < treeDepth; i++)
-			pTree[i] = pTree[i-1] + (MapSize >> (2 * i));
 	}
 }
 
 void CMap::SetDir(int Dir)
 {
-	for( int i = 0; i < MapSize ; i++){
-		pMap[i] = Dir;
-	}
+	memset(pMap, Dir, MapSize);
 }
 
 void CMap::SetDir(int Dir, int x, int y, int depth)
@@ -125,345 +117,10 @@ void CMap::SetCodec(CMuxCodec * pCodec)
 	LeafCodec.setRange(pCodec);
 }
 
-void CMap::Order0Code(void)
-{
-	DirCodec.InitModel();
-	for( int j = 0; j < DimY; j++){
-		char * pCur = pMap + j * DimX;
-		for( int i = 0; i < DimX; i++ ){
-			DirCodec.code(pCur[i], 0);
-		}
-	}
-}
-
-void CMap::Order0Dec(void)
-{
-	DirCodec.InitModel();
-	for( int j = 0; j < DimY; j++){
-		char * pCur = pMap + j * DimX;
-		for( int i = 0; i < DimX; i++ ){
-			pCur[i] = DirCodec.decode(0);
-		}
-	}
-}
-
-void CMap::Neighbor4Code(void)
-{
-	char * pCur = pMap;
-	unsigned int context;
-	DirCodec.InitModel();
-
-	DirCodec.code(pCur[0], 2);
-	for( int i = 1; i < DimX; i++ ){
-		context = pCur[i - 1] * 2 + 1;
-		DirCodec.code(pCur[i], context);
-	}
-
-	for( int j = 1; j < DimY; j++){
-		pCur += DimX;
-		context = pCur[-DimX] + pCur[1 - DimX] + 1;
-		DirCodec.code(pCur[0], context);
-		int i = 1;
-		for( ; i < DimX - 1; i++ ){
-			context = pCur[i - 1] + pCur[i - 1 - DimX] + pCur[i - DimX]
-					+ pCur[i + 1 - DimX];
-			DirCodec.code(pCur[i], context);
-		}
-		context = pCur[i - 1] + pCur[i - DimX] + 1;
-		DirCodec.code(pCur[i], context);
-	}
-}
-
-void CMap::Neighbor4Dec(void)
-{
-	char * pCur = pMap;
-	unsigned int context;
-	DirCodec.InitModel();
-
-	pCur[0] = DirCodec.decode(2);
-	for( int i = 1; i < DimX; i++ ){
-		context = pCur[i - 1] * 2 + 1;
-		pCur[i] = DirCodec.decode(context);
-	}
-
-	for( int j = 1; j < DimY; j++){
-		pCur += DimX;
-		context = pCur[-DimX] + pCur[1 - DimX] + 1;
-		pCur[0] = DirCodec.decode(context);
-		int i = 1;
-		for( ; i < DimX - 1; i++ ){
-			context = pCur[i - 1] + pCur[i - 1 - DimX]
-					+ pCur[i - DimX] + pCur[i + 1 - DimX];
-			pCur[i] = DirCodec.decode(context);
-		}
-		context = pCur[i - 1] + pCur[i - DimX] + 1;
-		pCur[i] = DirCodec.decode(context);
-	}
-}
-
-void CMap::TreeCode(void)
-{
-	char * pCur = pMap;
-	char * pCurLow = pLow->pMap;
-	unsigned int context;
-	DirCodec.InitModel();
-	unsigned int const conv[2] = {pLow->DimX, 0};
-
-	int k = 0;
-	int i = 0;
-	DirCodec.code(pCur[i], 4 | pCurLow[k]);
-	for( i = 1; i < DimX; i++ ){
-		context = pCur[i - 1] * 2 + 1;
-		context = (context << 1) | pCurLow[k];
-		DirCodec.code(pCur[i], context);
-		k += i & 1;
-	}
-
-	for( int j = 1; j < DimY; j++){
-		pCur += DimX;
-		pCurLow += conv[j & 1];
-		k = 0;
-		i = 0;
-		context = pCur[-DimX] + pCur[1 - DimX] + 1;
-		context = (context << 1) | pCurLow[k];
-		DirCodec.code(pCur[i], context);
-		for( i = 1; i < DimX - 1; i++ ){
-			context = pCur[i - 1] + pCur[i - 1 - DimX]
-					+ pCur[i - DimX] + pCur[i + 1 - DimX];
-			context = (context << 1) | pCurLow[k];
-			DirCodec.code(pCur[i], context);
-			k += i & 1;
-		}
-		context = pCur[i - 1] + pCur[i - DimX] + 1;
-		context = (context << 1) | pCurLow[k];
-		DirCodec.code(pCur[i], context);
-	}
-}
-
-void CMap::TreeDec(void)
-{
-	char * pCur = pMap;
-	char * pCurLow = pLow->pMap;
-	unsigned int context;
-	DirCodec.InitModel();
-	unsigned int const conv[2] = {pLow->DimX, 0};
-
-	int k = 0;
-	int i = 0;
-	pCur[i] = DirCodec.decode(4 | pCurLow[k]);
-	for( i = 1; i < DimX; i++ ){
-		context = pCur[i - 1] * 2 + 1;
-		context = (context << 1) | pCurLow[k];
-		pCur[i] = DirCodec.decode(context);
-		k += i & 1;
-	}
-
-	for( int j = 1; j < DimY; j++){
-		pCur += DimX;
-		pCurLow += conv[j & 1];
-		k = 0;
-		i = 0;
-		context = pCur[-DimX] + pCur[1 - DimX] + 1;
-		context = (context << 1) | pCurLow[k];
-		pCur[i] = DirCodec.decode(context);
-		for( i = 1; i < DimX - 1; i++ ){
-			context = pCur[i - 1] + pCur[i - 1 - DimX]
-					+ pCur[i - DimX] + pCur[i + 1 - DimX];
-			context = (context << 1) | pCurLow[k];
-			pCur[i] = DirCodec.decode(context);
-			k += i & 1;
-		}
-		context = pCur[i - 1] + pCur[i - DimX] + 1;
-		context = (context << 1) | pCurLow[k];
-		pCur[i] = DirCodec.decode(context);
-	}
-}
-
-// rate^2 * cst
-// static const unsigned int rate[5][2] =
-// {
-// 	{24, 11300},
-// 	{271, 3089},
-// 	{1024, 1024},
-// 	{3089, 271},
-// 	{11300, 24}
-// };
-
-void CMap::OptimiseDir(float const lambda)
-{
-	char * pCur = pMap;
-	short * pCurDist = pDist;
-	unsigned int context;
-	int const rate[] = { -3246, -1252, 0, 1252, 3246 };
-
-	for( int i = 1; i < DimX; i++ ){
-		context = pCur[i - 1] * 2 + 1;
-		pCur[i] = 0;
-		if ((rate[context] + lambda * pCurDist[i]) > 0)
-			pCur[i] = 1;
-	}
-
-	for( int j = 1; j < DimY; j++){
-		pCur += DimX;
-		pCurDist += DimX;
-		context = pCur[-DimX] + pCur[1 - DimX] + 1;
-		pCur[0] = 0;
-		if ((rate[context] + lambda * pCurDist[0]) > 0)
-			pCur[0] = 1;
-		int i = 1;
-		for( ; i < DimX - 1; i++ ){
-			context = pCur[i - 1] + pCur[i + 1 - DimX]
-					+ pCur[i - 1 - DimX] + pCur[i - DimX];
-			pCur[i] = 0;
-			if ((rate[context] + lambda * pCurDist[i]) > 0)
-				pCur[i] = 1;
-		}
-		context = pCur[i - 1] + pCur[i - DimX] + 1;
-		pCur[i] = 0;
-		if ((rate[context] + lambda * pCurDist[i]) > 0)
-			pCur[i] = 1;
-	}
-}
-
 void CMap::SelectDir(void)
 {
-	for( int i = 0; i < MapSize; i++){
-		pMap[i] = 0;
-		if (pDist[i] >= 0)
-			pMap[i] = 1;
-	}
-
-	return;
-}
-
-void CMap::BuidTree(float const lambda)
-{
-	int width = DimX >> 1;
-	int height = DimY >> 1;
-	short * pCurDist1 = pDist;
-	short * pCurDist2 = pDist + DimX;
-	node * pCurTree = pTree[0];
-
-	for (int j = 0; j < height; j++) {
-		for (int i = 0, k = 0; i < width; i++, k += 2) {
-			pCurTree[i].refDist = pCurDist1[k] + pCurDist1[k + 1]
-					+ pCurDist2[k] + pCurDist2[k + 1];
-			int Dist = 0;
-			if (pCurDist1[k] < 0)
-				Dist += pCurDist1[k];
-			if (pCurDist1[k + 1] < 0)
-				Dist += pCurDist1[k + 1];
-			if (pCurDist2[k] < 0)
-				Dist += pCurDist2[k];
-			if (pCurDist2[k + 1] < 0)
-				Dist += pCurDist2[k + 1];
-			pCurTree[i].dist = Dist;
-			if (pCurTree[i].refDist < 0)
-				Dist -= pCurTree[i].refDist;
-			pCurTree[i].rate = 0;
-			if ((3 + lambda * Dist) < 0)
-				pCurTree[i].rate = 3;
-		}
-		pCurDist1 += DimX * 2;
-		pCurDist2 += DimX * 2;
-		pCurTree += width;
-	}
-
-	for( int l = 1; l < treeDepth; l++){
-		node * pLowTree1 = pTree[l-1];
-		node * pLowTree2 = pLowTree1 + width;
-		pCurTree = pTree[l];
-		int stride2 = width * 2;
-		height >>= 1;
-		width >>= 1;
-
-		for( int j = 0; j < height; j++){
-			for( int i = 0, k = 0; i < width; i++, k += 2){
-				pCurTree[i].refDist = pLowTree1[k].refDist
-						+ pLowTree1[k + 1].refDist + pLowTree2[k].refDist
-						+ pLowTree2[k + 1].refDist;
-				int rate = 7 + pLowTree1[k].rate + pLowTree1[k + 1].rate
-						+ pLowTree2[k].rate + pLowTree2[k + 1].rate;
-				int Dist = 0;
-				if (pLowTree1[k].rate > 0)
-					Dist += pLowTree1[k].dist;
-				else
-					Dist += MIN(0, pLowTree1[k].refDist);
-				if (pLowTree1[k + 1].rate > 0)
-					Dist += pLowTree1[k + 1].dist;
-				else
-					Dist += MIN(0, pLowTree1[k + 1].refDist);
-				if (pLowTree2[k].rate > 0)
-					Dist += pLowTree2[k].dist;
-				else
-					Dist += MIN(0, pLowTree2[k].refDist);
-				if (pLowTree2[k + 1].rate > 0)
-					Dist += pLowTree2[k + 1].dist;
-				else
-					Dist += MIN(0, pLowTree2[k + 1].refDist);
-				pCurTree[i].dist = Dist;
-				if (pCurTree[i].refDist < 0)
-					Dist -= pCurTree[i].refDist;
-				pCurTree[i].rate = 0;
-				if ((rate + lambda * Dist) < 0)
-					pCurTree[i].rate = rate;
-			}
-			pLowTree1 += stride2;
-			pLowTree2 += stride2;
-			pCurTree += width;
-		}
-	}
-}
-
-void CMap::ApplyTree(void)
-{
-	int width = DimX >> treeDepth;
-	int height = DimY >> treeDepth;
-	node * pCurTree = pTree[treeDepth - 1];
-
-	for( int j = 0; j < height; j++){
-		for( int i = 0; i < width; i++){
-			if (pCurTree[i].rate == 0)
-				SetDir(pCurTree[i].refDist < 0 ? 0 : 1, i, j, treeDepth);
-			else
-				ApplyTree(i << 1, j << 1, treeDepth - 1);
-		}
-		pCurTree += width;
-	}
-}
-
-void CMap::ApplyTree(int x, int y, int depth)
-{
-	if (depth == 0){
-		pMap[x + DimX * y] = pDist[x + DimX * y] > 0 ? 1 : 0;
-		pMap[x + 1 + DimX * y] = pDist[x + 1 + DimX * y] > 0 ? 1 : 0;
-		pMap[x + DimX * (y + 1)] = pDist[x + DimX * (y + 1)] > 0 ? 1 : 0;
-		pMap[x + 1 + DimX * (y + 1)] = pDist[x + 1 + DimX * (y + 1)] > 0 ? 1 : 0;
-		return;
-	}
-	node * pCurTree = pTree[depth - 1];
-	int width = DimX >> depth;
-	pCurTree += y * width;
-	if (pCurTree[x].rate == 0)
-		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, depth);
-	else
-		ApplyTree(x << 1, y << 1, depth - 1);
-	x++;
-	if (pCurTree[x].rate == 0)
-		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, depth);
-	else
-		ApplyTree(x << 1, y << 1, depth - 1);
-	pCurTree += width;
-	y++;
-	if (pCurTree[x].rate == 0)
-		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, depth);
-	else
-		ApplyTree(x << 1, y << 1, depth - 1);
-	x--;
-	if (pCurTree[x].rate == 0)
-		SetDir(pCurTree[x].refDist < 0 ? 0 : 1, x, y, depth);
-	else
-		ApplyTree(x << 1, y << 1, depth - 1);
+	for( int i = 0; i < MapSize; i++)
+		pMap[i] = pDist[i] >= 0;
 }
 
 void CMap::BuidNodes(float const lambda)

@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2006 by Nicolas BOTTI <rududu@laposte.net>              *
+ *   Copyright (C) 2006-2007 Nicolas BOTTI <rududu@laposte.net>            *
  *                                                                         *
  * This software is a computer program whose purpose is to compress        *
  * images.                                                                 *
@@ -37,8 +37,6 @@
 
 namespace libdwic {
 
-#define MAX_TREE_DEPTH 5
-
 typedef struct {
 	short rate;		// rate of this tree branch, 0 if the node is a leaf
 	int dist;		// distortion associated with this rate
@@ -51,7 +49,7 @@ typedef struct {
 */
 class CMap{
 public:
-	CMap(CMap * pHighMap, int treeDepth);
+	CMap(CMap * pHighMap);
 
     ~CMap();
 
@@ -65,19 +63,8 @@ public:
 	void GetDist(unsigned char * pOut);
 
 	void SetCodec(CMuxCodec * pCodec);
-	void Order0Code(void);
-	void Order0Dec(void);
-	void Neighbor4Code(void);
-	void Neighbor4Dec(void);
-	void TreeCode(void);
-	void TreeDec(void);
 
-	void OptimiseDir(float const lambda);
-	void BuidTree(float const lambda);
-	void ApplyTree(void);
-// 	void OptimiseDirTree(float const lambda);
 	void SelectDir(void);
-// 	void TreeSum(void);
 
 	void BuidNodes(float const lambda);
 	void ApplyNodes(void);
@@ -102,25 +89,14 @@ private:
 	CBitCodec NodeCodec;	// Context coder for nodes
 	CBitCodec LeafCodec;	// Context coder for nodes direction
 
-	int treeDepth;
-	node * pTree[MAX_TREE_DEPTH];
-
 	node * pNodes;
 
 	void SetDir(int Dir, int x, int y, int depth);
-	void ApplyTree(int x, int y, int depth);
 
 	void SetDir(int Dir, int x, int y);
 	void ApplyNodes(int x, int y);
 	void CodeNodes(int x, int y, int context);
 	void DecodeNodes(int x, int y, int context);
-
-// 	static void GetDirBlock(float * pBlock, int Stride, short * Result);
-// 	static void GetDirBlock(float * pBlock, int Stride, short * Result
-// 			, int BitField);
-// 	static void GetDirBlockDiag(float * pBlock, int Stride, short * Result);
-// 	static void GetDirBlockDiag(float * pBlock, int Stride, short * Result
-// 			, int BitField);
 };
 
 }
