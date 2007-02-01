@@ -87,6 +87,13 @@ typedef enum cmode {code, decode};
 #define MIN(a,b)	\
 	(((a) > (b)) ? (b) : (a))
 
+template<class T>
+__inline__ T min(T const a, T const b, T const c)
+{
+	T tmp = MIN(a,b);
+	return MIN(tmp,c);
+}
+
 #define ALIGN	8
 
 }

@@ -148,20 +148,6 @@ void CWaveletDir::GetBand(float * pOut, int level, int Direction)
 	}
 }
 
-void CWaveletDir::GetDist(unsigned char * pOut, int level, int Direction)
-{
-	CWaveletDir * pCurWav = this;
-	while( pCurWav != 0 && pCurWav->Level != level ){
-		pCurWav = pCurWav->pLow;
-	}
-	if (pCurWav != 0) {
-		if (Direction == 0)
-			pCurWav->HVMap.GetDist(pOut);
-		else
-			pCurWav->DMap.GetDist(pOut);
-	}
-}
-
 #define PRINT_STAT(band) \
 	cout << band << " " << Level << " :\t"; \
 	/*cout << "Moyenne : " << Mean << endl;*/ \
@@ -501,7 +487,7 @@ void CWaveletDir::LiftBand(float * pCur, int stride, int DimX, int DimY,
 	PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], BOTTOM|RIGHT);
 }
 
-void CWaveletDir::Transform97(float * pImage, int stride, float lambda)
+void CWaveletDir::Transform97(float * pImage, int stride, const int lambda)
 {
 	float * pTmpImage = new float [stride * DimY];
 
@@ -665,31 +651,38 @@ void CWaveletDir::GetImageDir97(float * pImage, int stride)
 {
 	float * pImage1 = new float [DimX * DimY];
 	float * pImage2 = new float [DimX * DimY];
-	float * pBand1 = 0, * pBand2 = 0;
-	float * pCur = pImage, * pCur1 = pImage1, * pCur2 = pImage2;
+	float * pImage3 = new float [DimX * DimY];
+	float * pBand1 = 0, * pBand2 = 0, * pBand3 = 0;
+	float * pCur = pImage, * pCur1 = pImage1, * pCur2 = pImage2, * pCur3 = pImage3;
 
-	// copie de l'image x2
+	// copie de l'image x3
 	for( int i = 0; i < DimY; i++){
 		memcpy(pCur1, pCur, DimX * sizeof(float));
 		memcpy(pCur2, pCur, DimX * sizeof(float));
+		memcpy(pCur3, pCur, DimX * sizeof(float));
 		pCur += stride;
 		pCur1 += DimX;
 		pCur2 += DimX;
+		pCur3 += DimX;
 	}
 
 	// copie de la bande HV
 	if (pHigh != 0) {
 		pBand1 = new float [DimX * DimY];
 		pBand2 = new float [DimX * DimY];
+		pBand3 = new float [DimX * DimY];
 		pCur = pHigh->HVBand.pBand;
 		pCur1 = pBand1;
 		pCur2 = pBand2;
+		pCur3 = pBand3;
 		for( int i = 0; i < DimY; i++){
 			memcpy(pCur1, pCur, DimX * sizeof(float));
 			memcpy(pCur2, pCur, DimX * sizeof(float));
+			memcpy(pCur3, pCur, DimX * sizeof(float));
 			pCur += pHigh->HVBand.DimXAlign;
 			pCur1 += DimX;
 			pCur2 += DimX;
+			pCur3 += DimX;
 		}
 	}
 
@@ -715,26 +708,40 @@ void CWaveletDir::GetImageDir97(float * pImage, int stride)
 		LiftBand<odd>(pBand2, DimX, DimX, DimY, GAMMA1, GAMMA2, HVMap.pMap);
 	}
 
+	// lifting partiel 3
+	HVMap.SetDir(2);
+	LiftBand<odd>(pImage3, DimX, DimX, DimY, ALPHA1, ALPHA2, HVMap.pMap);
+	LiftBand<even>(pImage3, DimX, DimX, DimY, BETA1, BETA2, HVMap.pMap);
+	LiftBand<odd>(pImage3, DimX, DimX, DimY, GAMMA1, GAMMA2, HVMap.pMap);
+	if (pHigh != 0) {
+		LiftBand<odd>(pBand3, DimX, DimX, DimY, ALPHA1, ALPHA2, HVMap.pMap);
+		LiftBand<even>(pBand3, DimX, DimX, DimY, BETA1, BETA2, HVMap.pMap);
+		LiftBand<odd>(pBand3, DimX, DimX, DimY, GAMMA1, GAMMA2, HVMap.pMap);
+	}
+
 	// calcul des distortions
 	if (pHigh == 0)
-		HVMap.GetImageDist(pImage1, pImage2, DimX);
+		HVMap.GetImageDist(pImage1, pImage2, pImage3, DimX);
 	else
-		HVMap.GetImageDist(pImage1, pImage2, pBand1, pBand2, DimX);
+		HVMap.GetImageDist(pImage1, pImage2, pImage3, pBand1, pBand2, pBand3, DimX);
 
 	HVMap.SelectDir();
 
 	// desallocation de la mémoire
 	delete[] pImage1;
 	delete[] pImage2;
+	delete[] pImage3;
 	delete[] pBand1;
 	delete[] pBand2;
+	delete[] pBand3;
 }
 
 void CWaveletDir::GetBandDir97(void)
 {
 	float * pBand1 = new float [HVBand.BandSize];
 	float * pBand2 = new float [HVBand.BandSize];
-	float * pCur = HVBand.pBand, * pCur1 = pBand1, * pCur2 = pBand2;
+	float * pBand3 = new float [HVBand.BandSize];
+	float * pCur = HVBand.pBand, * pCur1 = pBand1, * pCur2 = pBand2, * pCur3 = pBand3;
 	int stride = HVBand.DimXAlign;
 	int DimX = HVBand.DimX;
 	int DimY = HVBand.DimY;
@@ -743,9 +750,11 @@ void CWaveletDir::GetBandDir97(void)
 	for( int i = 0; i < HVBand.DimY; i++){
 		memcpy(pCur1, pCur, HVBand.DimX * sizeof(float));
 		memcpy(pCur2, pCur, HVBand.DimX * sizeof(float));
+		memcpy(pCur3, pCur, HVBand.DimX * sizeof(float));
 		pCur += stride;
 		pCur1 += stride;
 		pCur2 += stride;
+		pCur3 += stride;
 	}
 
 	// lifting partiel 1
@@ -760,29 +769,39 @@ void CWaveletDir::GetBandDir97(void)
 	LiftBand<even>(pBand2, stride, DimX, DimY, BETA1, BETA2, LMap.pMap);
 	LiftBand<odd>(pBand2, stride, DimX, DimY, GAMMA1, GAMMA2, LMap.pMap);
 
+	// lifting partiel 3
+	LMap.SetDir(2);
+	LiftBand<odd>(pBand3, stride, DimX, DimY, ALPHA1, ALPHA2, LMap.pMap);
+	LiftBand<even>(pBand3, stride, DimX, DimY, BETA1, BETA2, LMap.pMap);
+	LiftBand<odd>(pBand3, stride, DimX, DimY, GAMMA1, GAMMA2, LMap.pMap);
+
 	// calcul des distortions
-	LMap.GetImageDist(pBand1, pBand2, stride);
+	LMap.GetImageDist(pBand1, pBand2, pBand3, stride);
 
 	LMap.SelectDir();
 
 	// desallocation de la mémoire
 	delete[] pBand1;
 	delete[] pBand2;
+	delete[] pBand3;
 }
 
 void CWaveletDir::GetImageDirDiag97(float * pImage, int stride)
 {
 	float * pImage1 = new float [DimX * DimY];
 	float * pImage2 = new float [DimX * DimY];
-	float * pCur = pImage, * pCur1 = pImage1, * pCur2 = pImage2;
+	float * pImage3 = new float [DimX * DimY];
+	float * pCur = pImage, * pCur1 = pImage1, * pCur2 = pImage2, * pCur3 = pImage3;
 
 	// copie de l'image x2
 	for( int i = 0; i < DimY;i++ ){
 		memcpy(pCur1, pCur, DimX * sizeof(float));
 		memcpy(pCur2, pCur, DimX * sizeof(float));
+		memcpy(pCur3, pCur, DimX * sizeof(float));
 		pCur += stride;
 		pCur1 += DimX;
 		pCur2 += DimX;
+		pCur3 += DimX;
 	}
 
 	// lifting partiel 1
@@ -797,13 +816,20 @@ void CWaveletDir::GetImageDirDiag97(float * pImage, int stride)
 	LiftBand<diag_even>(pImage2, DimX, DimX, DimY, BETA1, BETA2, DMap.pMap);
 	LiftBand<diag_odd>(pImage2, DimX, DimX, DimY, GAMMA1, GAMMA2, DMap.pMap);
 
+	// lifting partiel 3
+	DMap.SetDir(2);
+	LiftBand<diag_odd>(pImage3, DimX, DimX, DimY, ALPHA1, ALPHA2, DMap.pMap);
+	LiftBand<diag_even>(pImage3, DimX, DimX, DimY, BETA1, BETA2, DMap.pMap);
+	LiftBand<diag_odd>(pImage3, DimX, DimX, DimY, GAMMA1, GAMMA2, DMap.pMap);
+
 	// calcul des distortions
-	DMap.GetImageDistDiag(pImage1, pImage2, DimX);
+	DMap.GetImageDistDiag(pImage1, pImage2, pImage3, DimX);
  	DMap.SelectDir();
 
 	// desallocation de la mémoire
 	delete[] pImage1;
 	delete[] pImage2;
+	delete[] pImage3;
 }
 
 unsigned int CWaveletDir::TSUQ(float Quant, float Thres)

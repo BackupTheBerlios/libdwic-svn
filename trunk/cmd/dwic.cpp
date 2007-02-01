@@ -94,32 +94,6 @@ void Map2PNG(CWaveletDir & Wavelet, string & outfile)
 	delete[] pMap;
 }
 
-void Dist2PNG(CWaveletDir & Wavelet, string & outfile)
-{
-
-	int MapDimX = Wavelet.GetDimX() >> 1;
-	int MapDimY = Wavelet.GetDimY() >> 1;
-	unsigned char * pMap = new unsigned char [MapDimX * MapDimY * 3];
-	for( int i = 5; i > 0; i--){
-		Wavelet.GetDist(pMap, i, 0);
-		BW2RGB(pMap, MapDimX * MapDimY);
-		Image map1(MapDimX, MapDimY, "RGB", CharPixel, pMap);
-		map1.type( GrayscaleType );
-		char tmp[8];
-		sprintf(tmp, "HV%i.png", i);
-		map1.write(outfile + tmp);
-		Wavelet.GetDist(pMap, i, 1);
-		BW2RGB(pMap, MapDimX * MapDimY);
-		Image map2(MapDimX, MapDimY, "RGB", CharPixel, pMap);
-		map2.type( GrayscaleType );
-		sprintf(tmp, "D%i.png", i);
-		map2.write(outfile + tmp);
-		MapDimX >>= 1;
-		MapDimY >>= 1;
-	}
-	delete[] pMap;
-}
-
 void Band2PNG(CWaveletDir & Wavelet, string & outfile)
 {
 
@@ -218,11 +192,10 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		CWaveletDir Wavelet(img.columns(), img.rows(), WAV_LEVELS);
 		Wavelet.SetWeight97();
 		Wavelet.SetCodec(&Codec);
-		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant] * .75f);
+		Wavelet.Transform97(ImgPixels, img.columns(), (int) (sqrtf(Quants[Quant]) * 85 + .5));
 
-// 		Wavelet.Stats();
-//  	Map2PNG(Wavelet, outfile);
-// 		Dist2PNG(Wavelet, outfile);
+//		Wavelet.Stats();
+//		Map2PNG(Wavelet, outfile);
 
 		Wavelet.TSUQ(Quants[Quant], Quants[Quant] * Thres);
 

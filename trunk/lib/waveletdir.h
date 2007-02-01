@@ -56,7 +56,7 @@ typedef enum lift {even, odd, diag_even, diag_odd};
 #define DELTA (15./32.)
 // #define XI 1.13137085
 
-#define MOD		.125
+#define MOD		0
 #define ALPHA1	(ALPHA * MOD)
 #define ALPHA2	(ALPHA * (1-MOD))
 #define BETA1	(BETA * MOD)
@@ -82,7 +82,7 @@ public:
 // 	void Transform53(float * pImage, int Stride);
 // 	void Transform53I(float * pImage, int Stride);
 // 	void SetWeight53(void);
-	void Transform97(float * pImage, int stride, float lambda);
+	void Transform97(float * pImage, int stride, const int lambda);
 	void Transform97I(float * pImage, int Stride);
 	void SetWeight97(void);
 
@@ -100,7 +100,6 @@ public:
 	void SetDir(int Sel);
 	void GetMap(unsigned char * pOut, int level, int Direction);
 	void GetBand(float * pOut, int level, int Direction);
-	void GetDist(unsigned char * pOut, int level, int Direction);
 
 	int GetDimX(void){ return DimX;}
 	int GetDimY(void){ return DimY;}
