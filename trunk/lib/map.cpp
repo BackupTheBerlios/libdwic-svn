@@ -193,7 +193,7 @@ void CMap::BuidNodes(const int lambda)
 				pCurNodes[i].dist = Dist;
 				Dist -= min(0, pCurNodes[i].d0, pCurNodes[i].d1);
 				pCurNodes[i].rate = 0;
-				if ((rate * lambda + Dist) < 0)
+				if ((rate * lambda + Dist) <= 0)
 					pCurNodes[i].rate = rate;
 			}
 			pHighNodes1 += stride2;
