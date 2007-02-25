@@ -192,12 +192,6 @@ void CWaveletDir::Stats(void)
 
 void CWaveletDir::CodeMap(int Options)
 {
-	CWaveletDir * pCurWav = this;
-
-	while( pCurWav->pLow != 0 ){
-		pCurWav = pCurWav->pLow;
-	}
-
 	if (Options == 0) {
 		HVMap.CodeNodes();
 		DMap.CodeNodes();
@@ -206,11 +200,6 @@ void CWaveletDir::CodeMap(int Options)
 
 void CWaveletDir::DecodeMap(int Options)
 {
-	CWaveletDir * pCurWav = this;
-	while( pCurWav->pLow != 0 ){
-		pCurWav = pCurWav->pLow;
-	}
-
 	if (Options == 0) {
 		HVMap.DecodeNodes();
 		DMap.DecodeNodes();
