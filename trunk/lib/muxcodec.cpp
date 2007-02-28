@@ -35,63 +35,62 @@
 
 namespace libdwic {
 
-CMuxCodec::CMuxCodec(unsigned char *pStream, unsigned char firstByte){
-	initCoder(firstByte, pStream);
+CMuxCodec::CMuxCodec(unsigned char *pStream, unsigned short firstWord){
+	initCoder(firstWord, pStream);
 }
 
 CMuxCodec::CMuxCodec(unsigned char *pStream){
 	initDecoder(pStream);
 }
 
-void CMuxCodec::initCoder(unsigned char firstByte = 0,
+void CMuxCodec::initCoder(unsigned short firstWord = 0,
 						  unsigned char *pOutStream = 0){
-	lowRange = 0;
-	range = MAX_RANGE;
+	low = firstWord << 16;
+	range = MIN_RANGE << 4;
 	outCount = 0;
 	nbBits = 0;
 	pReserved = 0;
 	if (pOutStream != 0){
-		pStream = pOutStream + 5;
-		pInitStream = pOutStream + 1;
-		carryBuff = firstByte << 1;
-		for( int i = 0; i < 5; i++)
+		pStream = pOutStream + 4;
+		pInitStream = pOutStream + 2;
+		for( int i = 0; i < 4; i++)
 			pLast[i] = pOutStream + i;
 	}
 }
 
-void CMuxCodec::initDecoder(unsigned char *pInStream){
-	range = 0x80;
+void CMuxCodec::initDecoder(unsigned char *pInStream)
+{
+	range = MIN_RANGE << 4;
 	nbBits = 0;
 	if (pInStream){
-		pInitStream = pInStream + 1;
-		pStream = pInStream + 1;
-		lowRange = *pStream;
-		pStream++;
-		NORMALIZE;
+		pInitStream = pInStream + 2;
+		pStream = pInStream + 2;
+		code = low = (pStream[0] << 8) | pStream[1];
+		pStream += 2;
 	}
 }
 
-void CMuxCodec::normalize(void){
+void CMuxCodec::normalize_enc(void)
+{
 	flushBuffer<false>();
 	do{
-		carryBuff = (carryBuff << 8) + (lowRange >> RANGE_BITS);
-		*pLast[outCount & ROT_BUF_MASK] = (unsigned char) (carryBuff >> 9);
-		if (carryBuff & 0x20000){
-			int i = -1;
-			unsigned int tmp = 1;
-			do {
-				tmp += *pLast[(outCount + i) & ROT_BUF_MASK];
-				*pLast[(outCount + i) & ROT_BUF_MASK] = (unsigned char) tmp;
-				tmp >>= 8;
-				i--;
-			} while (tmp != 0);
-		}
-		carryBuff &= 0x1FF;
-		outCount++;
-		pLast[(outCount + 4) & ROT_BUF_MASK] = pStream;
+		*pLast[outCount++ & ROT_BUF_MASK] = low >> 24;
+		if (((low + range - 1) ^ low) >= 0x01000000)
+			range = -low & (MIN_RANGE - 1);
+		pLast[(outCount + 3) & ROT_BUF_MASK] = pStream++;
+		range <<= 8;
+		low <<= 8;
+	} while (range <= MIN_RANGE);
+}
+
+void CMuxCodec::normalize_dec(void){
+	do{
+		if (((code - low + range - 1) ^ (code - low)) >= 0x01000000)
+			range = (low - code) & (MIN_RANGE - 1);
+		low = (low << 8) | (*pStream);
+		code = (code << 8) | (*pStream);
 		pStream++;
 		range <<= 8;
-		lowRange = (lowRange << 8) & NO_CARRY;
 	} while (range <= MIN_RANGE);
 }
 
@@ -99,26 +98,18 @@ unsigned char * CMuxCodec::endCoding(void){
 	flushBuffer<true>();
 
 	if (range <= MIN_RANGE)
-		normalize();
+		normalize_enc();
 
-	carryBuff = (carryBuff << 8) + (lowRange >> RANGE_BITS) + 1;
-	*pLast[outCount & ROT_BUF_MASK] = (unsigned char) (carryBuff >> 9);
-	if (carryBuff & 0x20000){
-		int i = -1;
-		unsigned int tmp = 1;
-		do {
-			tmp += *pLast[(outCount + i) & ROT_BUF_MASK];
-			*pLast[(outCount + i) & ROT_BUF_MASK] = (unsigned char) tmp;
-			tmp >>= 8;
-			i--;
-		} while (tmp != 0);
-	}
+	int last_out = 0x200 | 'W';
+	if ((low & (MIN_RANGE - 1)) > (last_out & (MIN_RANGE - 1)))
+		low += MIN_RANGE;
 
-	// 	FIXME enlever les 0, à ajouter au décodage
-	*pLast[(outCount + 1) & ROT_BUF_MASK] = (unsigned char) (carryBuff >> 1);
-	*pLast[(outCount + 2) & ROT_BUF_MASK] = (unsigned char) (carryBuff << 7);
-	*pLast[(outCount + 3) & ROT_BUF_MASK] = 0;
-	*pLast[(outCount + 4) & ROT_BUF_MASK] = 0;
+	low = (low & ~(MIN_RANGE - 1)) | (last_out & (MIN_RANGE - 1));
+
+	*pLast[outCount & ROT_BUF_MASK] = low >> 24;
+	*pLast[(outCount + 1) & ROT_BUF_MASK] = low >> 16;
+	*pLast[(outCount + 2) & ROT_BUF_MASK] = low >> 8;
+	*pLast[(outCount + 3) & ROT_BUF_MASK] = low;
 
 	return pStream;
 }

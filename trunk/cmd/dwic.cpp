@@ -237,7 +237,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		throw UNKNOW_TYPE;
 	}
 
-	oFile.write((char *) pStream + 1, (pEnd - pStream - 1));
+	oFile.write((char *) pStream + 2, (pEnd - pStream - 2));
 	oFile.close();
 
 	delete[] ImgPixels;
@@ -269,7 +269,7 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 	unsigned char * pEnd = pStream;
 
 	if (Head.Type == 0) {
-		CMuxCodec Codec(pEnd);
+		CMuxCodec Codec(pEnd - 1);
 		Codec.initTaboo(TABOO_LEN);
 		CWaveletDir Wavelet(width, heigth, WAV_LEVELS);
 		Wavelet.SetWeight97();

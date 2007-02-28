@@ -227,20 +227,20 @@ void CWaveletDir::CodeBand(CMuxCodec * pCodec, int method)
 			DHBand.BuildTree<false>();
 			while( pCurWav->pLow != 0 )
 				pCurWav = pCurWav->pLow;
-			pCurWav->LBand.bit<code>(pCodec);
-			pCurWav->HVLBand.Tree<code>(pCodec);
-			pCurWav->HVHBand.Tree<code>(pCodec);
-			pCurWav->DLBand.Tree<code>(pCodec);
-			pCurWav->DHBand.Tree<code>(pCodec);
+			pCurWav->LBand.bit<encode>(pCodec);
+			pCurWav->HVLBand.Tree<encode>(pCodec);
+			pCurWav->HVHBand.Tree<encode>(pCodec);
+			pCurWav->DLBand.Tree<encode>(pCodec);
+			pCurWav->DHBand.Tree<encode>(pCodec);
 			break;
 		case 3 :
 			while( pCurWav != 0 ){
-				pCurWav->DLBand.enu<code>(pCodec);
-				pCurWav->DHBand.enu<code>(pCodec);
-				pCurWav->HVLBand.enu<code>(pCodec);
-				pCurWav->HVHBand.enu<code>(pCodec);
+				pCurWav->DLBand.enu<encode>(pCodec);
+				pCurWav->DHBand.enu<encode>(pCodec);
+				pCurWav->HVLBand.enu<encode>(pCodec);
+				pCurWav->HVHBand.enu<encode>(pCodec);
 				if (pCurWav->pLow == 0){
-					pCurWav->LBand.pred<code>(pCodec);
+					pCurWav->LBand.pred<encode>(pCodec);
 				}
 				pCurWav = pCurWav->pLow;
 			}

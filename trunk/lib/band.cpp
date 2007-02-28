@@ -85,7 +85,7 @@ void CBand::bit(CMuxCodec * pCodec)
 	int max = Max;
 	unsigned int bits = 0;
 
-	if (mode == code) {
+	if (mode == encode) {
 		while( max > 0 ){
 			bits++;
 			max >>= 1;
@@ -98,7 +98,7 @@ void CBand::bit(CMuxCodec * pCodec)
 
 	for( int j = 0; j < DimY; j++){
 		for( int i = 0; i < DimX; i++){
-			if (mode == code)
+			if (mode == encode)
 				pCodec->bitsCode((unsigned int)pCur[i], bits);
 			else
 				pCur[i] = pCodec->bitsDecode(bits);
@@ -107,7 +107,7 @@ void CBand::bit(CMuxCodec * pCodec)
 	}
 }
 
-template void CBand::bit<code>(CMuxCodec *);
+template void CBand::bit<encode>(CMuxCodec *);
 template void CBand::bit<decode>(CMuxCodec *);
 
 template <cmode mode>
@@ -119,13 +119,13 @@ void CBand::pred(CMuxCodec * pCodec)
 		static const int log[32] = {0,1,2,2,3,3,3,3,4,4,4,4,4,4,4,4,
 									5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5};
 
-		if (mode == code)
+		if (mode == encode)
 			pCodec->tabooCode((unsigned int) pCur[0]);
 		else
 			pCur[0] = pCodec->tabooDecode();
 
 		for( int i = 1; i < DimX; i++){
-			if (mode == code) {
+			if (mode == encode) {
 				int pred = (int)(pCur[i] - pCur[i - 1]);
 				pCodec->golombCode(ABS(pred), k);
 				if (pred != 0)
@@ -140,7 +140,7 @@ void CBand::pred(CMuxCodec * pCodec)
 		pCur += stride;
 
 		for( int j = 1; j < DimY; j++){
-			if (mode == code) {
+			if (mode == encode) {
 				int pred = (int)(pCur[0] - pCur[-stride]);
 				pCodec->golombCode(ABS(pred), k);
 				if (pred != 0)
@@ -159,7 +159,7 @@ void CBand::pred(CMuxCodec * pCodec)
 					var = k;
 				else
 					var = log[var];
-				if (mode == code) {
+				if (mode == encode) {
 					int pred = (int)(pCur[i] - pCur[i - 1] - pCur[i - stride] +
 							pCur[i - 1 - stride]);
 					pCodec->golombCode(ABS(pred), var);
@@ -177,7 +177,7 @@ void CBand::pred(CMuxCodec * pCodec)
 		}
 }
 
-template void CBand::pred<code>(CMuxCodec *);
+template void CBand::pred<encode>(CMuxCodec *);
 template void CBand::pred<decode>(CMuxCodec *);
 
 const unsigned short CBand::cumProba[33][18] =
@@ -231,7 +231,7 @@ const unsigned short * CBand::pcumProba[33] =
 template <cmode mode>
 		void CBand::enu(CMuxCodec * pCodec)
 {
-	if (mode == code)
+	if (mode == encode)
 		if (Count <= 8){
 			pCodec->bitsCode(0, 1);
 			return;
@@ -248,7 +248,7 @@ template <cmode mode>
 	unsigned int * pLeft = pOld + (DimX >> 2);
 
 	int l = 0;
-	if (mode == code)
+	if (mode == encode)
 		pOld[l] = enuCode4x4<true>(pCodec, pCur, DimXAlign, 0);
 	else
 		pOld[l] = enuDecode4x4<true>(pCodec, pCur, DimXAlign, 0);
@@ -257,7 +257,7 @@ template <cmode mode>
 
 	for( int i = 4; i < DimX; i += 4){
 		l++;
-		if (mode == code)
+		if (mode == encode)
 			pOld[l] = enuCode4x4<false>(pCodec, pCur + i, DimXAlign,
 										pLeft[l-1]);
 		else
@@ -279,7 +279,7 @@ template <cmode mode>
 
 	for( int j = 4; j < DimY; j += 4){
 		l = 0;
-		if (mode == code)
+		if (mode == encode)
 			pOld[l] = enuCode4x4<false>(pCodec, pCur, DimXAlign, pTop[l] / 3);
 		else
 			pOld[l] = enuDecode4x4<false>(pCodec, pCur, DimXAlign, pTop[l] / 3);
@@ -288,7 +288,7 @@ template <cmode mode>
 
 		for( int i = 4; i < DimX; i += 4){
 			l++;
-			if (mode == code)
+			if (mode == encode)
 				pOld[l] = enuCode4x4<false>(pCodec, pCur + i, DimXAlign,
 											(pLeft[l-1] + pTop[l] + 2) >> 2);
 			else
@@ -312,7 +312,7 @@ template <cmode mode>
 	delete[] pTop;
 }
 
-template void CBand::enu<code>(CMuxCodec * );
+template void CBand::enu<encode>(CMuxCodec * );
 template void CBand::enu<decode>(CMuxCodec * );
 
 // k ~ [ln2(nBloc/(16-nBloc))]
@@ -350,7 +350,7 @@ template <bool directK>
 	if (directK)
 		pCodec->bitsCode(k ,5);
 	else
-		pCodec->code(pcumProba[kPred][k], pcumProba[kPred][k+1]);
+		pCodec->encode(pcumProba[kPred][k], pcumProba[kPred][k+1]);
 
 	if (k != 0) {
 		if (k != 16)
@@ -408,7 +408,7 @@ void CBand::Tree(CMuxCodec * pCodec)
 	unsigned char * pCurTree = pTree;
 	for( int j = 0; j < DimY; j += 2){
 		for( int i = 0; i < DimX; i += 2){
-			if (mode == code) {
+			if (mode == encode) {
 				pCodec->bitsCode(pCurTree[0] & 1, 1);
 				if (pCurTree[0]) {
 					pCodec->bitsCode(pCurTree[0] >> 1, 1);
@@ -429,7 +429,7 @@ void CBand::Tree(CMuxCodec * pCodec)
 	}
 }
 
-template void CBand::Tree<code>(CMuxCodec * );
+template void CBand::Tree<encode>(CMuxCodec * );
 template void CBand::Tree<decode>(CMuxCodec * );
 
 void CBand::TreeCode(int i, int j, CMuxCodec * pCodec)

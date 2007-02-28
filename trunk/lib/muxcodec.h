@@ -37,27 +37,22 @@ namespace libdwic {
 
 #define FREQ_POWER	12
 #define FREQ_COUNT	(1 << FREQ_POWER)
+#define FREQ_MASK	((1 << FREQ_POWER) - 1)
 #define HALF_FREQ_COUNT	(1 << (FREQ_POWER - 1))	// FREQ_COUNT / 2
 
-#define RANGE_BITS		23
+#define RANGE_BITS		12
 #define MIN_RANGE		(1 << RANGE_BITS)
-#define MAX_RANGE		0x80000000
-#define NO_CARRY		(MAX_RANGE - 1)
 
-#define NORMALIZE \
-	while (range <= MIN_RANGE){ \
-		lowRange = (lowRange << 8) | (*pStream); \
-		pStream++; \
-		range <<= 8; \
-	}
-
-#define ROT_BUF_SIZE 	16
+#define ROT_BUF_SIZE 	4
 #define ROT_BUF_MASK	(ROT_BUF_SIZE - 1)
 
 #define REG_SIZE (sizeof(unsigned int) * 8)
 
 /**
 @author Nicolas Botti
+ * This class is a carryless range coder whose output is multiplexed with the
+ * bits sent to bitsCode(). The decoder do the demultiplexing when bits are
+ * requested. This allow to use a range coder and to do fast bit input / output.
 */
 class CMuxCodec{
 	private:
@@ -66,12 +61,13 @@ class CMuxCodec{
 
 		// variables for the range coder
 		unsigned int range;
-		unsigned int lowRange;
-		unsigned char *pLast[ROT_BUF_SIZE];
-		unsigned int carryBuff;
-		unsigned int outCount;
+		unsigned int low;
+		unsigned int code; // only for the decoder
+		unsigned char *pLast[ROT_BUF_SIZE]; // only for the encoder
+		unsigned int outCount; // only for the encoder
 
-		void normalize(void);
+		void normalize_enc(void);
+		void normalize_dec(void);
 
 		// variables for bit output
 		unsigned int nbBits;
@@ -93,9 +89,9 @@ class CMuxCodec{
 		void fillBuffer(const unsigned int length);
 
 	public:
-		CMuxCodec(unsigned char *pStream, unsigned char firstByte);
+		CMuxCodec(unsigned char *pStream, unsigned short firstWord);
 		CMuxCodec(unsigned char *pStream);
-		void initCoder(unsigned char firstByte, unsigned char *pStream);
+		void initCoder(unsigned short firstWord, unsigned char *pStream);
 		void initDecoder(unsigned char *pStream);
 		unsigned char * endCoding(void);
 
@@ -112,127 +108,103 @@ class CMuxCodec{
 		void enum16Code(unsigned int bits, const unsigned int k);
 		unsigned int enum16Decode(unsigned int k);
 
-		void inline code(const unsigned int lowFreq, const unsigned int topFreq)
+		void inline encode(const unsigned int lowFreq, const unsigned int topFreq)
 		{
 			if (range <= MIN_RANGE)
-				normalize();
-			const register unsigned int tmp = range >> FREQ_POWER;
-			lowRange += tmp * lowFreq;
-			range = tmp * (topFreq - lowFreq);
+				normalize_enc();
+			unsigned int tmp = range * lowFreq;
+			low += tmp >> FREQ_POWER;
+			range = (range * (topFreq - lowFreq) + (tmp & FREQ_MASK)) >> FREQ_POWER;
 		}
 
 		void inline code0(const unsigned int topFreq)
 		{
 			if (range <= MIN_RANGE)
-				normalize();
-			range = (range >> FREQ_POWER) * topFreq;
+				normalize_enc();
+			range = (range * topFreq) >> FREQ_POWER;
 		}
 
 		void inline code1(const unsigned int lowFreq)
 		{
 			if (range <= MIN_RANGE)
-				normalize();
-			const register unsigned int tmp = (range >> FREQ_POWER) * lowFreq;
-			lowRange += tmp;
+				normalize_enc();
+			const unsigned int tmp = (range * lowFreq) >> FREQ_POWER;
+			low += tmp;
 			range -= tmp;
 		}
 
 		void inline codeBin(const unsigned int freq, const int bit)
 		{
 			if (range <= MIN_RANGE)
-				normalize();
-			const register unsigned int tmp = (range >> FREQ_POWER) * freq;
-			if (bit == 0)
-				range = tmp;
-			else {
-				lowRange += tmp;
-				range -= tmp;
-			}
-// 			lowRange += tmp & -bit;
-// 			range = tmp + ((range-2*tmp) & -bit);
+				normalize_enc();
+			const unsigned int tmp = (range * freq) >> FREQ_POWER;
+ 			low += tmp & -bit;
+ 			range = tmp + ((range - 2 * tmp) & -bit);
 		}
 
 		void inline codeSkew(const unsigned int shift, const unsigned int bit)
 		{
 			if (range <= MIN_RANGE)
-				normalize();
-			const register unsigned int tmp = range - (range >> shift);
-			if (bit == 0)
-				range = tmp;
-			else {
-				lowRange += tmp;
-				range -= tmp;
-			}
+				normalize_enc();
+			const unsigned int tmp = range - (range >> shift);
+			low += tmp & -bit;
+			range = tmp + ((range - 2 * tmp) & -bit);
 		}
 
 		void inline codeSkew0(const unsigned int shift)
 		{
 			if (range <= MIN_RANGE)
-				normalize();
+				normalize_enc();
 			range -= range >> shift;
 		}
 
 		void inline codeSkew1(const unsigned int shift)
 		{
 			if (range <= MIN_RANGE)
-				normalize();
-			const register unsigned int tmp = range - (range >> shift);
-			lowRange += tmp;
+				normalize_enc();
+			const unsigned int tmp = range - (range >> shift);
+			low += tmp;
 			range -= tmp;
 		}
 
 		unsigned int inline decode(const unsigned short * pFreqs)
 		{
-			NORMALIZE;
-			unsigned short freq = (lowRange/(range >> FREQ_POWER))&(FREQ_COUNT-1);
+			if (range <= MIN_RANGE)
+				normalize_dec();
+			unsigned short freq = ((low << FREQ_POWER) + FREQ_MASK) / range;
 			unsigned int i = 1;
-			for( ; freq >= pFreqs[i]; i++){}
-			i -= 1;
-			const register unsigned int tmp = range >> FREQ_POWER;
-			lowRange -= tmp * pFreqs[i];
-			range = tmp * (pFreqs[i+1] - pFreqs[i]);
+			while(freq >= pFreqs[i]) i++;
+			i--;
+
+			unsigned int tmp = range * pFreqs[i];
+			low -= tmp >> FREQ_POWER;
+			range = (range * (pFreqs[i+1] - pFreqs[i]) + (tmp & FREQ_MASK)) >> FREQ_POWER;
 			return i;
-		}
-
-		unsigned int inline getFreq(void)
-		{
-			NORMALIZE;
-			return (lowRange/(range >> FREQ_POWER))&(FREQ_COUNT-1);
-		}
-
-		void inline update(const unsigned int lowFreq, const unsigned int topFreq)
-		{
-			const register unsigned int tmp = range >> FREQ_POWER;
-			lowRange -= tmp * lowFreq;
-			range = tmp * (topFreq - lowFreq);
 		}
 
 		unsigned int inline getBit(const unsigned int freq)
 		{
-			NORMALIZE;
-			const register unsigned int tmp = (range >> FREQ_POWER) * freq;
-			const register int tst = (lowRange < tmp)-1;
-			lowRange -= tmp & tst;
+			if (range <= MIN_RANGE) normalize_dec();
+			const unsigned int tmp = (range * freq) >> FREQ_POWER;
+			const int tst = (low < tmp) - 1;
+			low -= tmp & tst;
 			range = tmp + ((range - 2*tmp) & tst);
 			return -tst;
 		}
 
 		unsigned int inline decSkew(const unsigned int shift)
 		{
-			NORMALIZE;
-			const register unsigned int tmp = range - (range >> shift);
-			if (lowRange < tmp){
-				range = tmp;
-				return 0;
-			}
-			lowRange -= tmp;
-			range -= tmp;
-			return 1;
+			if (range <= MIN_RANGE) normalize_dec();
+			const unsigned int tmp = range - (range >> shift);
+			const int tst = (low < tmp) - 1;
+			low -= tmp & tst;
+			range = tmp + ((range - 2*tmp) & tst);
+			return -tst;
 		}
 
 		void inline bitsCode(unsigned int bits, unsigned int length)
 		{
-			if (nbBits + length > 32)
+			if (nbBits + length > REG_SIZE)
 				emptyBuffer();
 			buffer = (buffer << length) | bits;
 			nbBits += length;
