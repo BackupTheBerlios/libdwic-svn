@@ -219,21 +219,7 @@ void CWaveletDir::CodeBand(CMuxCodec * pCodec, int method)
 	CWaveletDir * pCurWav = this;
 
 	switch( method ){
-		case 1 :
-		case 2 :
-			HVLBand.BuildTree<false>();
-			HVHBand.BuildTree<false>();
-			DLBand.BuildTree<false>();
-			DHBand.BuildTree<false>();
-			while( pCurWav->pLow != 0 )
-				pCurWav = pCurWav->pLow;
-			pCurWav->LBand.bit<encode>(pCodec);
-			pCurWav->HVLBand.Tree<encode>(pCodec);
-			pCurWav->HVHBand.Tree<encode>(pCodec);
-			pCurWav->DLBand.Tree<encode>(pCodec);
-			pCurWav->DHBand.Tree<encode>(pCodec);
-			break;
-		case 3 :
+		case 0 :
 			while( pCurWav != 0 ){
 				pCurWav->DLBand.enu<encode>(pCodec);
 				pCurWav->DHBand.enu<encode>(pCodec);
@@ -252,21 +238,7 @@ void CWaveletDir::DecodeBand(CMuxCodec * pCodec, int method)
 	CWaveletDir * pCurWav = this;
 
 	switch( method ){
-		case 1 :
-		case 2 :
-			HVLBand.Clear(true);
-			HVHBand.Clear(true);
-			DLBand.Clear(true);
-			DHBand.Clear(true);
-			while( pCurWav->pLow != 0 )
-				pCurWav = pCurWav->pLow;
-			pCurWav->LBand.bit<decode>(pCodec);
-			pCurWav->HVLBand.Tree<decode>(pCodec);
-			pCurWav->HVHBand.Tree<decode>(pCodec);
-			pCurWav->DLBand.Tree<decode>(pCodec);
-			pCurWav->DHBand.Tree<decode>(pCodec);
-			break;
-		case 3 :
+		case 0 :
 			while( pCurWav != 0 ){
 				pCurWav->DLBand.enu<decode>(pCodec);
 				pCurWav->DHBand.enu<decode>(pCodec);
@@ -800,18 +772,14 @@ unsigned int CWaveletDir::TSUQ(float Quant, float Thres)
 	unsigned int Count = 0;
 	Count += DLBand.TSUQ(Quant, Thres);
 	Count += DHBand.TSUQ(Quant, Thres);
+	Count += HVHBand.TSUQ(Quant, Thres);
+	Count += HVLBand.TSUQ(Quant, Thres);
+// 	Count += HVBand.TSUQ(Quant, Thres);
 
 	if (pLow != 0) {
 		Count += pLow->TSUQ(Quant, Thres);
-		Count += HVHBand.TSUQ(Quant, Thres);
-		Count += HVLBand.TSUQ(Quant, Thres);
-// 		HVWav.TSUQ(Quant, Thres, 1);
 	} else {
 		Count += LBand.TSUQ(Quant, Quant * .5);
-		Count += HVHBand.TSUQ(Quant, Thres);
-		Count += HVLBand.TSUQ(Quant, Thres);
-// 		Count += HVBand.TSUQ(Quant, Thres);
-// 		HVWav.TSUQ(Quant, Thres, 1);
 	}
 	return Count;
 }
@@ -820,18 +788,14 @@ void CWaveletDir::TSUQi(float Quant, float RecLevel)
 {
 	DLBand.TSUQi(Quant, RecLevel);
 	DHBand.TSUQi(Quant, RecLevel);
+	HVHBand.TSUQi(Quant, RecLevel);
+	HVLBand.TSUQi(Quant, RecLevel);
+// 	HVBand.TSUQi(Quant, RecLevel);
 
 	if (pLow != 0){
 		pLow->TSUQi(Quant, RecLevel);
-		HVHBand.TSUQi(Quant, RecLevel);
-		HVLBand.TSUQi(Quant, RecLevel);
-// 		HVWav.TSUQi(Quant, RecLevel, 1);
 	} else {
 		LBand.TSUQi(Quant, 0);
-		HVHBand.TSUQi(Quant, RecLevel);
-		HVLBand.TSUQi(Quant, RecLevel);
-// 		HVBand.TSUQi(Quant, RecLevel);
-// 		HVWav.TSUQi(Quant, RecLevel, 1);
 	}
 }
 

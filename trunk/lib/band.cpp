@@ -120,41 +120,28 @@ void CBand::pred(CMuxCodec * pCodec)
 									5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5};
 
 		if (mode == encode)
-			pCodec->tabooCode((unsigned int) pCur[0]);
+			pCodec->tabooCode(s2u((int) pCur[0]));
 		else
-			pCur[0] = pCodec->tabooDecode();
+			pCur[0] = u2s(pCodec->tabooDecode());
 
 		for( int i = 1; i < DimX; i++){
-			if (mode == encode) {
-				int pred = (int)(pCur[i] - pCur[i - 1]);
-				pCodec->golombCode(ABS(pred), k);
-				if (pred != 0)
-					pCodec->bitsCode((pred < 0),1);
-			} else {
-				int pred = pCodec->golombDecode(k);
-				if (pred != 0 && pCodec->bitsDecode(1))
-					pred = -pred;
-				pCur[i] = pCur[i - 1] + pred;
-			}
+			if (mode == encode)
+				pCodec->golombCode(s2u((int)(pCur[i] - pCur[i - 1])), k);
+			else
+				pCur[i] = pCur[i - 1] + u2s(pCodec->golombDecode(k));
 		}
 		pCur += stride;
 
 		for( int j = 1; j < DimY; j++){
-			if (mode == encode) {
-				int pred = (int)(pCur[0] - pCur[-stride]);
-				pCodec->golombCode(ABS(pred), k);
-				if (pred != 0)
-					pCodec->bitsCode(pred < 0,1);
-			} else {
-				int pred = pCodec->golombDecode(k);
-				if (pred != 0 && pCodec->bitsDecode(1))
-					pred = -pred;
-				pCur[0] = pCur[-stride] + pred;
-			}
+			if (mode == encode)
+				pCodec->golombCode(s2u((int)(pCur[0] - pCur[-stride])), k);
+			else
+				pCur[0] = pCur[-stride] + u2s(pCodec->golombDecode(k));
+
 			for( int i = 1; i < DimX; i++){
 				int var = (int) (ABS(pCur[i - 1] - pCur[i - 1 - stride]) +
 						ABS(pCur[i - stride] - pCur[i - 1 - stride]));
-				var >>= 1;
+				var -= var >> 2;
 				if (var >= 32)
 					var = k;
 				else
@@ -162,16 +149,10 @@ void CBand::pred(CMuxCodec * pCodec)
 				if (mode == encode) {
 					int pred = (int)(pCur[i] - pCur[i - 1] - pCur[i - stride] +
 							pCur[i - 1 - stride]);
-					pCodec->golombCode(ABS(pred), var);
-					if (pred != 0)
-						pCodec->bitsCode(pred < 0,1);
-				} else {
-					int pred = pCodec->golombDecode(var);
-					if (pred != 0 && pCodec->bitsDecode(1))
-						pred = -pred;
+					pCodec->golombCode(s2u(pred), var);
+				} else
 					pCur[i] = pCur[i - 1] + pCur[i - stride] -
-							pCur[i - 1 - stride] + pred;
-				}
+							pCur[i - 1 - stride] + u2s(pCodec->golombDecode(var));
 			}
 			pCur += stride;
 		}

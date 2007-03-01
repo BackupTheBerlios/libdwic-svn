@@ -89,5 +89,17 @@ typedef enum cmode {encode, decode};
 
 #define ALIGN	8
 
+int inline s2u(int s)
+{
+	int u = -(2 * s + 1);
+	u ^= u >> 31;
+	return u;
+}
+
+int inline u2s(int u)
+{
+	return (u >> 1) ^ -(u & 1);
+}
+
 }
 

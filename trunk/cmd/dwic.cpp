@@ -61,7 +61,7 @@ void FLOAT2CHAR(float * pIn, int size)
 {
 	unsigned char * pOut = (unsigned char *) pIn;
 	for( int i = 0; i < size ; i++){
-		pIn[i] = rint(pIn[i] * 255);
+		pIn[i] = rint((pIn[i] + 0.5) * 255);
 		pOut[i] = (unsigned char) CLIP(pIn[i], 0, 255);
 	}
 }
@@ -199,10 +199,13 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 
 	Image img( infile );
 	img.type( GrayscaleType );
-	float * ImgPixels = new float [img.columns() * img.rows()];
-	unsigned char * pStream = new unsigned char[img.columns() * img.rows()];
+	unsigned int imSize = img.columns() * img.rows();
+	float * ImgPixels = new float [imSize];
+	unsigned char * pStream = new unsigned char[imSize];
 
 	img.write(0, 0, img.columns(), img.rows(), "R", FloatPixel, ImgPixels);
+	for( int i = 0; i < imSize; i++)
+		ImgPixels[i] -= 0.5;
 
 	unsigned short tmp = img.columns();
 	oFile.write((char *)&tmp, sizeof(unsigned short));
@@ -230,7 +233,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 
 		Wavelet.CodeMap(0);
 
-		Wavelet.CodeBand(&Codec, 3);
+		Wavelet.CodeBand(&Codec, 0);
 
 		pEnd = Codec.endCoding();
 	} else {
@@ -275,7 +278,7 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 		Wavelet.SetWeight97();
 		Wavelet.SetCodec(&Codec);
 		Wavelet.DecodeMap(0);
-		Wavelet.DecodeBand(&Codec, 3);
+		Wavelet.DecodeBand(&Codec, 0);
 		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
 		Wavelet.Transform97I(ImgPixels, width);
 	} else {
