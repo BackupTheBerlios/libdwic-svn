@@ -61,7 +61,34 @@ void FLOAT2CHAR(float * pIn, int size)
 {
 	unsigned char * pOut = (unsigned char *) pIn;
 	for( int i = 0; i < size ; i++){
-		pIn[i] = rint((pIn[i] + 0.5) * 255);
+		pIn[i] = rintf((pIn[i] + 0.5) * 255);
+		pOut[i] = (unsigned char) CLIP(pIn[i], 0, 255);
+	}
+}
+
+void FLOAT2CHAR(float * pIn, int width, int heigth)
+{
+	unsigned char * pOut = (unsigned char *) pIn;
+	for( int j = 0; j < heigth - 1; j++){
+		pIn[0] = rintf((pIn[0] + 0.5) * 255);
+		pOut[0] = (unsigned char) CLIP(pIn[0], 0, 255);
+		for( int i = 1; i < width - 1; i++){
+			float tmp = pIn[i] + 0.5;
+			pIn[i] = rintf(tmp * 255);
+			tmp -= pIn[i] * (1./255);
+			pIn[i+1] += tmp * (7./16);
+			pIn[i+width - 1] += tmp * (3./16);
+			pIn[i+width] += tmp * (5./16);
+			pIn[i+width + 1] += tmp * (1./16);
+			pOut[i] = (unsigned char) CLIP(pIn[i], 0, 255);
+		}
+		pIn += width;
+		pOut += width;
+		pIn[-1] = rintf((pIn[-1] + 0.5) * 255);
+		pOut[-1] = (unsigned char) CLIP(pIn[-1], 0, 255);
+	}
+	for( int i = 0; i < width; i++){
+		pIn[i] = rintf((pIn[i] + 0.5) * 255);
 		pOut[i] = (unsigned char) CLIP(pIn[i], 0, 255);
 	}
 }
@@ -247,7 +274,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 	delete[] pStream;
 }
 
-void DecompressImage(string & infile, string & outfile, float RecLevel)
+void DecompressImage(string & infile, string & outfile, float RecLevel, int Dither)
 {
 	ifstream iFile( infile.c_str() , ios::in );
 	char magic[4] = {0,0,0,0};
@@ -285,7 +312,10 @@ void DecompressImage(string & infile, string & outfile, float RecLevel)
 		throw UNKNOW_TYPE;
 	}
 
-	FLOAT2CHAR(ImgPixels, width * heigth);
+	if (Dither == 1)
+		FLOAT2CHAR(ImgPixels, width, heigth);
+	else
+		FLOAT2CHAR(ImgPixels, width * heigth);
 	BW2RGB((unsigned char *)ImgPixels, width * heigth);
 	Image img(width, heigth, "RGB", CharPixel, ImgPixels);
 	img.type( GrayscaleType );
@@ -311,8 +341,9 @@ int main( int argc, char *argv[] )
 	int Quant = 9;
 	float RecLevelRatio = 0;
 	int Type = 0;
+	int Dither = 0;
 
-	while ((c = getopt(argc , argv, "i:o:q:r:t:v:")) != -1) {
+	while ((c = getopt(argc , argv, "i:o:q:r:t:v:d")) != -1) {
 		switch (c) {
 			case 'i':
 				infile = optarg;
@@ -332,6 +363,8 @@ int main( int argc, char *argv[] )
 			case 'v':
 				Type = atoi(optarg);
 				break;
+			case 'd':
+				Dither = 1;
 		}
 	}
 	if (infile.length() == 0) {
@@ -367,7 +400,7 @@ int main( int argc, char *argv[] )
 	if (mode == 0) {
 		CompressImage(infile, outfile, Quant, ThresRatio, Type);
 	} else {
-		DecompressImage(infile, outfile, RecLevelRatio);
+		DecompressImage(infile, outfile, RecLevelRatio, Dither);
 	}
 
 	return EXIT_SUCCESS;
