@@ -73,11 +73,11 @@ CWaveletDir::~CWaveletDir()
 
 void CWaveletDir::Init(int level, int Align)
 {
-	DHBand.Init(DimX >> 1, DimY >> 1, Align, true);
-	DLBand.Init(DimX >> 1, DimY >> 1, Align, true);
+	DHBand.Init(DimX >> 1, DimY >> 1, Align);
+	DLBand.Init(DimX >> 1, DimY >> 1, Align);
 	HVBand.Init(DimX >> 1, DimY >> 1, Align);
-	HVHBand.Init(DimX >> 1, DimY >> 2, Align, true);
-	HVLBand.Init(DimX >> 1, DimY >> 2, Align, true);
+	HVHBand.Init(DimX >> 1, DimY >> 2, Align);
+	HVLBand.Init(DimX >> 1, DimY >> 2, Align);
 	HVMap.Init(DimX, DimY);
 	DMap.Init(DimX, DimY);
 	Level = level;

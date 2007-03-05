@@ -55,60 +55,19 @@ CBand::~CBand()
 	delete[] pData;
 }
 
-void CBand::Init( unsigned int x, unsigned int y, int Align, bool useTree )
+void CBand::Init( unsigned int x, unsigned int y, int Align)
 {
 	DimX = x;
 	DimY = y;
 	DimXAlign = ( DimX + Align - 1 ) & ( -Align );
 	BandSize = DimXAlign * DimY;
-	LstLen = 0;
-	pTree = 0;
-	pList = 0;
 	Weight = 1;
 	Count = 0;
 	if (BandSize != 0){
-		if (useTree){
-			pData = new char[BandSize * sizeof(float) +
-					(BandSize >> 2) * sizeof(char) + Align];
-			pBand = (float*)(((int)pData + Align - 1) & (-Align));
-			pTree = (unsigned char *)(pBand + BandSize);
-		} else {
-			pData = new char[BandSize * sizeof(float) + Align];
-			pBand = (float*)(((int)pData + Align - 1) & (-Align));
-		}
+		pData = new char[BandSize * sizeof(float) + Align];
+		pBand = (float*)(((int)pData + Align - 1) & (-Align));
 	}
 }
-
-template <cmode mode>
-void CBand::bit(CMuxCodec * pCodec)
-{
-	int max = Max;
-	unsigned int bits = 0;
-
-	if (mode == encode) {
-		while( max > 0 ){
-			bits++;
-			max >>= 1;
-		}
-		pCodec->fiboCode(bits);
-	} else
-		bits = pCodec->fiboDecode();
-
-	float * pCur = pBand;
-
-	for( int j = 0; j < DimY; j++){
-		for( int i = 0; i < DimX; i++){
-			if (mode == encode)
-				pCodec->bitsCode((unsigned int)pCur[i], bits);
-			else
-				pCur[i] = pCodec->bitsDecode(bits);
-		}
-		pCur += DimXAlign;
-	}
-}
-
-template void CBand::bit<encode>(CMuxCodec *);
-template void CBand::bit<decode>(CMuxCodec *);
 
 template <cmode mode>
 void CBand::pred(CMuxCodec * pCodec)
@@ -308,9 +267,6 @@ template <bool directK>
 	int tmp[16];
 	unsigned int signif = 0;
 	unsigned int k = 0;
-	static const float len[17] = { 0, 4, 6.91, 9.13, 10.83, 12.09, 12.97, 13.48,
-		 13.65, 13.48, 12.97, 12.09, 10.83, 9.13, 6.91, 4, 0};
-
 
 	for( int j = 0; j < 4; j++){
 		for( float * pEnd = pCur + 4; pCur < pEnd; pCur++){
@@ -381,234 +337,6 @@ template <bool directK>
 	}
 
 	return k;
-}
-
-template <cmode mode>
-void CBand::Tree(CMuxCodec * pCodec)
-{
-	unsigned char * pCurTree = pTree;
-	for( int j = 0; j < DimY; j += 2){
-		for( int i = 0; i < DimX; i += 2){
-			if (mode == encode) {
-				pCodec->bitsCode(pCurTree[0] & 1, 1);
-				if (pCurTree[0]) {
-					pCodec->bitsCode(pCurTree[0] >> 1, 1);
-					CoefCode(i, j, pCodec);
-					if (pCurTree[0] & 2)
-						pChild->TreeCode(i, j, pCodec);
-				}
-			} else {
-				if (pCodec->bitsDecode(1)) {
-					unsigned int tmp = pCodec->bitsDecode(1);
-					CoefDecode(i, j, pCodec);
-					if (tmp)
-						pChild->TreeDecode(i, j, pCodec);
-				}
-			}
-			pCurTree++;
-		}
-	}
-}
-
-template void CBand::Tree<encode>(CMuxCodec * );
-template void CBand::Tree<decode>(CMuxCodec * );
-
-void CBand::TreeCode(int i, int j, CMuxCodec * pCodec)
-{
-	int stride = DimX >> 1;
-	unsigned char * pCurTree = pTree + i + j * stride;
-
-	unsigned int tmp = ((pCurTree[0] & 1) << 3) | ((pCurTree[1] & 1) << 2) |
-			((pCurTree[stride] & 1) << 1) | (pCurTree[stride+1] & 1);
-
-	pCodec->bitsCode(tmp, 4);
-
-	i <<= 1;
-	j <<= 1;
-
-	if (pCurTree[0]) {
-		if (pChild) pCodec->bitsCode(pCurTree[0] >> 1, 1);
-		CoefCode(i, j, pCodec);
-		if (pCurTree[0] & 2)
-			pChild->TreeCode(i, j, pCodec);
-	}
-	pCurTree++;
-	i += 2;
-	if (pCurTree[0]) {
-		if (pChild) pCodec->bitsCode(pCurTree[0] >> 1, 1);
-		CoefCode(i, j, pCodec);
-		if (pCurTree[0] & 2)
-			pChild->TreeCode(i, j, pCodec);
-	}
-	pCurTree += stride;
-	j += 2;
-	if (pCurTree[0]) {
-		if (pChild) pCodec->bitsCode(pCurTree[0] >> 1, 1);
-		CoefCode(i, j, pCodec);
-		if (pCurTree[0] & 2)
-			pChild->TreeCode(i, j, pCodec);
-	}
-	pCurTree--;
-	i -= 2;
-	if (pCurTree[0]) {
-		if (pChild) pCodec->bitsCode(pCurTree[0] >> 1, 1);
-		CoefCode(i, j, pCodec);
-		if (pCurTree[0] & 2)
-			pChild->TreeCode(i, j, pCodec);
-	}
-}
-
-void CBand::TreeDecode(int i, int j, CMuxCodec * pCodec)
-{
-	unsigned int tmp = pCodec->bitsDecode(4);
-	i <<= 1;
-	j <<= 1;
-
-	if (tmp & 8) {
-		unsigned int tmp = pChild ? pCodec->bitsDecode(1) : 0;
-		CoefDecode(i, j, pCodec);
-		if (tmp)
-			pChild->TreeDecode(i, j, pCodec);
-	}
-	i += 2;
-	if (tmp & 4) {
-		unsigned int tmp = pChild ? pCodec->bitsDecode(1) : 0;
-		CoefDecode(i, j, pCodec);
-		if (tmp)
-			pChild->TreeDecode(i, j, pCodec);
-	}
-	j += 2;
-	if (tmp & 1) {
-		unsigned int tmp = pChild ? pCodec->bitsDecode(1) : 0;
-		CoefDecode(i, j, pCodec);
-		if (tmp)
-			pChild->TreeDecode(i, j, pCodec);
-	}
-	i -= 2;
-	if (tmp & 2) {
-		unsigned int tmp = pChild ? pCodec->bitsDecode(1) : 0;
-		CoefDecode(i, j, pCodec);
-		if (tmp)
-			pChild->TreeDecode(i, j, pCodec);
-	}
-}
-
-void CBand::CoefCode(int i, int j, CMuxCodec * pCodec)
-{
-	float * pCur = pBand + i + j * DimXAlign;
-	unsigned int signif = 0, sign = 0, count = 0;
-	unsigned int tmp[4];
-
-	if (pCur[0] != 0) {
-		signif = 1;
-		if (pCur[0] < 0) {
-			pCur[0] = -pCur[0];
-			sign = 1;
-		}
-		tmp[count] = (unsigned int) pCur[0];
-		count++;
-	}
-	pCur++;
-	signif <<= 1;
-	if (pCur[0] != 0) {
-		signif |= 1;
-		sign <<= 1;
-		if (pCur[0] < 0) {
-			pCur[0] = -pCur[0];
-			sign |= 1;
-		}
-		tmp[count] = (unsigned int) pCur[0];
-		count++;
-	}
-	pCur += DimXAlign;
-	signif <<= 1;
-	if (pCur[0] != 0) {
-		signif |= 1;
-		sign <<= 1;
-		if (pCur[0] < 0) {
-			pCur[0] = -pCur[0];
-			sign |= 1;
-		}
-		tmp[count] = (unsigned int) pCur[0];
-		count++;
-	}
-	pCur--;
-	signif <<= 1;
-	if (pCur[0] != 0) {
-		signif |= 1;
-		sign <<= 1;
-		if (pCur[0] < 0) {
-			pCur[0] = -pCur[0];
-			sign |= 1;
-		}
-		tmp[count] = (unsigned int) pCur[0];
-		count++;
-	}
-
-	pCodec->bitsCode(signif, 4);
-	pCodec->bitsCode(sign, count);
-	for( int k = 0; k < count; k++){
-		pCodec->fiboCode(tmp[k]);
-	}
-}
-
-void CBand::CoefDecode(int i, int j, CMuxCodec * pCodec)
-{
-	float * pCur = pBand + i + (j+1) * DimXAlign;
-	unsigned int tmp[4];
-	unsigned int signif = pCodec->bitsDecode(4);
-	unsigned int count = (signif & 1) + ((signif >> 1) & 1) +
-			((signif >> 2) & 1) + (signif >> 3);
-	unsigned int sign = pCodec->bitsDecode(count);
-
-	for( unsigned int k = 0; k < count; k++){
-		tmp[k] = pCodec->fiboDecode();
-	}
-
-	if (signif & 1) {
-		count--;
-		pCur[0] = tmp[count];
-		if (sign & 1)
-			pCur[0] = -pCur[0];
-		sign >>= 1;
-	}
-	pCur++;
-	signif >>= 1;
-	if (signif & 1) {
-		count--;
-		pCur[0] = tmp[count];
-		if (sign & 1)
-			pCur[0] = -pCur[0];
-		sign >>= 1;
-	}
-	pCur -= DimXAlign;
-	signif >>= 1;
-	if (signif & 1) {
-		count--;
-		pCur[0] = tmp[count];
-		if (sign & 1)
-			pCur[0] = -pCur[0];
-		sign >>= 1;
-	}
-	pCur--;
-	signif >>= 1;
-	if (signif & 1) {
-		count--;
-		pCur[0] = tmp[count];
-		if (sign & 1)
-			pCur[0] = -pCur[0];
-	}
-}
-
-void CBand::ListAllPos( void )
-{
-	SPos Pos;
-	LstLen = 0;
-	for ( Pos.y = 0; Pos.y < DimY; Pos.y++ ) {
-		for ( Pos.x = 0; Pos.x < DimX; Pos.x++ ) {
-			pList[ LstLen++ ] = Pos;
-		}
-	}
 }
 
 void CBand::GetBand(float * pOut)
@@ -716,77 +444,6 @@ void CBand::TSUQi( float Quant, float RecLevel)
 			}
 		}
 		n += Diff;
-	}
-}
-
-/**
- * 1 dans l'arbre signifie 'coef signif dans cet arbre'
- * 2 dans l'arbre signifie 'coef signif en dessous des 4 premiers'
- * @param useHighTree
- */
-template <bool useHighTree>
-void CBand::BuildTree(void)
-{
-	float * pCur1 = pBand;
-	float * pCur2 = pBand + DimXAlign;
-	unsigned char * pCurTree = pTree;
-	int diff = DimXAlign << 1;
-	unsigned char * pCurTree1 = useHighTree ? pChild->pTree : 0;
-	unsigned char * pCurTree2 = useHighTree ? pChild->pTree +
-			(pChild->DimX >> 1) : 0;
-	int diffChild = useHighTree ? pChild->DimX : 0;
-
-	for( int j = 0; j < DimY; j += 2){
-		for( int i = 0; i < DimX; i += 2){
-			pCurTree[0] = 0;
-			if (pCur1[i] != 0 || pCur1[i+1] != 0 || pCur2[i] != 0 ||
-						 pCur2[i+1] != 0)
-				pCurTree[0] = 1;
-			if (useHighTree) {
-				if (pCurTree1[i] | pCurTree1[i+1] | pCurTree2[i] |
-								pCurTree2[i+1])
-					pCurTree[0] = 3;
-			}
-			pCurTree++;
-		}
-		pCur1 += diff;
-		pCur2 += diff;
-		if (useHighTree){
-			pCurTree1 += diffChild;
-			pCurTree2 += diffChild;
-		}
-	}
-
-	if (pParent != 0)
-		pParent->BuildTree<true>();
-}
-
-// force l'instanciation de la fonction (sinon pb à l'édition de lien)
-template void CBand::BuildTree<false>(void);
-
-void CBand::Correlation( float * pOut, int x, int y )
-{
-	memset( pOut, 0, x * y * sizeof( *pOut ) );
-
-	for ( int j = 0; j < DimY - y + 1; j++ ) {
-		for ( int i = 0; i < DimX - x + 1; i++ ) {
-			int pos = j * DimXAlign + i;
-			int centerPos = ( y >> 1 ) * DimXAlign + ( x >> 1 ) + pos;
-			for ( int l = pos, lend = pos + y * DimXAlign, CorPos = 0;
-			        l < lend ; l += DimXAlign ) {
-				for ( int k = l, kend = l + x; k < kend; k++, CorPos++ ) {
-					pOut[ CorPos ] += pBand[ k ] * pBand[ centerPos ];
-				}
-			}
-		}
-	}
-
-	float Center = pOut[ ( x >> 1 ) + x * ( y >> 1 ) ];
-	for ( int i = 0; i < x * y ; i++ ) {
-		// 		pOut[i] = sqrt(fabsf(pOut[i] / Center));
-		// 		pOut[i] = 0.5 + copysignf(0.5, pOut[i]);
-		pOut[ i ] = 0.5 + copysignf( sqrt( fabsf( pOut[ i ] / Center ) * 2 ),
-		                             pOut[ i ] );
 	}
 }
 

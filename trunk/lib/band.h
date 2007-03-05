@@ -43,19 +43,6 @@ namespace libdwic {
 #define D1_BAND		3	// diag direction = "\"
 #define D2_BAND		4	// diag direction = "/"
 
-typedef union SPos{
-	struct {
-		unsigned short x;
-		unsigned short y;
-	};
-	unsigned int yx;
-
-	SPos (void){}
-	SPos (unsigned int YX){
-		yx = YX;
-	}
-} SPos;
-
 class CBand
 {
 public:
@@ -76,20 +63,10 @@ public:
 	CBand *pParent;			// Parent Band
 	CBand *pChild;			// Child Band
 	CBand *pNeighbor[3];	// Band neighbors (other component bands
-							// that can be used for context modeling
+							// that can be used for context modeling)
 	float *pBand;			// Band datas
-	unsigned char *pTree;	// Tree datas (8 bits), same dimensions as the band
-							// (so the alignement could be different)
-	SPos *pList;			// List of coeff(s) to visit
-	unsigned int LstLen;	// List lenth of coeff(s) to visit
 
-// 	CBitCodec Sign;			// Sign codec
-// 	CBitCodec Signif;		// Significance codec
-// 	CBitCodec Tree;			// Tree codec
-// 	CSymbolCodec Symbol;	// Quantized band coeff codec
-
-	void Init(unsigned int x = 0, unsigned int y = 0, int Align = ALIGN,
-			  bool useTree = false);
+	void Init(unsigned int x = 0, unsigned int y = 0, int Align = ALIGN);
 
 	// Quantification
 	unsigned int Thres(float Thres);
@@ -101,30 +78,20 @@ public:
 	template <cmode mode>
 			void enu(CMuxCodec * pCodec);
 	template <cmode mode>
-			void bit(CMuxCodec * pCodec);
-	template <cmode mode>
 			void pred(CMuxCodec * pCodec);
-	template <cmode mode>
-			void Tree(CMuxCodec * pCodec);
 
 	// Statistiques
 	void Mean(float & Mean, float & Var);
-	void Correlation(float * pOut, int x, int y);
 
 	// Utilitaires
-	void ListAllPos(void);
 	void Add(float val);
 	void GetBand(float * pOut);
 	void Clear(bool recurse = false);
-	template <bool useHighTree>
-			void BuildTree(void);
 
 private:
 	char * pData;
 
 	// Codage
-	void TreeCode(int i, int j, CMuxCodec * pCodec);
-	void TreeDecode(int i, int j, CMuxCodec * pCodec);
 	void CoefCode(int i, int j, CMuxCodec * pCodec);
 	void CoefDecode(int i, int j, CMuxCodec * pCodec);
 
