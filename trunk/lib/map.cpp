@@ -66,12 +66,12 @@ void CMap::Init(int DimX, int DimY)
 {
 	this->ImageX = DimX;
 	this->ImageY = DimY;
-	this->DimX = (DimX + 1) >> 1;
-	this->DimY = (DimY + 1) >> 1;
+	this->DimX = (DimX + 3) >> 2;
+	this->DimY = (DimY + 3) >> 2;
 	MapSize = this->DimX * this->DimY;
 	if (MapSize != 0){
 		pMap = new char[MapSize];
-		pDist = new short[MapSize];
+		pDist = new int[MapSize];
 		if (pHigh != 0)
 			pNodes = new node [MapSize];
 	}
@@ -128,8 +128,8 @@ void CMap::BuidNodes(float const lambda)
 	int width = pLow->DimX;
 	int height = pLow->DimY;
 	int stride2 = DimX * 2;
-	short * pCurDist1 = pDist;
-	short * pCurDist2 = pDist + DimX;
+	int * pCurDist1 = pDist;
+	int * pCurDist2 = pDist + DimX;
 	node * pCurNodes = pLow->pNodes;
 
 	for (int j = 0; j < height; j++) {
@@ -328,7 +328,7 @@ void CMap::CodeNodes(void)
 
 void CMap::CodeNodes(int x, int y, int context)
 {
-	short * pCurDist = pDist + y * DimX + x;
+	int * pCurDist = pDist + y * DimX + x;
 	if (pCurDist[0] < 0)
 		DirCodec.code0(context);
 	else
@@ -475,21 +475,23 @@ void CMap::DecodeNodes(int x, int y, int context)
 
 void CMap::GetImageDist(float * pImage1, float * pImage2, int stride)
 {
-	short * pDir = this->pDist;
-	int diff = 2 * stride - ImageX;
-//  	float wl = weightL * weightL * 65536;
+	int * pDir = this->pDist;
+	int diff = 4 * stride - ImageX;
 	float wl = weightL * 256;
 	int end = stride * ImageY;
 
-	for( int pos1 = 1, pos2 = stride; pos1 < end; pos1 += diff, pos2 += diff){
-		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 2, pos2 += 2){
-// 			pDir[0] = (short) (sqrtf((pImage1[pos1] * pImage1[pos1] +
-// 					pImage1[pos2] * pImage1[pos2]) * wl) -
-// 					sqrtf((pImage2[pos1] * pImage2[pos1] +
-// 					pImage2[pos2] * pImage2[pos2]) * wl));
-			pDir[0] = (short) ((fabsf(pImage1[pos1]) +
-					fabsf(pImage1[pos2]) - fabsf(pImage2[pos1]) -
-					fabsf(pImage2[pos2])) * wl);
+	for( int pos1 = 1, pos2 = stride, pos3 = 2 * stride + 1, pos4 = 3 * stride;
+			pos1 < end; pos1 += diff, pos2 += diff, pos3 += diff, pos4 += diff){
+		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 4, pos2 += 4, pos3 += 4, pos4 += 4){
+			pDir[0] = (int) ((
+					fabsf(pImage1[pos1]) + fabsf(pImage1[pos1 + 2]) +
+					fabsf(pImage1[pos2]) + fabsf(pImage1[pos2 + 2]) +
+					fabsf(pImage1[pos3]) + fabsf(pImage1[pos3 + 2]) +
+					fabsf(pImage1[pos4]) + fabsf(pImage1[pos4 + 2]) - (
+					fabsf(pImage2[pos1]) + fabsf(pImage2[pos1 + 2]) +
+					fabsf(pImage2[pos2]) + fabsf(pImage2[pos2 + 2]) +
+					fabsf(pImage2[pos3]) + fabsf(pImage2[pos3 + 2]) +
+					fabsf(pImage2[pos4]) + fabsf(pImage2[pos4 + 2]))) * wl);
 			pDir++;
 		}
 	}
@@ -498,28 +500,32 @@ void CMap::GetImageDist(float * pImage1, float * pImage2, int stride)
 void CMap::GetImageDist(float * pImage1, float * pImage2,
 						float * pBand1, float * pBand2, int stride)
 {
-	short * pDir = this->pDist;
-	int diff = 2 * stride - ImageX;
-// 	float wl = weightL * weightL * 65536;
-// 	float wh = weightH * weightH * 65536;
+	int * pDir = this->pDist;
+	int diff = 4 * stride - ImageX;
 	float wl = weightL * 256;
 	float wh = weightH * 256;
 	int end = stride * ImageY;
 
-	for( int pos1 = 1, pos2 = stride; pos1 < end; pos1 += diff, pos2 += diff){
-		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 2, pos2 += 2){
-// 			pDir[0] = (short) (sqrtf((pImage1[pos1] * pImage1[pos1] +
-// 					pImage1[pos2] * pImage1[pos2]) * wl +
-// 					(pBand1[pos1] * pBand1[pos1] +
-// 					pBand1[pos2] * pBand1[pos2]) * wh) -
-// 					sqrtf((pImage2[pos1] * pImage2[pos1] +
-// 					pImage2[pos2] * pImage2[pos2]) * wl +
-// 					(pBand2[pos1] * pBand2[pos1] +
-// 					pBand2[pos2] * pBand2[pos2]) * wh));
-			pDir[0] = (short) ((fabsf(pImage1[pos1]) + fabsf(pImage1[pos2]) -
-					fabsf(pImage2[pos1]) - fabsf(pImage2[pos2])) * wl +
-					(fabsf(pBand1[pos1]) + fabsf(pBand1[pos2]) -
-					fabsf(pBand2[pos1]) - fabsf(pBand2[pos2])) * wh);
+	for( int pos1 = 1, pos2 = stride, pos3 = 2 * stride + 1, pos4 = 3 * stride;
+			pos1 < end; pos1 += diff, pos2 += diff, pos3 += diff, pos4 += diff){
+		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 4, pos2 += 4, pos3 += 4, pos4 += 4){
+			pDir[0] = (int) ((
+					fabsf(pImage1[pos1]) + fabsf(pImage1[pos1 + 2]) +
+					fabsf(pImage1[pos2]) + fabsf(pImage1[pos2 + 2]) +
+					fabsf(pImage1[pos3]) + fabsf(pImage1[pos3 + 2]) +
+					fabsf(pImage1[pos4]) + fabsf(pImage1[pos4 + 2]) - (
+					fabsf(pImage2[pos1]) + fabsf(pImage2[pos1 + 2]) +
+					fabsf(pImage2[pos2]) + fabsf(pImage2[pos2 + 2]) +
+					fabsf(pImage2[pos3]) + fabsf(pImage2[pos3 + 2]) +
+					fabsf(pImage2[pos4]) + fabsf(pImage2[pos4 + 2]))) * wl + (
+					fabsf(pBand1[pos1]) + fabsf(pBand1[pos1 + 2]) +
+					fabsf(pBand1[pos2]) + fabsf(pBand1[pos2 + 2]) +
+					fabsf(pBand1[pos3]) + fabsf(pBand1[pos3 + 2]) +
+					fabsf(pBand1[pos4]) + fabsf(pBand1[pos4 + 2]) - (
+					fabsf(pBand2[pos1]) + fabsf(pBand2[pos1 + 2]) +
+					fabsf(pBand2[pos2]) + fabsf(pBand2[pos2 + 2]) +
+					fabsf(pBand2[pos3]) + fabsf(pBand2[pos3 + 2]) +
+					fabsf(pBand2[pos4]) + fabsf(pBand2[pos4 + 2]))) * wh);
 			pDir++;
 		}
 	}
@@ -527,22 +533,23 @@ void CMap::GetImageDist(float * pImage1, float * pImage2,
 
 void CMap::GetImageDistDiag(float * pImage1, float * pImage2, int stride)
 {
-	short * pDir = this->pDist;
-	int diff = 2 * stride - ImageX;
-// 	float wl = weightL * weightL * 65536;
-// 	float wh = weightH * weightH * 65536;
+	int * pDir = this->pDist;
+	int diff = 4 * stride - ImageX;
 	float wl = weightL * 256;
 	float wh = weightH * 256;
 	int end = stride * ImageY;
 
-	for( int pos1 = stride; pos1 < end; pos1 += diff){
-		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 2){
-// 			pDir[0] = (short) (sqrtf(pImage1[pos1] * pImage1[pos1] * wh +
-// 					pImage1[pos1 + 1] * pImage1[pos1 + 1] * wl) -
-// 					sqrtf(pImage2[pos1] * pImage2[pos1] * wh +
-// 					pImage2[pos1 + 1] * pImage2[pos1 + 1] * wl));
-			pDir[0] = (short) ((fabsf(pImage1[pos1]) - fabsf(pImage2[pos1])) * wh +
-					(fabsf(pImage1[pos1 + 1]) - fabsf(pImage2[pos1 + 1])) * wl);
+	for( int pos1 = stride, pos2 = 3 * stride; pos1 < end; pos1 += diff, pos2 += diff){
+		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 4, pos2 += 4){
+			pDir[0] = (int) ((
+					fabsf(pImage1[pos1]) + fabsf(pImage1[pos1 + 2]) +
+					fabsf(pImage1[pos2]) + fabsf(pImage1[pos2 + 2]) - (
+					fabsf(pImage2[pos1]) + fabsf(pImage2[pos1 + 2]) +
+					fabsf(pImage2[pos2]) + fabsf(pImage2[pos2 + 2]))) * wh + (
+					fabsf(pImage1[pos1 + 1]) + fabsf(pImage1[pos1 + 3]) +
+					fabsf(pImage1[pos2 + 1]) + fabsf(pImage1[pos2 + 3]) - (
+					fabsf(pImage2[pos1 + 1]) + fabsf(pImage2[pos1 + 3]) +
+					fabsf(pImage2[pos2 + 1]) + fabsf(pImage2[pos2 + 3]))) * wl);
 			pDir++;
 		}
 	}

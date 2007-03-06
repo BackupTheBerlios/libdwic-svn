@@ -425,39 +425,45 @@ template <lift lft_opt>
 void CWaveletDir::LiftBand(float * pCur, int stride, int DimX, int DimY,
 						   float Coef1, float Coef2, char * pDir)
 {
-	float Coef[3][2] = {
+	float Coef[2][2] = {
 		{Coef1, Coef2},
-		{Coef2, Coef1},
-		{(Coef1 + Coef2) * .5, (Coef1 + Coef2) * .5}
+		{Coef2, Coef1}
 	};
+	char * pDirOld = pDir;
 	PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], TOP|LEFT);
 	float * pNextCur = pCur + (stride << 1);
-	pDir++;
 	pCur += 2;
-	for(int i = 2 ; i < DimX - 2; i += 2, pDir++, pCur += 2){
+	for(int i = 2 ; i < DimX - 2;pCur += 2){
 		PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], TOP);
+		i += 2;
+		pDir += (i & 3) == 0;
 	}
 	PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], TOP|RIGHT);
-	pDir++;
+	pDir = pDirOld;
 	for(int j = 2; j < DimY - 2; j += 2){
 		pCur = pNextCur;
 		pNextCur += stride << 1;
 		PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], LEFT);
 		pCur += 2;
-		pDir++;
-		for(int i = 2; i < DimX - 2; i += 2, pDir++, pCur += 2){
+		for(int i = 2; i < DimX - 2; pCur += 2){
 			PXL_LIFT(Coef[*pDir][0], Coef[*pDir][1]);
+			i += 2;
+			pDir += (i & 3) == 0;
 		}
 		PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], RIGHT);
 		pDir++;
+		if ((j & 3) == 0)
+			pDir = pDirOld;
+		pDirOld = pDir;
 	}
 	pCur = pNextCur;
 	pNextCur += stride << 1;
 	PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], BOTTOM|LEFT);
-	pDir++;
 	pCur += 2;
-	for(int i = 2 ; i < DimX - 2; i += 2, pDir++, pCur += 2){
+	for(int i = 2 ; i < DimX - 2; pCur += 2){
 		PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], BOTTOM);
+		i += 2;
+		pDir += (i & 3) == 0;
 	}
 	PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], BOTTOM|RIGHT);
 }

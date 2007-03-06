@@ -77,7 +77,7 @@ public:
 	unsigned int ImageY;	// Height of the original image
 	unsigned int MapSize;	// (DimX * DimY), the band size in blocks
 	char * pMap;			// Directional map information
-	short * pDist;			// Distortion difference
+	int * pDist;			// Distortion difference
 
 	float weightL;			// Low band weight
 	float weightH;			// High band weight
