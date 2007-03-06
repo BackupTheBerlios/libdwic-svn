@@ -223,7 +223,7 @@ void CMap::ApplyNodes(void)
 	for( int j = 0; j < height; j++){
 		for( int i = 0; i < width; i++){
 			if (pCurNodes[i].rate == 0)
-				pCurMap->SetDir(pCurNodes[i].refDist < 0 ? 0 : 1, i, j);
+				pCurMap->SetDir(pCurNodes[i].refDist >= 0, i, j);
 			else
 				pCurMap->pHigh->ApplyNodes(i << 1, j << 1);
 		}
@@ -256,33 +256,33 @@ void CMap::SetDir(int Dir, int x, int y)
 
 void CMap::ApplyNodes(int x, int y)
 {
-	pMap[x + DimX * y] = pDist[x + DimX * y] < 0 ? 0 : 1;
-	pMap[x + 1 + DimX * y] = pDist[x + 1 + DimX * y] < 0 ? 0 : 1;
-	pMap[x + DimX * (y + 1)] = pDist[x + DimX * (y + 1)] < 0 ? 0 : 1;
-	pMap[x + 1 + DimX * (y + 1)] = pDist[x + 1 + DimX * (y + 1)] < 0 ? 0 : 1;
+	pMap[x + DimX * y] = pDist[x + DimX * y] >= 0;
+	pMap[x + 1 + DimX * y] = pDist[x + 1 + DimX * y] >= 0;
+	pMap[x + DimX * (y + 1)] = pDist[x + DimX * (y + 1)] >= 0;
+	pMap[x + 1 + DimX * (y + 1)] = pDist[x + 1 + DimX * (y + 1)] >= 0;
 
 	if (pHigh == 0)
 		return;
 
 	node * pCurNodes = pNodes + y * DimX;
 	if (pCurNodes[x].rate == 0)
-		SetDir(pCurNodes[x].refDist < 0 ? 0 : 1, x, y);
+		SetDir(pCurNodes[x].refDist >= 0, x, y);
 	else
 		pHigh->ApplyNodes(x << 1, y << 1);
 	x++;
 	if (pCurNodes[x].rate == 0)
-		SetDir(pCurNodes[x].refDist < 0 ? 0 : 1, x, y);
+		SetDir(pCurNodes[x].refDist >= 0, x, y);
 	else
 		pHigh->ApplyNodes(x << 1, y << 1);
 	pCurNodes += DimX;
 	y++;
 	if (pCurNodes[x].rate == 0)
-		SetDir(pCurNodes[x].refDist < 0 ? 0 : 1, x, y);
+		SetDir(pCurNodes[x].refDist >= 0, x, y);
 	else
 		pHigh->ApplyNodes(x << 1, y << 1);
 	x--;
 	if (pCurNodes[x].rate == 0)
-		SetDir(pCurNodes[x].refDist < 0 ? 0 : 1, x, y);
+		SetDir(pCurNodes[x].refDist >= 0, x, y);
 	else
 		pHigh->ApplyNodes(x << 1, y << 1);
 }
@@ -329,25 +329,13 @@ void CMap::CodeNodes(void)
 void CMap::CodeNodes(int x, int y, int context)
 {
 	int * pCurDist = pDist + y * DimX + x;
-	if (pCurDist[0] < 0)
-		DirCodec.code0(context);
-	else
-		DirCodec.code1(context);
+	DirCodec.code(pCurDist[0] >= 0, context);
 	pCurDist++;
-	if (pCurDist[0] < 0)
-		DirCodec.code0(context);
-	else
-		DirCodec.code1(context);
+	DirCodec.code(pCurDist[0] >= 0, context);
 	pCurDist += DimX;
-	if (pCurDist[0] < 0)
-		DirCodec.code0(context);
-	else
-		DirCodec.code1(context);
+	DirCodec.code(pCurDist[0] >= 0, context);
 	pCurDist--;
-	if (pCurDist[0] < 0)
-		DirCodec.code0(context);
-	else
-		DirCodec.code1(context);
+	DirCodec.code(pCurDist[0] >= 0, context);
 
 	if (pHigh == 0)
 		return;
@@ -356,50 +344,38 @@ void CMap::CodeNodes(int x, int y, int context)
 	pCurDist -= DimX;
 	if (pCurNodes[x].rate == 0){
 		NodeCodec.code0(0);
-		if (pCurNodes[x].refDist < 0)
-			LeafCodec.code0(pCurDist[0] < 0 ? 0 : 1);
-		else
-			LeafCodec.code1(pCurDist[0] < 0 ? 0 : 1);
+		LeafCodec.code(pCurNodes[x].refDist >= 0, pCurDist[0] >= 0);
 	}else{
 		NodeCodec.code1(0);
-		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
+		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] >= 0);
 	}
 	x++;
 	pCurDist++;
 	if (pCurNodes[x].rate == 0){
 		NodeCodec.code0(0);
-		if (pCurNodes[x].refDist < 0)
-			LeafCodec.code0(pCurDist[0] < 0 ? 0 : 1);
-		else
-			LeafCodec.code1(pCurDist[0] < 0 ? 0 : 1);
+		LeafCodec.code(pCurNodes[x].refDist >= 0, pCurDist[0] >= 0);
 	}else{
 		NodeCodec.code1(0);
-		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
+		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] >= 0);
 	}
 	pCurNodes += DimX;
 	pCurDist += DimX;
 	y++;
 	if (pCurNodes[x].rate == 0){
 		NodeCodec.code0(0);
-		if (pCurNodes[x].refDist < 0)
-			LeafCodec.code0(pCurDist[0] < 0 ? 0 : 1);
-		else
-			LeafCodec.code1(pCurDist[0] < 0 ? 0 : 1);
+		LeafCodec.code(pCurNodes[x].refDist >= 0, pCurDist[0] >= 0);
 	}else{
 		NodeCodec.code1(0);
-		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
+		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] >= 0);
 	}
 	x--;
 	pCurDist--;
 	if (pCurNodes[x].rate == 0){
 		NodeCodec.code0(0);
-		if (pCurNodes[x].refDist < 0)
-			LeafCodec.code0(pCurDist[0] < 0 ? 0 : 1);
-		else
-			LeafCodec.code1(pCurDist[0] < 0 ? 0 : 1);
+		LeafCodec.code(pCurNodes[x].refDist >= 0, pCurDist[0] >= 0);
 	}else{
 		NodeCodec.code1(0);
-		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] < 0 ? 0 : 1);
+		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] >= 0);
 	}
 }
 
