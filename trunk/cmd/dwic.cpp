@@ -49,10 +49,10 @@ using namespace libdwic;
 #define UNKNOW_TYPE		3
 
 template <class Pxl>
-void BW2RGB(Pxl * pIn, int stride, Pxl offset = 0)
+void BW2RGB(Pxl * pIn, int stride, Pxl offset = 0, Pxl scale = 1)
 {
 	for( int i = stride - 1, j = (stride - 1) * 3; i > 0 ; i--){
-		pIn[j] = pIn[j+1] = pIn[j+2] = pIn[i] + offset;
+		pIn[j] = pIn[j+1] = pIn[j+2] = pIn[i] * scale + offset;
 		j-=3;
 	}
 }
@@ -157,7 +157,7 @@ void Band2PNG(CWaveletDir & Wavelet, string & outfile)
 		char tmp[8];
 		{
 			Wavelet.GetBand(pBand, i, 0);
-			BW2RGB(pBand, BandDimX * BandDimY, 0.5f);
+			BW2RGB(pBand, BandDimX * BandDimY, 0.5f, 1.f/255);
 			Image Band(BandDimX, BandDimY, "RGB", FloatPixel, pBand);
 			Band.type( GrayscaleType );
 			sprintf(tmp, "HV%i.png", i);
@@ -165,7 +165,7 @@ void Band2PNG(CWaveletDir & Wavelet, string & outfile)
 		}
 		{
 			Wavelet.GetBand(pBand, i, 1);
-			BW2RGB(pBand, BandDimX * (BandDimY >> 1), 0.5f);
+			BW2RGB(pBand, BandDimX * (BandDimY >> 1), 0.5f, 1.f/255);
 			Image Band(BandDimX, BandDimY >> 1, "RGB", FloatPixel, pBand);
 			Band.type( GrayscaleType );
 			sprintf(tmp, "HVL%i.png", i);
@@ -173,7 +173,7 @@ void Band2PNG(CWaveletDir & Wavelet, string & outfile)
 		}
 		{
 			Wavelet.GetBand(pBand, i, 2);
-			BW2RGB(pBand, BandDimX * (BandDimY >> 1), 0.5f);
+			BW2RGB(pBand, BandDimX * (BandDimY >> 1), 0.5f, 1.f/255);
 			Image Band(BandDimX, BandDimY >> 1, "RGB", FloatPixel, pBand);
 			Band.type( GrayscaleType );
 			sprintf(tmp, "HVH%i.png", i);
@@ -181,7 +181,7 @@ void Band2PNG(CWaveletDir & Wavelet, string & outfile)
 		}
 		{
 			Wavelet.GetBand(pBand, i, 3);
-			BW2RGB(pBand, BandDimX * BandDimY, 0.5f);
+			BW2RGB(pBand, BandDimX * BandDimY, 0.5f, 1.f/255);
 			Image Band(BandDimX, BandDimY, "RGB", FloatPixel, pBand);
 			Band.type( GrayscaleType );
 			sprintf(tmp, "DL%i.png", i);
@@ -189,7 +189,7 @@ void Band2PNG(CWaveletDir & Wavelet, string & outfile)
 		}
 		{
 			Wavelet.GetBand(pBand, i, 4);
-			BW2RGB(pBand, BandDimX * BandDimY, 0.5f);
+			BW2RGB(pBand, BandDimX * BandDimY, 0.5f, 1.f/255);
 			Image Band(BandDimX, BandDimY, "RGB", FloatPixel, pBand);
 			Band.type( GrayscaleType );
 			sprintf(tmp, "DH%i.png", i);
@@ -248,7 +248,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		CWaveletDir Wavelet(img.columns(), img.rows(), WAV_LEVELS);
 		Wavelet.SetWeight97();
 		Wavelet.SetCodec(&Codec);
-		Wavelet.Transform97(ImgPixels, img.columns(), LambdaDir[Quant] * .75f);
+		Wavelet.Transform97(ImgPixels, img.columns(), 3.f/256.f/sqrtf(Quants[Quant]));
 
 // 		Wavelet.Stats();
 //  	Map2PNG(Wavelet, outfile);
