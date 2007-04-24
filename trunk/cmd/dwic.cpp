@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2006 by Nicolas BOTTI <rududu@laposte.net>              *
+ *   Copyright (C) 2006-2007 by Nicolas BOTTI <rududu@laposte.net>         *
  *                                                                         *
  * This software is a computer program whose purpose is to compress        *
  * images.                                                                 *
@@ -248,7 +248,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 		CWaveletDir Wavelet(img.columns(), img.rows(), WAV_LEVELS);
 		Wavelet.SetWeight97();
 		Wavelet.SetCodec(&Codec);
-		Wavelet.Transform97(ImgPixels, img.columns(), 3.f/256.f/sqrtf(Quants[Quant]));
+		Wavelet.Transform97(ImgPixels, img.columns(), (int)(sqrtf(Quants[Quant]) * 256.f / 3.f + .5));
 
 // 		Wavelet.Stats();
 //  	Map2PNG(Wavelet, outfile);

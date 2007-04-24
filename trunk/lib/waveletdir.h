@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2006 by Nicolas BOTTI <rududu@laposte.net>              *
+ *   Copyright (C) 2006-2007 by Nicolas BOTTI <rududu@laposte.net>         *
  *                                                                         *
  * This software is a computer program whose purpose is to compress        *
  * images.                                                                 *
@@ -82,7 +82,7 @@ public:
 // 	void Transform53(float * pImage, int Stride);
 // 	void Transform53I(float * pImage, int Stride);
 // 	void SetWeight53(void);
-	void Transform97(float * pImage, int stride, float lambda);
+	void Transform97(float * pImage, int stride, const int lambda);
 	void Transform97I(float * pImage, int Stride);
 	void SetWeight97(void);
 

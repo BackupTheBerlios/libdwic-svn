@@ -66,7 +66,7 @@ public:
 
 	void SelectDir(void);
 
-	void BuidNodes(float const lambda);
+	void BuidNodes(const int lambda);
 	void ApplyNodes(void);
 	void CodeNodes(void);
 	void DecodeNodes(void);

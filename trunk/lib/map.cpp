@@ -123,7 +123,7 @@ void CMap::SelectDir(void)
 		pMap[i] = pDist[i] >= 0;
 }
 
-void CMap::BuidNodes(float const lambda)
+void CMap::BuidNodes(const int lambda)
 {
 	int width = pLow->DimX;
 	int height = pLow->DimY;
@@ -144,7 +144,7 @@ void CMap::BuidNodes(float const lambda)
 			if (pCurNodes[i].refDist < 0)
 				Dist -= pCurNodes[i].refDist;
 			pCurNodes[i].rate = 0;
-			if ((3 + lambda * Dist) < 0)
+			if ((3 * lambda + Dist) < 0)
 				pCurNodes[i].rate = 3;
 		}
 		pCurDist1 += stride2;
@@ -196,7 +196,7 @@ void CMap::BuidNodes(float const lambda)
 				if (pCurNodes[i].refDist < 0)
 					Dist -= pCurNodes[i].refDist;
 				pCurNodes[i].rate = 0;
-				if ((rate + lambda * Dist) <= 0)
+				if ((rate * lambda + Dist) <= 0)
 					pCurNodes[i].rate = rate;
 			}
 			pHighNodes1 += stride2;

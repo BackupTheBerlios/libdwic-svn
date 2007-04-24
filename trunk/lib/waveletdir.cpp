@@ -468,7 +468,7 @@ void CWaveletDir::LiftBand(float * pCur, int stride, int DimX, int DimY,
 	PXL_LIFT_EDGE(Coef[*pDir][0], Coef[*pDir][1], BOTTOM|RIGHT);
 }
 
-void CWaveletDir::Transform97(float * pImage, int stride, float lambda)
+void CWaveletDir::Transform97(float * pImage, int stride, const int lambda)
 {
 	float * pTmpImage = new float [stride * DimY];
 

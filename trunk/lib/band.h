@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2006 by Nicolas BOTTI <rududu@laposte.net>              *
+ *   Copyright (C) 2006-2007 by Nicolas BOTTI <rududu@laposte.net>         *
  *                                                                         *
  * This software is a computer program whose purpose is to compress        *
  * images.                                                                 *
