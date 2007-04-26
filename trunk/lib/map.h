@@ -38,15 +38,9 @@
 namespace libdwic {
 
 typedef struct {
-	int d0;		/// distortion for direction 0
-	int d1;		/// distortion for direction 1
-} dist_t;
-
-typedef struct {
-	short rate;		/// rate of this tree branch, 0 if the node is a leaf
-	int dist;		/// distortion associated with this rate
-	int d0;			/// distortion for direction 0
-	int d1;			/// distortion for direction 1
+	short rate;		// rate of this tree branch, 0 if the node is a leaf
+	int dist;		// distortion associated with this rate
+	int refDist;	// reference distortion
 } node;
 
 
@@ -60,12 +54,10 @@ public:
     ~CMap();
 
 	void Init(int DimX = 0, int DimY = 0);
-	void GetImageDist(float * pIm1, float * pIm2, float * pIm3, int stride);
-	void GetImageDist(float * pIm1, float * pIm2, float * pIm3,
-					  float * pBand1, float * pBand2, float * pBand3,
-					  int stride);
-	void GetImageDistDiag(float * pIm1, float * pIm2, float * pIm3,
-						  int stride);
+	void GetImageDist(float * pImage1, float * pImage2, int stride);
+	void GetImageDist(float * pImage1, float * pImage2,
+					  float * pBand1, float * pBand2, int stride);
+	void GetImageDistDiag(float * pImage1, float * pImage2, int stride);
 	void SetDir(int Sel);
 	void GetMap(unsigned char * pOut);
 	void GetDist(unsigned char * pOut);
@@ -85,7 +77,7 @@ public:
 	unsigned int ImageY;	// Height of the original image
 	unsigned int MapSize;	// (DimX * DimY), the band size in blocks
 	char * pMap;			// Directional map information
-	dist_t * pDist;			// Distortion difference
+	int * pDist;			// Distortion difference
 
 	float weightL;			// Low band weight
 	float weightH;			// High band weight
@@ -105,33 +97,6 @@ private:
 	void ApplyNodes(int x, int y);
 	void CodeNodes(int x, int y, int context);
 	void DecodeNodes(int x, int y, int context);
-
-	template<class T>
-	__inline__ char GetDir(const T d0, const T d1) {
-		char dir = 0;
-		T tmp = d0;
-		if (d0 > d1)
-			tmp = d1, dir = 1;
-		if (tmp >= 0) dir = 2;
-		return dir;
-	}
-
-	static __inline__ void CodeDir(const char dir, CBitCodec & Codec, const int ctx) {
-		if (dir == 2)
-			Codec.code1(ctx);
-		else {
-			Codec.code0(ctx);
-			Codec.code(dir, ctx + 3);
-		}
-	}
-
-	static __inline__ char DecodeDir(CBitCodec & Codec, const int ctx) {
-		if (Codec.decode(ctx))
-			return 2;
-		else {
-			return Codec.decode(ctx + 3);
-		}
-	}
 };
 
 }
