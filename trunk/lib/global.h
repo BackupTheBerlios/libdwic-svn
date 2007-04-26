@@ -89,6 +89,15 @@ typedef enum cmode {encode, decode};
 
 #define ALIGN	8
 
+template<class T>
+inline T min(T const a, T const b, T const c)
+{
+	T tmp = a;
+	if (b < tmp) tmp = b;
+	if (c < tmp) tmp = c;
+	return tmp;
+}
+
 int inline s2u(int s)
 {
 	int u = -(2 * s + 1);

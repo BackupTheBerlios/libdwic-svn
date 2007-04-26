@@ -36,15 +36,15 @@ for IN_IMAGE in *.pgm ; do
 # 	rm $OUT_FILE $OUT_IMAGE
 # 	
 # 	OUT_FILE="test.jp2"
-# 	BENCH_FILE="${IN_IMAGE%.png}.jp2k.dat"
+# 	BENCH_FILE="${IN_IMAGE%.pgm}.jp2k.dat"
 # 	echo "# Image : $IN_IMAGE" > $BENCH_FILE
 # 	for q in ${Qu[@]} ; do
 # 		convert $IN_IMAGE -quality $q $OUT_FILE
 # 		tmp=( `ls -l $OUT_FILE` )
 # 		file_size=${tmp[4]}
 # 		convert $OUT_FILE $OUT_IMAGE
-# 		tmp=( `compare -metric PSNR $IN_IMAGE $OUT_IMAGE /dev/null | grep dB` )
-# 		psnr=${tmp[0]}
+# 		tmp=( `pnmpsnr $IN_IMAGE $OUT_IMAGE 2>&1 ` )
+# 		psnr=${tmp[((${#tmp[@]}-2))]}
 # 		echo "$file_size	$psnr" >> $BENCH_FILE
 # 	done
 # 	rm $OUT_FILE $OUT_IMAGE

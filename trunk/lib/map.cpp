@@ -71,7 +71,7 @@ void CMap::Init(int DimX, int DimY)
 	MapSize = this->DimX * this->DimY;
 	if (MapSize != 0){
 		pMap = new char[MapSize];
-		pDist = new int[MapSize];
+		pDist = new dist_t[MapSize];
 		if (pHigh != 0)
 			pNodes = new node [MapSize];
 	}
@@ -103,11 +103,11 @@ void CMap::GetMap(unsigned char * pOut)
 
 void CMap::GetDist(unsigned char * pOut)
 {
-	for( int i = 0; i < MapSize; i++){
-		int Out = ((int)pDist[i]) + 128;
-		Out = CLIP(Out, 0, 255);
-		pOut[i] = (unsigned char) Out;
-	}
+// 	for( int i = 0; i < MapSize; i++){
+// 		int Out = ((int)pDist[i]) + 128;
+// 		Out = CLIP(Out, 0, 255);
+// 		pOut[i] = (unsigned char) Out;
+// 	}
 }
 
 void CMap::SetCodec(CMuxCodec * pCodec)
@@ -119,8 +119,10 @@ void CMap::SetCodec(CMuxCodec * pCodec)
 
 void CMap::SelectDir(void)
 {
-	for( int i = 0; i < MapSize; i++)
-		pMap[i] = pDist[i] >= 0;
+	for( int i = 0; i < MapSize; i++) {
+		char tmp = (pDist[i].d1 | pDist[i].d0) >= 0;
+		pMap[i] = tmp * 2 + (pDist[i].d1 < pDist[i].d0) & ~tmp;
+	}
 }
 
 void CMap::BuidNodes(const int lambda)
@@ -128,24 +130,26 @@ void CMap::BuidNodes(const int lambda)
 	int width = pLow->DimX;
 	int height = pLow->DimY;
 	int stride2 = DimX * 2;
-	int * pCurDist1 = pDist;
-	int * pCurDist2 = pDist + DimX;
+	dist_t * pCurDist1 = pDist;
+	dist_t * pCurDist2 = pDist + DimX;
 	node * pCurNodes = pLow->pNodes;
 
 	for (int j = 0; j < height; j++) {
 		for (int i = 0, k = 0; i < width; i++, k += 2) {
-			pCurNodes[i].refDist = pCurDist1[k] + pCurDist1[k + 1]
-					+ pCurDist2[k] + pCurDist2[k + 1];
-			int Dist = MIN(0, pCurDist1[k]);
-			Dist += MIN(0, pCurDist1[k + 1]);
-			Dist += MIN(0, pCurDist2[k]);
-			Dist += MIN(0, pCurDist2[k + 1]);
+			pCurNodes[i].d0 = pCurDist1[k].d0 + pCurDist1[k + 1].d0
+					+ pCurDist2[k].d0 + pCurDist2[k + 1].d0;
+			pCurNodes[i].d1 = pCurDist1[k].d1 + pCurDist1[k + 1].d1
+					+ pCurDist2[k].d1 + pCurDist2[k + 1].d1;
+
+			int Dist = min<int>(0, pCurDist1[k].d0, pCurDist1[k].d1);
+			Dist += min<int>(0, pCurDist1[k + 1].d0, pCurDist1[k + 1].d1);
+			Dist += min<int>(0, pCurDist2[k].d0, pCurDist2[k].d1);
+			Dist += min<int>(0, pCurDist2[k + 1].d0, pCurDist2[k + 1].d1);
 			pCurNodes[i].dist = Dist;
-			if (pCurNodes[i].refDist < 0)
-				Dist -= pCurNodes[i].refDist;
+			Dist -= min(0, pCurNodes[i].d0, pCurNodes[i].d1);
 			pCurNodes[i].rate = 0;
-			if ((3 * lambda + Dist) < 0)
-				pCurNodes[i].rate = 3;
+			if ((152 * lambda + (Dist << 5)) <= 0) // 5 here means log2(3) * (4 - 1) ~ 4.75
+				pCurNodes[i].rate = 152;
 		}
 		pCurDist1 += stride2;
 		pCurDist2 += stride2;
@@ -165,38 +169,40 @@ void CMap::BuidNodes(const int lambda)
 
 		for( int j = 0; j < height; j++){
 			for( int i = 0, k = 0; i < width; i++, k += 2){
-				pCurNodes[i].refDist = pHighNodes1[k].refDist
-						+ pHighNodes1[k + 1].refDist + pHighNodes2[k].refDist
-						+ pHighNodes2[k + 1].refDist
-						+ pCurDist1[k] + pCurDist1[k + 1]
-						+ pCurDist2[k] + pCurDist2[k + 1];
-				int rate = 11 + pHighNodes1[k].rate + pHighNodes1[k + 1].rate
-						+ pHighNodes2[k].rate + pHighNodes2[k + 1].rate;
-				int Dist = MIN(0, pCurDist1[k]);
-				Dist += MIN(0, pCurDist1[k + 1]);
-				Dist += MIN(0, pCurDist2[k]);
-				Dist += MIN(0, pCurDist2[k + 1]);
+				pCurNodes[i].d0 = pHighNodes1[k].d0 + pHighNodes1[k + 1].d0
+						+ pHighNodes2[k].d0 + pHighNodes2[k + 1].d0
+						+ pCurDist1[k].d0 + pCurDist1[k + 1].d0
+						+ pCurDist2[k].d0 + pCurDist2[k + 1].d0;
+				pCurNodes[i].d1 = pHighNodes1[k].d1 + pHighNodes1[k + 1].d1
+						+ pHighNodes2[k].d1 + pHighNodes2[k + 1].d1
+						+ pCurDist1[k].d1 + pCurDist1[k + 1].d1
+						+ pCurDist2[k].d1 + pCurDist2[k + 1].d1;
+				int rate = 483 + pHighNodes1[k].rate + pHighNodes1[k + 1].rate
+						+ pHighNodes2[k].rate + pHighNodes2[k + 1].rate; // 15 = log2(3) * ((4-1) + 4) + 4 * log2(2)
+				int Dist = min<int>(0, pCurDist1[k].d0, pCurDist1[k].d1);
+				Dist += min<int>(0, pCurDist1[k + 1].d0, pCurDist1[k + 1].d1);
+				Dist += min<int>(0, pCurDist2[k].d0, pCurDist2[k].d1);
+				Dist += min<int>(0, pCurDist2[k + 1].d0, pCurDist2[k + 1].d1);
 				if (pHighNodes1[k].rate > 0)
 					Dist += pHighNodes1[k].dist;
 				else
-					Dist += MIN(0, pHighNodes1[k].refDist);
+					Dist += min(0, pHighNodes1[k].d0, pHighNodes1[k].d1);
 				if (pHighNodes1[k + 1].rate > 0)
 					Dist += pHighNodes1[k + 1].dist;
 				else
-					Dist += MIN(0, pHighNodes1[k + 1].refDist);
+					Dist += min(0, pHighNodes1[k + 1].d0, pHighNodes1[k + 1].d1);
 				if (pHighNodes2[k].rate > 0)
 					Dist += pHighNodes2[k].dist;
 				else
-					Dist += MIN(0, pHighNodes2[k].refDist);
+					Dist += min(0, pHighNodes2[k].d0, pHighNodes2[k].d1);
 				if (pHighNodes2[k + 1].rate > 0)
 					Dist += pHighNodes2[k + 1].dist;
 				else
-					Dist += MIN(0, pHighNodes2[k + 1].refDist);
+					Dist += min(0, pHighNodes2[k + 1].d0, pHighNodes2[k + 1].d1);
 				pCurNodes[i].dist = Dist;
-				if (pCurNodes[i].refDist < 0)
-					Dist -= pCurNodes[i].refDist;
+				Dist -= min(0, pCurNodes[i].d0, pCurNodes[i].d1);
 				pCurNodes[i].rate = 0;
-				if ((rate * lambda + Dist) <= 0)
+				if ((rate * lambda + (Dist << 5)) <= 0)
 					pCurNodes[i].rate = rate;
 			}
 			pHighNodes1 += stride2;
@@ -222,9 +228,9 @@ void CMap::ApplyNodes(void)
 
 	for( int j = 0; j < height; j++){
 		for( int i = 0; i < width; i++){
-			if (pCurNodes[i].rate == 0)
-				pCurMap->SetDir(pCurNodes[i].refDist >= 0, i, j);
-			else
+			if (pCurNodes[i].rate == 0) {
+				pCurMap->SetDir(GetDir(pCurNodes[i].d0, pCurNodes[i].d1), i, j);
+			} else
 				pCurMap->pHigh->ApplyNodes(i << 1, j << 1);
 		}
 		pCurNodes += width;
@@ -256,33 +262,33 @@ void CMap::SetDir(int Dir, int x, int y)
 
 void CMap::ApplyNodes(int x, int y)
 {
-	pMap[x + DimX * y] = pDist[x + DimX * y] >= 0;
-	pMap[x + 1 + DimX * y] = pDist[x + 1 + DimX * y] >= 0;
-	pMap[x + DimX * (y + 1)] = pDist[x + DimX * (y + 1)] >= 0;
-	pMap[x + 1 + DimX * (y + 1)] = pDist[x + 1 + DimX * (y + 1)] >= 0;
+	pMap[x + DimX * y] = GetDir(pDist[x + DimX * y].d0, pDist[x + DimX * y].d1);
+	pMap[x + 1 + DimX * y] = GetDir(pDist[x + 1 + DimX * y].d0, pDist[x + 1 + DimX * y].d1);
+	pMap[x + DimX * (y + 1)] = GetDir(pDist[x + DimX * (y + 1)].d0, pDist[x + DimX * (y + 1)].d1);
+	pMap[x + 1 + DimX * (y + 1)] = GetDir(pDist[x + 1 + DimX * (y + 1)].d0, pDist[x + 1 + DimX * (y + 1)].d1);
 
 	if (pHigh == 0)
 		return;
 
 	node * pCurNodes = pNodes + y * DimX;
 	if (pCurNodes[x].rate == 0)
-		SetDir(pCurNodes[x].refDist >= 0, x, y);
+		SetDir(GetDir(pCurNodes[x].d0, pCurNodes[x].d1), x, y);
 	else
 		pHigh->ApplyNodes(x << 1, y << 1);
 	x++;
 	if (pCurNodes[x].rate == 0)
-		SetDir(pCurNodes[x].refDist >= 0, x, y);
+		SetDir(GetDir(pCurNodes[x].d0, pCurNodes[x].d1), x, y);
 	else
 		pHigh->ApplyNodes(x << 1, y << 1);
 	pCurNodes += DimX;
 	y++;
 	if (pCurNodes[x].rate == 0)
-		SetDir(pCurNodes[x].refDist >= 0, x, y);
+		SetDir(GetDir(pCurNodes[x].d0, pCurNodes[x].d1), x, y);
 	else
 		pHigh->ApplyNodes(x << 1, y << 1);
 	x--;
 	if (pCurNodes[x].rate == 0)
-		SetDir(pCurNodes[x].refDist >= 0, x, y);
+		SetDir(GetDir(pCurNodes[x].d0, pCurNodes[x].d1), x, y);
 	else
 		pHigh->ApplyNodes(x << 1, y << 1);
 }
@@ -309,13 +315,10 @@ void CMap::CodeNodes(void)
 
 	for( int j = 0; j < height; j++){
 		for( int i = 0; i < width; i++){
-			pCurMap->DirCodec.code(pMap[i], 0);
+			CodeDir(pMap[i], pCurMap->DirCodec, 0);
 			if (pCurNodes[i].rate == 0){
 				pCurMap->NodeCodec.code0(0);
-				if (pCurNodes[i].refDist < 0)
-					pCurMap->LeafCodec.code0(pMap[i]);
-				else
-					pCurMap->LeafCodec.code1(pMap[i]);
+				CodeDir(GetDir(pCurNodes[i].d0, pCurNodes[i].d1), pCurMap->LeafCodec, pMap[i]);
 			}else{
 				pCurMap->NodeCodec.code1(0);
 				pCurMap->pHigh->CodeNodes(i << 1, j << 1, pMap[i]);
@@ -328,14 +331,15 @@ void CMap::CodeNodes(void)
 
 void CMap::CodeNodes(int x, int y, int context)
 {
-	int * pCurDist = pDist + y * DimX + x;
-	DirCodec.code(pCurDist[0] >= 0, context);
+	dist_t * pCurDist = pDist + y * DimX + x;
+	char dirs[4];
+	CodeDir(dirs[0] = GetDir(pCurDist[0].d0, pCurDist[0].d1), DirCodec, context);
 	pCurDist++;
-	DirCodec.code(pCurDist[0] >= 0, context);
+	CodeDir(dirs[1] = GetDir(pCurDist[0].d0, pCurDist[0].d1), DirCodec, context);
 	pCurDist += DimX;
-	DirCodec.code(pCurDist[0] >= 0, context);
+	CodeDir(dirs[2] = GetDir(pCurDist[0].d0, pCurDist[0].d1), DirCodec, context);
 	pCurDist--;
-	DirCodec.code(pCurDist[0] >= 0, context);
+	CodeDir(dirs[3] = GetDir(pCurDist[0].d0, pCurDist[0].d1), DirCodec, context);
 
 	if (pHigh == 0)
 		return;
@@ -344,38 +348,38 @@ void CMap::CodeNodes(int x, int y, int context)
 	pCurDist -= DimX;
 	if (pCurNodes[x].rate == 0){
 		NodeCodec.code0(0);
-		LeafCodec.code(pCurNodes[x].refDist >= 0, pCurDist[0] >= 0);
+		CodeDir(GetDir(pCurNodes[x].d0, pCurNodes[x].d1), LeafCodec, dirs[0]);
 	}else{
 		NodeCodec.code1(0);
-		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] >= 0);
+		pHigh->CodeNodes(x << 1, y << 1, dirs[0]);
 	}
 	x++;
 	pCurDist++;
 	if (pCurNodes[x].rate == 0){
 		NodeCodec.code0(0);
-		LeafCodec.code(pCurNodes[x].refDist >= 0, pCurDist[0] >= 0);
+		CodeDir(GetDir(pCurNodes[x].d0, pCurNodes[x].d1), LeafCodec, dirs[1]);
 	}else{
 		NodeCodec.code1(0);
-		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] >= 0);
+		pHigh->CodeNodes(x << 1, y << 1, dirs[1]);
 	}
 	pCurNodes += DimX;
 	pCurDist += DimX;
 	y++;
 	if (pCurNodes[x].rate == 0){
 		NodeCodec.code0(0);
-		LeafCodec.code(pCurNodes[x].refDist >= 0, pCurDist[0] >= 0);
+		CodeDir(GetDir(pCurNodes[x].d0, pCurNodes[x].d1), LeafCodec, dirs[2]);
 	}else{
 		NodeCodec.code1(0);
-		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] >= 0);
+		pHigh->CodeNodes(x << 1, y << 1, dirs[2]);
 	}
 	x--;
 	pCurDist--;
 	if (pCurNodes[x].rate == 0){
 		NodeCodec.code0(0);
-		LeafCodec.code(pCurNodes[x].refDist >= 0, pCurDist[0] >= 0);
+		CodeDir(GetDir(pCurNodes[x].d0, pCurNodes[x].d1), LeafCodec, dirs[3]);
 	}else{
 		NodeCodec.code1(0);
-		pHigh->CodeNodes(x << 1, y << 1, pCurDist[0] >= 0);
+		pHigh->CodeNodes(x << 1, y << 1, dirs[3]);
 	}
 }
 
@@ -398,9 +402,9 @@ void CMap::DecodeNodes(void)
 
 	for( int j = 0; j < height; j++){
 		for( int i = 0; i < width; i++){
-			pMap[i] = pCurMap->DirCodec.decode(0);
+			pMap[i] = DecodeDir(pCurMap->DirCodec, 0);
 			if (pCurMap->NodeCodec.decode(0) == 0){
-				pCurMap->SetDir(pCurMap->LeafCodec.decode(pMap[i]), i, j);
+				pCurMap->SetDir(DecodeDir(pCurMap->LeafCodec, pMap[i]), i, j);
 			}else{
 				pCurMap->pHigh->DecodeNodes(i << 1, j << 1, pMap[i]);
 			}
@@ -412,13 +416,13 @@ void CMap::DecodeNodes(void)
 void CMap::DecodeNodes(int x, int y, int context)
 {
 	char * pCurMap = pMap + y * DimX + x;
-	pCurMap[0] = DirCodec.decode(context);
+	pCurMap[0] = DecodeDir(DirCodec, context);
 	pCurMap++;
-	pCurMap[0] = DirCodec.decode(context);
+	pCurMap[0] = DecodeDir(DirCodec, context);
 	pCurMap += DimX;
-	pCurMap[0] = DirCodec.decode(context);
+	pCurMap[0] = DecodeDir(DirCodec, context);
 	pCurMap--;
-	pCurMap[0] = DirCodec.decode(context);
+	pCurMap[0] = DecodeDir(DirCodec, context);
 
 	if (pHigh == 0)
 		return;
@@ -426,32 +430,32 @@ void CMap::DecodeNodes(int x, int y, int context)
 	pCurMap -= DimX;
 
 	if (NodeCodec.decode(0) == 0)
-		SetDir(LeafCodec.decode(pCurMap[0]), x, y);
+		SetDir(DecodeDir(LeafCodec, pCurMap[0]), x, y);
 	else
 		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
 	x++;
 	pCurMap++;
 	if (NodeCodec.decode(0) == 0)
-		SetDir(LeafCodec.decode(pCurMap[0]), x, y);
+		SetDir(DecodeDir(LeafCodec, pCurMap[0]), x, y);
 	else
 		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
 	pCurMap += DimX;
 	y++;
 	if (NodeCodec.decode(0) == 0)
-		SetDir(LeafCodec.decode(pCurMap[0]), x, y);
+		SetDir(DecodeDir(LeafCodec, pCurMap[0]), x, y);
 	else
 		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
 	x--;
 	pCurMap--;
 	if (NodeCodec.decode(0) == 0)
-		SetDir(LeafCodec.decode(pCurMap[0]), x, y);
+		SetDir(DecodeDir(LeafCodec, pCurMap[0]), x, y);
 	else
 		pHigh->DecodeNodes(x << 1, y << 1, pCurMap[0]);
 }
 
-void CMap::GetImageDist(float * pImage1, float * pImage2, int stride)
+void CMap::GetImageDist(float * pIm1, float * pIm2, float * pIm3, int stride)
 {
-	int * pDir = this->pDist;
+	dist_t * pDir = this->pDist;
 	int diff = 4 * stride - ImageX;
 	float wl = weightL * 256;
 	int end = stride * ImageY;
@@ -459,24 +463,31 @@ void CMap::GetImageDist(float * pImage1, float * pImage2, int stride)
 	for( int pos1 = 1, pos2 = stride, pos3 = 2 * stride + 1, pos4 = 3 * stride;
 			pos1 < end; pos1 += diff, pos2 += diff, pos3 += diff, pos4 += diff){
 		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 4, pos2 += 4, pos3 += 4, pos4 += 4){
-			pDir[0] = (int) ((
-					fabsf(pImage1[pos1]) + fabsf(pImage1[pos1 + 2]) +
-					fabsf(pImage1[pos2]) + fabsf(pImage1[pos2 + 2]) +
-					fabsf(pImage1[pos3]) + fabsf(pImage1[pos3 + 2]) +
-					fabsf(pImage1[pos4]) + fabsf(pImage1[pos4 + 2]) - (
-					fabsf(pImage2[pos1]) + fabsf(pImage2[pos1 + 2]) +
-					fabsf(pImage2[pos2]) + fabsf(pImage2[pos2 + 2]) +
-					fabsf(pImage2[pos3]) + fabsf(pImage2[pos3 + 2]) +
-					fabsf(pImage2[pos4]) + fabsf(pImage2[pos4 + 2]))) * wl);
+			float tmp =
+					fabsf(pIm3[pos1]) + fabsf(pIm3[pos1 + 2]) +
+					fabsf(pIm3[pos2]) + fabsf(pIm3[pos2 + 2]) +
+					fabsf(pIm3[pos3]) + fabsf(pIm3[pos3 + 2]) +
+					fabsf(pIm3[pos4]) + fabsf(pIm3[pos4 + 2]);
+			pDir[0].d0 = (int) ((
+					fabsf(pIm1[pos1]) + fabsf(pIm1[pos1 + 2]) +
+					fabsf(pIm1[pos2]) + fabsf(pIm1[pos2 + 2]) +
+					fabsf(pIm1[pos3]) + fabsf(pIm1[pos3 + 2]) +
+					fabsf(pIm1[pos4]) + fabsf(pIm1[pos4 + 2]) - tmp) * wl);
+			pDir[0].d1 = (int) ((
+					fabsf(pIm2[pos1]) + fabsf(pIm2[pos1 + 2]) +
+					fabsf(pIm2[pos2]) + fabsf(pIm2[pos2 + 2]) +
+					fabsf(pIm2[pos3]) + fabsf(pIm2[pos3 + 2]) +
+					fabsf(pIm2[pos4]) + fabsf(pIm2[pos4 + 2]) - tmp) * wl);
 			pDir++;
 		}
 	}
 }
 
-void CMap::GetImageDist(float * pImage1, float * pImage2,
-						float * pBand1, float * pBand2, int stride)
+void CMap::GetImageDist(float * pIm1, float * pIm2, float * pIm3,
+						float * pBand1, float * pBand2, float * pBand3,
+						int stride)
 {
-	int * pDir = this->pDist;
+	dist_t * pDir = this->pDist;
 	int diff = 4 * stride - ImageX;
 	float wl = weightL * 256;
 	float wh = weightH * 256;
@@ -485,31 +496,44 @@ void CMap::GetImageDist(float * pImage1, float * pImage2,
 	for( int pos1 = 1, pos2 = stride, pos3 = 2 * stride + 1, pos4 = 3 * stride;
 			pos1 < end; pos1 += diff, pos2 += diff, pos3 += diff, pos4 += diff){
 		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 4, pos2 += 4, pos3 += 4, pos4 += 4){
-			pDir[0] = (int) ((
-					fabsf(pImage1[pos1]) + fabsf(pImage1[pos1 + 2]) +
-					fabsf(pImage1[pos2]) + fabsf(pImage1[pos2 + 2]) +
-					fabsf(pImage1[pos3]) + fabsf(pImage1[pos3 + 2]) +
-					fabsf(pImage1[pos4]) + fabsf(pImage1[pos4 + 2]) - (
-					fabsf(pImage2[pos1]) + fabsf(pImage2[pos1 + 2]) +
-					fabsf(pImage2[pos2]) + fabsf(pImage2[pos2 + 2]) +
-					fabsf(pImage2[pos3]) + fabsf(pImage2[pos3 + 2]) +
-					fabsf(pImage2[pos4]) + fabsf(pImage2[pos4 + 2]))) * wl + (
+			float tmp1 =
+					fabsf(pIm3[pos1]) + fabsf(pIm3[pos1 + 2]) +
+					fabsf(pIm3[pos2]) + fabsf(pIm3[pos2 + 2]) +
+					fabsf(pIm3[pos3]) + fabsf(pIm3[pos3 + 2]) +
+					fabsf(pIm3[pos4]) + fabsf(pIm3[pos4 + 2]);
+			float tmp2 =
+					fabsf(pBand3[pos1]) + fabsf(pBand3[pos1 + 2]) +
+					fabsf(pBand3[pos2]) + fabsf(pBand3[pos2 + 2]) +
+					fabsf(pBand3[pos3]) + fabsf(pBand3[pos3 + 2]) +
+					fabsf(pBand3[pos4]) + fabsf(pBand3[pos4 + 2]);
+			pDir[0].d0 = (int) ((
+					fabsf(pIm1[pos1]) + fabsf(pIm1[pos1 + 2]) +
+					fabsf(pIm1[pos2]) + fabsf(pIm1[pos2 + 2]) +
+					fabsf(pIm1[pos3]) + fabsf(pIm1[pos3 + 2]) +
+					fabsf(pIm1[pos4]) + fabsf(pIm1[pos4 + 2]) - tmp1) * wl + (
 					fabsf(pBand1[pos1]) + fabsf(pBand1[pos1 + 2]) +
 					fabsf(pBand1[pos2]) + fabsf(pBand1[pos2 + 2]) +
 					fabsf(pBand1[pos3]) + fabsf(pBand1[pos3 + 2]) +
-					fabsf(pBand1[pos4]) + fabsf(pBand1[pos4 + 2]) - (
+					fabsf(pBand1[pos4]) + fabsf(pBand1[pos4 + 2]) - tmp2) * wh);
+			pDir[0].d1 = (int) ((
+					fabsf(pIm2[pos1]) + fabsf(pIm2[pos1 + 2]) +
+					fabsf(pIm2[pos2]) + fabsf(pIm2[pos2 + 2]) +
+					fabsf(pIm2[pos3]) + fabsf(pIm2[pos3 + 2]) +
+					fabsf(pIm2[pos4]) + fabsf(pIm2[pos4 + 2]) - tmp1) * wl + (
 					fabsf(pBand2[pos1]) + fabsf(pBand2[pos1 + 2]) +
 					fabsf(pBand2[pos2]) + fabsf(pBand2[pos2 + 2]) +
 					fabsf(pBand2[pos3]) + fabsf(pBand2[pos3 + 2]) +
-					fabsf(pBand2[pos4]) + fabsf(pBand2[pos4 + 2]))) * wh);
+					fabsf(pBand2[pos4]) + fabsf(pBand2[pos4 + 2]) - tmp2) * wh);
 			pDir++;
 		}
 	}
+
 }
 
-void CMap::GetImageDistDiag(float * pImage1, float * pImage2, int stride)
+void CMap::GetImageDistDiag(float * pIm1, float * pIm2, float * pIm3,
+							int stride)
 {
-	int * pDir = this->pDist;
+	dist_t * pDir = this->pDist;
 	int diff = 4 * stride - ImageX;
 	float wl = weightL * 256;
 	float wh = weightH * 256;
@@ -517,15 +541,22 @@ void CMap::GetImageDistDiag(float * pImage1, float * pImage2, int stride)
 
 	for( int pos1 = stride, pos2 = 3 * stride; pos1 < end; pos1 += diff, pos2 += diff){
 		for( int stop = pos1 + ImageX; pos1 < stop; pos1 += 4, pos2 += 4){
-			pDir[0] = (int) ((
-					fabsf(pImage1[pos1]) + fabsf(pImage1[pos1 + 2]) +
-					fabsf(pImage1[pos2]) + fabsf(pImage1[pos2 + 2]) - (
-					fabsf(pImage2[pos1]) + fabsf(pImage2[pos1 + 2]) +
-					fabsf(pImage2[pos2]) + fabsf(pImage2[pos2 + 2]))) * wh + (
-					fabsf(pImage1[pos1 + 1]) + fabsf(pImage1[pos1 + 3]) +
-					fabsf(pImage1[pos2 + 1]) + fabsf(pImage1[pos2 + 3]) - (
-					fabsf(pImage2[pos1 + 1]) + fabsf(pImage2[pos1 + 3]) +
-					fabsf(pImage2[pos2 + 1]) + fabsf(pImage2[pos2 + 3]))) * wl);
+			float tmp1 =
+					fabsf(pIm3[pos1]) + fabsf(pIm3[pos1 + 2]) +
+					fabsf(pIm3[pos2]) + fabsf(pIm3[pos2 + 2]);
+			float tmp2 =
+					fabsf(pIm3[pos1 + 1]) + fabsf(pIm3[pos1 + 3]) +
+					fabsf(pIm3[pos2 + 1]) + fabsf(pIm3[pos2 + 3]);
+			pDir[0].d0 = (int) ((
+					fabsf(pIm1[pos1]) + fabsf(pIm1[pos1 + 2]) +
+					fabsf(pIm1[pos2]) + fabsf(pIm1[pos2 + 2]) - tmp1) * wh + (
+					fabsf(pIm1[pos1 + 1]) + fabsf(pIm1[pos1 + 3]) +
+					fabsf(pIm1[pos2 + 1]) + fabsf(pIm1[pos2 + 3]) - tmp2) * wl);
+			pDir[0].d1 = (int) ((
+					fabsf(pIm2[pos1]) + fabsf(pIm2[pos1 + 2]) +
+					fabsf(pIm2[pos2]) + fabsf(pIm2[pos2 + 2]) - tmp1) * wh + (
+					fabsf(pIm2[pos1 + 1]) + fabsf(pIm2[pos1 + 3]) +
+					fabsf(pIm2[pos2 + 1]) + fabsf(pIm2[pos2 + 3]) - tmp2) * wl);
 			pDir++;
 		}
 	}

@@ -45,8 +45,4 @@ static const float Quants[32] =
 	0.6598, 0.7579, 0.8706, 1.0000, 1.1487
 };
 
-// diagonal1 = \
-// diagonal2 = /
-typedef enum direction {horizontal, vertical, diagonal1, diagonal2};
-
 }
