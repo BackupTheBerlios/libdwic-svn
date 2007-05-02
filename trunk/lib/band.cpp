@@ -65,56 +65,56 @@ void CBand::Init( unsigned int x, unsigned int y, int Align)
 	Count = 0;
 	if (BandSize != 0){
 		pData = new char[BandSize * sizeof(float) + Align];
-		pBand = (float*)(((int)pData + Align - 1) & (-Align));
+		pBand = (flint*)(((int)pData + Align - 1) & (-Align));
 	}
 }
 
 template <cmode mode>
 void CBand::pred(CMuxCodec * pCodec)
 {
-		float * pCur = pBand;
-		int k = 6;
-		const int stride = DimXAlign;
-		static const int log[32] = {0,1,2,2,3,3,3,3,4,4,4,4,4,4,4,4,
-									5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5};
+	int * pCur = (int*) pBand;
+	int k = 6;
+	const int stride = DimXAlign;
+	static const int log[32] = {0,1,2,2,3,3,3,3,4,4,4,4,4,4,4,4,
+								5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5};
 
+	if (mode == encode)
+		pCodec->tabooCode(s2u(pCur[0]));
+	else
+		pCur[0] = u2s(pCodec->tabooDecode());
+
+	for( int i = 1; i < DimX; i++){
 		if (mode == encode)
-			pCodec->tabooCode(s2u((int) pCur[0]));
+			pCodec->golombCode(s2u(pCur[i] - pCur[i - 1]), k);
 		else
-			pCur[0] = u2s(pCodec->tabooDecode());
+			pCur[i] = pCur[i - 1] + u2s(pCodec->golombDecode(k));
+	}
+	pCur += stride;
+
+	for( int j = 1; j < DimY; j++){
+		if (mode == encode)
+			pCodec->golombCode(s2u(pCur[0] - pCur[-stride]), k);
+		else
+			pCur[0] = pCur[-stride] + u2s(pCodec->golombDecode(k));
 
 		for( int i = 1; i < DimX; i++){
-			if (mode == encode)
-				pCodec->golombCode(s2u((int)(pCur[i] - pCur[i - 1])), k);
+			int var = ABS(pCur[i - 1] - pCur[i - 1 - stride]) +
+					ABS(pCur[i - stride] - pCur[i - 1 - stride]);
+			var -= var >> 2;
+			if (var >= 32)
+				var = k;
 			else
-				pCur[i] = pCur[i - 1] + u2s(pCodec->golombDecode(k));
+				var = log[var];
+			if (mode == encode) {
+				int pred = pCur[i] - pCur[i - 1] - pCur[i - stride] +
+						pCur[i - 1 - stride];
+				pCodec->golombCode(s2u(pred), var);
+			} else
+				pCur[i] = pCur[i - 1] + pCur[i - stride] -
+						pCur[i - 1 - stride] + u2s(pCodec->golombDecode(var));
 		}
 		pCur += stride;
-
-		for( int j = 1; j < DimY; j++){
-			if (mode == encode)
-				pCodec->golombCode(s2u((int)(pCur[0] - pCur[-stride])), k);
-			else
-				pCur[0] = pCur[-stride] + u2s(pCodec->golombDecode(k));
-
-			for( int i = 1; i < DimX; i++){
-				int var = (int) (ABS(pCur[i - 1] - pCur[i - 1 - stride]) +
-						ABS(pCur[i - stride] - pCur[i - 1 - stride]));
-				var -= var >> 2;
-				if (var >= 32)
-					var = k;
-				else
-					var = log[var];
-				if (mode == encode) {
-					int pred = (int)(pCur[i] - pCur[i - 1] - pCur[i - stride] +
-							pCur[i - 1 - stride]);
-					pCodec->golombCode(s2u(pred), var);
-				} else
-					pCur[i] = pCur[i - 1] + pCur[i - stride] -
-							pCur[i - 1 - stride] + u2s(pCodec->golombDecode(var));
-			}
-			pCur += stride;
-		}
+	}
 }
 
 template void CBand::pred<encode>(CMuxCodec *);
@@ -181,7 +181,7 @@ template <cmode mode>
 		if (pCodec->bitsDecode(1) == 0)
 			return;
 
-	float * pCur = pBand;
+	int * pCur = (int*) pBand;
 	int diff = DimXAlign << 2;
 	unsigned int * pTop = new unsigned int [(DimX >> 2) * 3];
 	unsigned int * pOld = pTop + (DimX >> 2);
@@ -261,7 +261,7 @@ const int CBand::golombK[17] =
 	{0, -3, -2, -2, -1, -1, -1, 0, 0, 0, 0, 0, 1, 1, 1, 2, 3};
 
 template <bool directK>
-		unsigned int CBand::enuCode4x4(CMuxCodec * pCodec, float * pCur,
+		unsigned int CBand::enuCode4x4(CMuxCodec * pCodec, int * pCur,
 									   int stride, unsigned int kPred)
 {
 	int tmp[16];
@@ -269,10 +269,10 @@ template <bool directK>
 	unsigned int k = 0;
 
 	for( int j = 0; j < 4; j++){
-		for( float * pEnd = pCur + 4; pCur < pEnd; pCur++){
+		for( int * pEnd = pCur + 4; pCur < pEnd; pCur++){
 			signif <<= 1;
-			tmp[k] = (int)pCur[0];
-			if (tmp[k] != 0) {
+			if (pCur[0] != 0) {
+				tmp[k] = pCur[0];
 				k++;
 				signif |= 1;
 			}
@@ -307,7 +307,7 @@ template <bool directK>
 }
 
 template <bool directK>
-		unsigned int CBand::enuDecode4x4(CMuxCodec * pCodec, float * pCur,
+		unsigned int CBand::enuDecode4x4(CMuxCodec * pCodec, int * pCur,
 										 int stride, unsigned int kPred)
 {
 	unsigned int k;
@@ -325,7 +325,7 @@ template <bool directK>
 		signif = pCodec->enum16Decode(k);
 
 	for( int j = 0; j < 4; j++){
-		for( float * pEnd = pCur + 4; pCur < pEnd; pCur++){
+		for( int * pEnd = pCur + 4; pCur < pEnd; pCur++){
 			if (signif & (1 << 15)) {
 				pCur[0] = pCodec->golombDecode(golombK[k]) + 1;
 				if (pCodec->bitsDecode(1))
@@ -349,12 +349,12 @@ void CBand::SimpleQuant( int quant )
 	int size = DimXAlign * DimY;
 	int add = quant >> 1;
 	for ( int i = 0; i < size; i++ ) {
-		if ( pBand[ i ] > quant )
-			pBand[ i ] = ( pBand[ i ] / quant ) * quant + add;
-		else if ( pBand[ i ] < -quant )
-			pBand[ i ] = ( pBand[ i ] / quant ) * quant - add;
+		if ( pBand[i].f > quant )
+			pBand[i].f = ( pBand[i].f / quant ) * quant + add;
+		else if ( pBand[i].f < -quant )
+			pBand[i].f = ( pBand[i].f / quant ) * quant - add;
 		else
-			pBand[ i ] = 0;
+			pBand[i].f = 0;
 	}
 }
 
@@ -366,8 +366,8 @@ void CBand::Mean( float & Mean, float & Var )
 	for ( unsigned int j = 0; j < DimY; j++ ) {
 		unsigned int J = j * DimXAlign;
 		for ( unsigned int i = 0; i < DimX; i++ ) {
-			Sum += pBand[ i + J ];
-			SSum += pBand[ i + J ] * pBand[ i + J ];
+			Sum += pBand[i + J].f;
+			SSum += pBand[i + J].f * pBand[i + J].f;
 		}
 	}
 	Mean = Sum * Weight / ( DimX * DimY );
@@ -383,8 +383,8 @@ unsigned int CBand::Thres( float Thres )
 	Count = 0;
 	for ( int j = 0, n = 0; j < DimY ; j ++ ) {
 		for ( int nEnd = n + DimX; n < nEnd ; n++ ) {
-			if ( pBand[ n ] > negThres && pBand[ n ] < Thres ) {
-				pBand[ n ] = 0;
+			if ( pBand[n].f > negThres && pBand[n].f < Thres ) {
+				pBand[n].f = 0;
 			} else {
 				Count++;
 			}
@@ -401,30 +401,30 @@ unsigned int CBand::TSUQ( float Quant, float Thres)
 	Quant /= Weight;
 	Thres /= Weight;
 	float negThres = -Thres;
-	float halfQuant = Quant * .5;
-	float Min = 0, Max = 0;
+	float halfQuant = 0;
+	int Min = 0, Max = 0;
 	Count = 0;
 	for ( int j = 0, n = 0; j < DimY ; j ++ ) {
 		for ( int nEnd = n + DimX; n < nEnd ; n++ ) {
-			if ( pBand[ n ] > negThres && pBand[ n ] < Thres ) {
-				pBand[ n ] = 0;
+			if ( pBand[n].f > negThres && pBand[n].f < Thres ) {
+				pBand[n].i = 0;
 			} else {
 				Count++;
-				if ( pBand[n] > 0 ){
-					pBand[n] = truncf( (pBand[n] + halfQuant) * iQuant );
-					if (pBand[n] > Max)
-						Max = pBand[n];
+				if ( pBand[n].f > 0 ){
+					pBand[n].i = lrintf( pBand[n].f * iQuant + halfQuant);
+					if (pBand[n].i > Max)
+						Max = pBand[n].i;
 				} else {
-					pBand[n] = truncf( (pBand[n] - halfQuant) * iQuant );
-					if (pBand[n] < Min)
-						Min = pBand[n];
+					pBand[n].i = lrintf( pBand[n].f * iQuant - halfQuant);
+					if (pBand[n].i < Min)
+						Min = pBand[n].i;
 				}
 			}
 		}
 		n += Diff;
 	}
-	this->Min = (int) Min;
-	this->Max = (int) Max;
+	this->Min = Min;
+	this->Max = Max;
 	return Count;
 }
 
@@ -435,12 +435,12 @@ void CBand::TSUQi( float Quant, float RecLevel)
 	RecLevel /= Weight;
 	for ( int j = 0, n = 0; j < DimY ; j ++ ) {
 		for ( int nEnd = n + DimX; n < nEnd ; n++ ) {
-			if (pBand[n] != 0) {
-				pBand[n] *= Quant;
-				if ( pBand[n] > 0 )
-					pBand[n] += RecLevel;
+			if (pBand[n].i != 0) {
+				pBand[n].f = (float) pBand[n].i * Quant;
+				if ( pBand[n].f > 0 )
+					pBand[n].f += RecLevel;
 				else
-					pBand[n] -= RecLevel;
+					pBand[n].f -= RecLevel;
 			}
 		}
 		n += Diff;
@@ -450,7 +450,7 @@ void CBand::TSUQi( float Quant, float RecLevel)
 void CBand::Add( float val )
 {
 	for ( int i = 0; i < BandSize; i++ )
-		pBand[ i ] += val;
+		pBand[i].f += val;
 }
 
 void CBand::Clear(bool recurse)

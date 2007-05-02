@@ -256,7 +256,7 @@ void CWaveletDir::LazyImage(float * pImage, unsigned int stride)
 	int Bandpos, Ipos1, Ipos2, Lstride;
 	float * pLOut;
 	if (pLow == 0){
-		pLOut = LBand.pBand;
+		pLOut = (float*)LBand.pBand;
 		Lstride = LBand.DimX;
 	}else{
 		pLOut = pImage;
@@ -269,9 +269,9 @@ void CWaveletDir::LazyImage(float * pImage, unsigned int stride)
 		Ipos2 = (j >> 1) * Lstride;
 		for(int pEnd = Ipos1 + DimX; Ipos1 < pEnd; Ipos1 += 2){
 			pLOut[Ipos2] = pImage[Ipos1];
-			DLBand.pBand[Bandpos] = pImage[Ipos1 + 1];
-			DHBand.pBand[Bandpos] = pImage[Ipos1 + stride];
-			HVBand.pBand[Bandpos] = pImage[Ipos1 + stride + 1];
+			DLBand.pBand[Bandpos].f = pImage[Ipos1 + 1];
+			DHBand.pBand[Bandpos].f = pImage[Ipos1 + stride];
+			HVBand.pBand[Bandpos].f = pImage[Ipos1 + stride + 1];
 			Bandpos++;
 			Ipos2++;
 		}
@@ -283,7 +283,7 @@ void CWaveletDir::LazyImageI(float * pImage, unsigned int stride)
 	int Bandpos, Ipos1, Ipos2, Lstride;
 	float * pLIn;
 	if (pLow == 0){
-		pLIn = LBand.pBand;
+		pLIn = (float*)LBand.pBand;
 		Lstride = LBand.DimX;
 	}else{
 		pLIn = pImage;
@@ -296,9 +296,9 @@ void CWaveletDir::LazyImageI(float * pImage, unsigned int stride)
 		Ipos2 = (j >> 1) * Lstride + (DimX >> 1) - 1;
 		for(int pEnd = Ipos1 - DimX; Ipos1 > pEnd; Ipos1 -= 2){
 			pImage[Ipos1] = pLIn[Ipos2];
-			pImage[Ipos1 + 1] = DLBand.pBand[Bandpos];
-			pImage[Ipos1 + stride] = DHBand.pBand[Bandpos];
-			pImage[Ipos1 + stride + 1] = HVBand.pBand[Bandpos];
+			pImage[Ipos1 + 1] = DLBand.pBand[Bandpos].f;
+			pImage[Ipos1 + stride] = DHBand.pBand[Bandpos].f;
+			pImage[Ipos1 + stride + 1] = HVBand.pBand[Bandpos].f;
 			Bandpos--;
 			Ipos2--;
 		}
@@ -504,7 +504,7 @@ void CWaveletDir::Transform97(float * pImage, int stride, bool getDir)
 	if (getDir)
 		GetImageDir97(pImage, stride);
 	else if (pHigh != 0) {
-		float * pBand = pHigh->HVBand.pBand;
+		float * pBand = (float*)pHigh->HVBand.pBand;
 		int DimX = pHigh->HVBand.DimX, DimY = pHigh->HVBand.DimY;
 		int stride = pHigh->HVBand.DimXAlign;
 		LiftBand<odd>(pBand, stride, DimX, DimY, ALPHA1, ALPHA2, HVMap.pMap);
@@ -538,7 +538,7 @@ void CWaveletDir::Transform97(float * pImage, int stride, bool getDir)
 		if (getDir)
 			GetBandDir97();
 		else {
-			float * pBand = HVBand.pBand;
+			float * pBand = (float*)HVBand.pBand;
 			int DimX = HVBand.DimX, DimY = HVBand.DimY;
 			int stride = HVBand.DimXAlign;
 			LiftBand<odd>(pBand, stride, DimX, DimY, ALPHA1, ALPHA2, LMap.pMap);
@@ -558,7 +558,7 @@ void CWaveletDir::Transform97I(float * pImage, int stride)
 	else {
 		LazyBandI();
 
-		float * pBand = HVBand.pBand;
+		float * pBand = (float*)HVBand.pBand;
 		int DimX = HVBand.DimX, DimY = HVBand.DimY;
 		int stride = HVBand.DimXAlign;
 		LiftBand<even>(pBand, stride, DimX, DimY, -DELTA1, -DELTA2, LMap.pMap);
@@ -584,7 +584,7 @@ void CWaveletDir::Transform97I(float * pImage, int stride)
 	if (pHigh != 0) {
 		pHigh->LazyBandI();
 
-		float * pBand = pHigh->HVBand.pBand;
+		float * pBand = (float*)pHigh->HVBand.pBand;
 		int DimX = pHigh->HVBand.DimX, DimY = pHigh->HVBand.DimY;
 		int stride = pHigh->HVBand.DimXAlign;
 		LiftBand<even>(pBand, stride, DimX, DimY, -DELTA1, -DELTA2, HVMap.pMap);
@@ -649,7 +649,7 @@ void CWaveletDir::GetImageDir97(float * pImage, int stride)
 	if (pHigh != 0) {
 		pBand1 = new float [DimX * DimY];
 		pBand2 = new float [DimX * DimY];
-		pCur = pHigh->HVBand.pBand;
+		pCur = (float*)pHigh->HVBand.pBand;
 		pCur1 = pBand1;
 		pCur2 = pBand2;
 		for( int i = 0; i < DimY; i++){
@@ -702,7 +702,7 @@ void CWaveletDir::GetBandDir97(void)
 {
 	float * pBand1 = new float [HVBand.BandSize];
 	float * pBand2 = new float [HVBand.BandSize];
-	float * pCur = HVBand.pBand, * pCur1 = pBand1, * pCur2 = pBand2;
+	float * pCur = (float*)HVBand.pBand, * pCur1 = pBand1, * pCur2 = pBand2;
 	int stride = HVBand.DimXAlign;
 	int DimX = HVBand.DimX;
 	int DimY = HVBand.DimY;

@@ -43,6 +43,11 @@ namespace libdwic {
 #define D1_BAND		3	// diag direction = "\"
 #define D2_BAND		4	// diag direction = "/"
 
+typedef union {
+	float f;
+	int i;
+} flint;
+
 class CBand
 {
 public:
@@ -64,7 +69,7 @@ public:
 	CBand *pChild;			// Child Band
 	CBand *pNeighbor[3];	// Band neighbors (other component bands
 							// that can be used for context modeling)
-	float *pBand;			// Band datas
+	flint *pBand;			// Band datas
 
 	void Init(unsigned int x = 0, unsigned int y = 0, int Align = ALIGN);
 
@@ -96,10 +101,10 @@ private:
 	void CoefDecode(int i, int j, CMuxCodec * pCodec);
 
 	template <bool directK>
-	static unsigned int enuCode4x4(CMuxCodec * pCodec, float * pCur,
+	static unsigned int enuCode4x4(CMuxCodec * pCodec, int * pCur,
 									   int stride, unsigned int kPred);
 	template <bool directK>
-	static unsigned int enuDecode4x4(CMuxCodec * pCodec, float * pCur,
+	static unsigned int enuDecode4x4(CMuxCodec * pCodec, int * pCur,
 										 int stride, unsigned int kPred);
 
 	static const unsigned short cumProba[33][18];
