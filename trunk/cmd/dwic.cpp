@@ -260,7 +260,7 @@ void CompressImage(string & infile, string & outfile, int Quant, float Thres,
 
 		Wavelet.CodeMap(0);
 
-		Wavelet.CodeBand(&Codec, 0);
+		Wavelet.CodeBand(&Codec, 1);
 
 		pEnd = Codec.endCoding();
 	} else {
@@ -305,7 +305,7 @@ void DecompressImage(string & infile, string & outfile, float RecLevel, int Dith
 		Wavelet.SetWeight97();
 		Wavelet.SetCodec(&Codec);
 		Wavelet.DecodeMap(0);
-		Wavelet.DecodeBand(&Codec, 0);
+		Wavelet.DecodeBand(&Codec, 1);
 		Wavelet.TSUQi(Quants[Head.Quant], Quants[Head.Quant] * RecLevel);
 		Wavelet.Transform97I(ImgPixels, width);
 	} else {
