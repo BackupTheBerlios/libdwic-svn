@@ -52,7 +52,7 @@ private:
 	static const int mod[][2];
 
 public:
-	CBitCodec();
+	CBitCodec(CMuxCodec * RangeCodec = 0);
 	virtual ~CBitCodec();
 	void InitModel(void);
 

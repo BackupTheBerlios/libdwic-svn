@@ -217,9 +217,14 @@ void CMuxCodec::tabooCode(unsigned int nb)
 	unsigned int r = 0;
 
 	while (sumTaboo[i] <= nb) i++;
-	l = i;
-	if (i > 0) i--;
 
+	if (i == 0) {
+		bitsCode(0, nTaboo);
+		return;
+	}
+
+	l = i;
+	i--;
 	nb -= sumTaboo[i];
 
 	while (i > nTaboo) {

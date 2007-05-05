@@ -101,12 +101,36 @@ int inline u2s(int u)
 	return (u >> 1) ^ -(u & 1);
 }
 
+int inline s2u_(int s)
+{
+	int m = s >> 31;
+	return (2 * s + m) ^ (m * 2);
+}
+
+int inline u2s_(int u)
+{
+	int m = (u << 31) >> 31;
+	return ((u >> 1) + m) ^ m;
+}
+
 // from http://graphics.stanford.edu/~seander/bithacks.html
 int inline bitcnt(int v)
 {
 	v -= (v >> 1) & 0x55555555;
 	v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
 	return ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+}
+
+extern const char log[];
+
+int inline bitlen(unsigned int v)
+{
+	int r = 0;
+	while (v >= 32) {
+		r += 5;
+		v >>= 5;
+	}
+	return r + log[v];
 }
 
 }

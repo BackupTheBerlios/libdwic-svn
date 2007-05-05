@@ -79,11 +79,15 @@ public:
 	void TSUQi( float Quant, float RecLevel);
 	void SimpleQuant(int quant);
 
+	template <bool high_band> void buildTree();
+
 	// Codage
 	template <cmode mode>
 			void enu(CMuxCodec * pCodec);
 	template <cmode mode>
 			void pred(CMuxCodec * pCodec);
+	template <cmode mode>
+			void tree(CMuxCodec * pCodec);
 
 	// Statistiques
 	void Mean(float & Mean, float & Var);

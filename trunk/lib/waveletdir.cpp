@@ -230,6 +230,20 @@ void CWaveletDir::CodeBand(CMuxCodec * pCodec, int method)
 				}
 				pCurWav = pCurWav->pLow;
 			}
+		case 1 :
+			pCurWav->DLBand.buildTree<true>();
+			pCurWav->DHBand.buildTree<true>();
+			pCurWav->HVLBand.buildTree<true>();
+			pCurWav->HVHBand.buildTree<true>();
+			while( pCurWav->pLow ) pCurWav = pCurWav->pLow;
+			pCurWav->LBand.pred<encode>(pCodec);
+			while( pCurWav ) {
+				pCurWav->DLBand.tree<encode>(pCodec);
+				pCurWav->DHBand.tree<encode>(pCodec);
+				pCurWav->HVLBand.tree<encode>(pCodec);
+				pCurWav->HVHBand.tree<encode>(pCodec);
+				pCurWav = pCurWav->pHigh;
+			}
 	}
 }
 
@@ -247,6 +261,16 @@ void CWaveletDir::DecodeBand(CMuxCodec * pCodec, int method)
 				if (pCurWav->pLow == 0)
 					pCurWav->LBand.pred<decode>(pCodec);
 				pCurWav = pCurWav->pLow;
+			}
+		case 1 :
+			while( pCurWav->pLow ) pCurWav = pCurWav->pLow;
+			pCurWav->LBand.pred<decode>(pCodec);
+			while( pCurWav ) {
+				pCurWav->DLBand.tree<decode>(pCodec);
+				pCurWav->DHBand.tree<decode>(pCodec);
+				pCurWav->HVLBand.tree<decode>(pCodec);
+				pCurWav->HVHBand.tree<decode>(pCodec);
+				pCurWav = pCurWav->pHigh;
 			}
 	}
 }

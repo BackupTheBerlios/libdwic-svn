@@ -35,9 +35,10 @@
 
 namespace libdwic {
 
-CBitCodec::CBitCodec()
+CBitCodec::CBitCodec(CMuxCodec * RangeCodec)
 {
 	InitModel();
+	setRange(RangeCodec);
 }
 
 CBitCodec::~CBitCodec()
